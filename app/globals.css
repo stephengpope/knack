@@ -1,26 +1,185 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-hanken), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-newsreader), Georgia, serif;
+
+  /* shadcn semantic tokens */
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Knack brand tokens */
+  --color-accent-deep: var(--accent-deep);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-coral: var(--coral);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ===== Knack — Light ===== */
+:root {
+  --radius: 0.75rem;
+
+  --background: #ffffff;
+  --foreground: #1e1a24;
+
+  --card: #faf9fc;
+  --card-foreground: #1e1a24;
+  --popover: #faf9fc;
+  --popover-foreground: #1e1a24;
+
+  --primary: #7c5cfc;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f2f0f8;
+  --secondary-foreground: #1e1a24;
+
+  --muted: #f2f0f8;
+  --muted-foreground: #7c7689;
+
+  --accent: #f2f0f8;
+  --accent-foreground: #1e1a24;
+
+  --destructive: #e5484d;
+
+  --border: #ece9f2;
+  --input: #e8e4f0;
+  --ring: #7c5cfc;
+
+  --sidebar: #faf9fc;
+  --sidebar-foreground: #1e1a24;
+  --sidebar-primary: #7c5cfc;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eee9fe;
+  --sidebar-accent-foreground: #6a40f0;
+  --sidebar-border: #ece9f2;
+  --sidebar-ring: #7c5cfc;
+
+  /* brand extras */
+  --accent-deep: #6a40f0;
+  --accent-soft: #eee9fe;
+  --accent-text: #6a40f0;
+  --accent-glow: rgba(124, 92, 252, 0.32);
+  --coral: #ff7a66;
+  --ink-soft: #7c7689;
+  --ink-faint: #a8a2b5;
+  --shadow: rgba(30, 26, 36, 0.16);
+}
+
+/* ===== Knack — Dark ===== */
+.dark {
+  --background: #16131c;
+  --foreground: #f1eef6;
+
+  --card: #1d1926;
+  --card-foreground: #f1eef6;
+  --popover: #1d1926;
+  --popover-foreground: #f1eef6;
+
+  --primary: #8b6cff;
+  --primary-foreground: #16131c;
+
+  --secondary: #251f33;
+  --secondary-foreground: #f1eef6;
+
+  --muted: #251f33;
+  --muted-foreground: #a39cb5;
+
+  --accent: #272132;
+  --accent-foreground: #f1eef6;
+
+  --destructive: #ff6166;
+
+  --border: #2c2638;
+  --input: #322a44;
+  --ring: #8b6cff;
+
+  --sidebar: #1d1926;
+  --sidebar-foreground: #f1eef6;
+  --sidebar-primary: #8b6cff;
+  --sidebar-primary-foreground: #16131c;
+  --sidebar-accent: rgba(139, 108, 255, 0.18);
+  --sidebar-accent-foreground: #b7a4ff;
+  --sidebar-border: #2c2638;
+  --sidebar-ring: #8b6cff;
+
+  --accent-deep: #7c5cfc;
+  --accent-soft: rgba(139, 108, 255, 0.18);
+  --accent-text: #b7a4ff;
+  --accent-glow: rgba(124, 92, 252, 0.36);
+  --coral: #ff8b79;
+  --ink-soft: #a39cb5;
+  --ink-faint: #736c84;
+  --shadow: rgba(0, 0, 0, 0.55);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+    letter-spacing: -0.01em;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1, h2, h3, .font-heading {
+    font-family: var(--font-newsreader), Georgia, serif;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* brand gradient + glow helpers used across the app */
+@utility knack-gradient {
+  background-image: linear-gradient(150deg, var(--primary), var(--accent-deep));
+}
+@utility knack-glow {
+  box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+@keyframes knack-blink {
+  0%, 80%, 100% { opacity: 0.2; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-3px); }
+}
+@keyframes knack-fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }

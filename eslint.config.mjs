@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored shadcn registry — don't lint/edit upstream code.
+    "components/ai-elements/**",
   ]),
 ]);
 
