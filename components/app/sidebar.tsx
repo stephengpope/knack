@@ -46,7 +46,7 @@ export function Sidebar({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const activeId = pathname.startsWith("/c/") ? pathname.split("/")[2] : null;
+  const activeId = pathname.startsWith("/chat/") ? pathname.split("/")[2] : null;
 
   // Optimistic list: applied instantly inside a transition; the server action's
   // revalidation reconciles the real data back in. If the action throws, the
@@ -135,7 +135,7 @@ export function Sidebar({
           href="/"
           icon={<MessageSquare className="size-[18px]" strokeWidth={1.9} />}
           label="Chats"
-          active={pathname === "/" || pathname.startsWith("/c/")}
+          active={pathname === "/" || pathname.startsWith("/chat/")}
         />
 
         <button
@@ -291,7 +291,7 @@ function ChatRow({
   return (
     <div className="group relative">
       <Link
-        href={`/c/${chat.id}`}
+        href={`/chat/${chat.id}`}
         className={cn(
           "flex items-center rounded-[9px] py-2 pl-2.5 pr-8 text-[13.5px] transition-colors",
           active

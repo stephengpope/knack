@@ -89,7 +89,7 @@ export function Chat({
     if (!text) return;
     if (isWelcome && !navigated.current) {
       navigated.current = true;
-      window.history.replaceState({}, "", `/c/${id}`);
+      window.history.replaceState({}, "", `/chat/${id}`);
     }
     sendMessage({ text }, { body: { model } });
   }
