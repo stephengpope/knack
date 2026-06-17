@@ -64,6 +64,13 @@
       "when": 1781661575706,
       "tag": "0008_right_switch",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1781739687542,
+      "tag": "0009_nosy_the_phantom",
+      "breakpoints": true
     }
   ]
 }

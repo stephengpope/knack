@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ChatListItem } from "@/lib/chats";
+import { useChatStore } from "@/components/app/chat-store";
 import {
   renameChatAction,
   deleteChatAction,
@@ -42,13 +43,9 @@ type OptimisticAction =
   | { type: "rename"; id: string; title: string }
   | { type: "delete"; id: string };
 
-export function Sidebar({
-  chats: chatsProp,
-  user,
-}: {
-  chats: ChatListItem[];
-  user: SidebarUser;
-}) {
+export function Sidebar({ user }: { user: SidebarUser }) {
+  // Chats come from the shared store (server list + live pending/title updates).
+  const { chats: chatsProp } = useChatStore();
   const router = useRouter();
   const pathname = usePathname();
   const activeId = pathname.startsWith("/chat/") ? pathname.split("/")[2] : null;
@@ -305,7 +302,7 @@ function ChatRow({
         )}
       >
         <span className="min-w-0 flex-1 truncate">
-          {chat.title || "New chat"}
+          {chat.title || "Untitled"}
         </span>
       </Link>
       <DropdownMenu>

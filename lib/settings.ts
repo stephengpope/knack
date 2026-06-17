@@ -9,6 +9,8 @@ export type ConnectionMode = "gateway" | "custom" | "compatible";
 export type Settings = {
   connectionMode: ConnectionMode;
   defaultModel: string;
+  // null = "Same as AI Agent" (fall back to defaultModel for background calls).
+  generalModel: string | null;
 };
 
 // Singleton row id — the deployment shares one config.
@@ -17,6 +19,7 @@ const APP_ID = "app";
 const FALLBACK: Settings = {
   connectionMode: "gateway",
   defaultModel: DEFAULT_MODEL,
+  generalModel: null,
 };
 
 /** Shared deployment model config (admin-managed, used by every user). */
@@ -30,6 +33,7 @@ export async function getAppSettings(): Promise<Settings> {
   return {
     connectionMode: (row.connectionMode as ConnectionMode) ?? "gateway",
     defaultModel: row.defaultModel ?? DEFAULT_MODEL,
+    generalModel: row.generalModel ?? null,
   };
 }
 
@@ -42,12 +46,14 @@ async function upsert(patch: Partial<Settings>) {
       id: APP_ID,
       connectionMode: next.connectionMode,
       defaultModel: next.defaultModel,
+      generalModel: next.generalModel,
     })
     .onConflictDoUpdate({
       target: appSettings.id,
       set: {
         connectionMode: next.connectionMode,
         defaultModel: next.defaultModel,
+        generalModel: next.generalModel,
         updatedAt: new Date(),
       },
     });
@@ -59,4 +65,9 @@ export async function setConnectionMode(mode: ConnectionMode) {
 
 export async function setDefaultModel(model: string) {
   await upsert({ defaultModel: model });
+}
+
+/** Set the General AI model, or null for "Same as AI Agent". */
+export async function setGeneralModel(model: string | null) {
+  await upsert({ generalModel: model && model.trim() ? model : null });
 }

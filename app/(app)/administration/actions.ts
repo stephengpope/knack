@@ -3,7 +3,11 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/session";
 import { setKey, deleteKey } from "@/lib/api-keys";
-import { setConnectionMode, setDefaultModel } from "@/lib/settings";
+import {
+  setConnectionMode,
+  setDefaultModel,
+  setGeneralModel,
+} from "@/lib/settings";
 import { isProviderId } from "@/lib/providers";
 import { MODELS_CACHE_TAG } from "@/lib/gateway-models";
 import { addEndpoint, deleteEndpoint } from "@/lib/endpoints";
@@ -58,6 +62,14 @@ export async function setDefaultModelAction(model: string) {
   // validity per connection mode is enforced in the agent route.
   if (!model.trim()) throw new Error("No model selected");
   await setDefaultModel(model);
+  revalidatePath("/administration");
+}
+
+export async function setGeneralModelAction(model: string | null) {
+  await requireAdmin();
+  // null clears it back to "Same as AI Agent"; validity per connection mode is
+  // enforced when the model is resolved (lib/llm.ts).
+  await setGeneralModel(model);
   revalidatePath("/administration");
 }
 

@@ -35,6 +35,7 @@ import {
   deleteKeyAction,
   setConnectionModeAction,
   setDefaultModelAction,
+  setGeneralModelAction,
   refreshModelsAction,
   addEndpointAction,
   deleteEndpointAction,
@@ -249,7 +250,7 @@ function ModelsTab({
       {mode === "compatible" && <EndpointsSection endpoints={endpoints} />}
 
       <div className="mt-7 flex items-center justify-between">
-        <SectionLabel className="mt-0">Default model</SectionLabel>
+        <SectionLabel className="mt-0">AI Agent</SectionLabel>
         {mode !== "compatible" && (
           <button
             onClick={refresh}
@@ -261,21 +262,104 @@ function ModelsTab({
           </button>
         )}
       </div>
+      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+        The model that powers the chat agent.
+      </p>
       {available.length === 0 ? (
         <p className="rounded-xl border border-dashed border-input px-4 py-6 text-center text-[13px] text-ink-soft">
           {mode === "compatible"
-            ? "Add an endpoint above to choose a default model."
-            : "Connect a provider key above to choose a default model."}
+            ? "Add an endpoint above to choose a model."
+            : "Connect a provider key above to choose a model."}
         </p>
       ) : (
+        <>
+          <ModelPicker
+            variant="field"
+            model={fieldModel}
+            onModelChange={(m) => setDefaultModelAction(m)}
+            models={available}
+          />
+          <GeneralAiField
+            available={available}
+            generalModel={settings.generalModel}
+            agentModel={fieldModel}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+// "General AI" — a lighter model for background calls (e.g. naming chats).
+// "Same as AI Agent" (null) reuses the agent model; "Custom" picks another from
+// the same available list (same connection mode).
+function GeneralAiField({
+  available,
+  generalModel,
+  agentModel,
+}: {
+  available: ModelOption[];
+  generalModel: string | null;
+  agentModel: string;
+}) {
+  const isSame = !generalModel;
+  const selected = available.some((m) => m.id === generalModel)
+    ? (generalModel as string)
+    : agentModel;
+
+  return (
+    <div className="mt-7">
+      <SectionLabel className="mt-0">General AI</SectionLabel>
+      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+        Used for lightweight background tasks like naming chats. Uses the same
+        connection as your AI Agent.
+      </p>
+      <div className="mb-3 inline-flex rounded-[10px] border border-input bg-muted/50 p-0.5">
+        <ToggleBtn active={isSame} onClick={() => setGeneralModelAction(null)}>
+          Same as AI Agent
+        </ToggleBtn>
+        <ToggleBtn
+          active={!isSame}
+          onClick={() => {
+            if (isSame) setGeneralModelAction(agentModel);
+          }}
+        >
+          Custom
+        </ToggleBtn>
+      </div>
+      {!isSame && (
         <ModelPicker
           variant="field"
-          model={fieldModel}
-          onModelChange={(m) => setDefaultModelAction(m)}
+          model={selected}
+          onModelChange={(m) => setGeneralModelAction(m)}
           models={available}
         />
       )}
-    </>
+    </div>
+  );
+}
+
+function ToggleBtn({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition-colors",
+        active
+          ? "bg-card text-foreground shadow-sm"
+          : "text-ink-soft hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }
 

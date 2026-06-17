@@ -1,22 +1,19 @@
 import {
   ToolLoopAgent,
   tool,
-  createAgentUIStreamResponse,
+  createAgentUIStream,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
   createIdGenerator,
+  generateText,
   type UIMessage,
-  type InferAgentUIMessage,
-  type LanguageModel,
+  type InferUITools,
 } from "ai";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { z } from "zod";
 import { getSession } from "@/lib/session";
 import { getChat, createChat, renameChat, saveMessages } from "@/lib/chats";
 import { VercelSandbox } from "@/lib/sandbox/vercel";
-import { isModelSlug } from "@/lib/models";
-import { isCatalogModel } from "@/lib/gateway-models";
-import { gatewayByokOptions } from "@/lib/gateway-byok";
-import { getAppSettings } from "@/lib/settings";
-import { getEndpointWithKey } from "@/lib/endpoints";
+import { resolveAgentModel, resolveGeneralModel } from "@/lib/llm";
 import { listSecrets, getToken } from "@/lib/user-secrets";
 
 export const maxDuration = 300; // one streamed turn, up to 5 min
@@ -47,67 +44,45 @@ export async function POST(req: Request) {
 
   if (!chatId) return new Response("Missing chat id", { status: 400 });
 
-  const settings = await getAppSettings();
-
-  // Resolve the model id string (also persisted on the chat). In compatible
-  // mode this is an endpoint id; otherwise a gateway "provider/model" slug.
-  let modelId = settings.defaultModel;
-  if (requestedModel) {
-    if (settings.connectionMode === "compatible") {
-      modelId = requestedModel;
-    } else if (
-      settings.connectionMode === "custom"
-        ? isModelSlug(requestedModel)
-        : await isCatalogModel(requestedModel)
-    ) {
-      modelId = requestedModel;
-    }
+  // Resolve the AI Agent model for the active connection mode (gateway / BYOK /
+  // compatible), honoring the per-request model override.
+  let resolved;
+  try {
+    resolved = await resolveAgentModel(requestedModel);
+  } catch (e) {
+    return new Response((e as Error).message, { status: 400 });
   }
-
-  // Build the language model + provider options for the active mode:
-  // - gateway:    deployment's hosted gateway key
-  // - custom:     shared provider keys via gateway BYOK
-  // - compatible: direct OpenAI-compatible endpoint (no gateway)
-  let agentModel: LanguageModel = modelId;
-  let providerOptions: Awaited<ReturnType<typeof gatewayByokOptions>>;
-  if (settings.connectionMode === "compatible") {
-    const ep = await getEndpointWithKey(modelId);
-    if (!ep) {
-      return new Response("No OpenAI-compatible endpoint configured", {
-        status: 400,
-      });
-    }
-    agentModel = createOpenAICompatible({
-      name: ep.name,
-      baseURL: ep.baseUrl,
-      apiKey: ep.apiKey,
-    })(ep.model);
-  } else if (settings.connectionMode === "custom") {
-    providerOptions = await gatewayByokOptions();
-  }
+  const { modelId, model: agentModel, providerOptions } = resolved;
 
   // Ensure the chat exists and is owned by this user (created on first message).
-  let chat = await getChat(userId, chatId);
-  if (!chat) {
-    const title = firstUserText(messages).slice(0, 60);
-    chat = await createChat(userId, { id: chatId, title, model: modelId });
+  // New chats start untitled; the title is generated below.
+  const existing = await getChat(userId, chatId);
+  const needsTitle = !existing?.title;
+  if (!existing) {
+    await createChat(userId, { id: chatId, title: null, model: modelId });
   }
+
+  // Generate a title for brand-new chats with the General AI model, in parallel
+  // with the streamed response, then push it to the client (see execute below).
+  const titlePromise = needsTitle
+    ? resolveGeneralModel()
+        .then(({ model, providerOptions: po }) =>
+          generateText({
+            model,
+            providerOptions: po,
+            system:
+              "Generate a concise 3-6 word title for a conversation that opens " +
+              "with the user's message. Plain text only: no quotes, no " +
+              "markdown, no trailing punctuation.",
+            prompt: firstUserText(messages),
+          }),
+        )
+        .then((r) => r.text.replace(/^["'#*\s]+|["'\s]+$/g, "").slice(0, 80))
+    : null;
 
   const sandbox = new VercelSandbox();
 
-  const agent = new ToolLoopAgent({
-    model: agentModel,
-    providerOptions, // request-scoped BYOK when present (gateway custom mode)
-    instructions:
-      "You are Knack, a capable AI agent. You have an isolated Linux sandbox " +
-      "(node24) for running code and shell commands. Use runBash for commands, " +
-      "and the file tools to read, write, and list files inside the sandbox. " +
-      "Prefer doing real work in the sandbox over describing it. The user can " +
-      "store API secrets and connect OAuth accounts; use list_tokens to see " +
-      "what's available and get_token to fetch a value when a task needs one. " +
-      "Never print a fetched token value back to the user. Be concise and " +
-      "format answers in Markdown.",
-    tools: {
+  const tools = {
       runBash: tool({
         description: "Run a shell command inside the isolated sandbox.",
         inputSchema: z.object({ cmd: z.string() }),
@@ -187,23 +162,65 @@ export async function POST(req: Request) {
           }
         },
       }),
-    },
+  };
+
+  const agent = new ToolLoopAgent({
+    model: agentModel,
+    providerOptions, // request-scoped BYOK when present (gateway custom mode)
+    instructions:
+      "You are Knack, a capable AI agent. You have an isolated Linux sandbox " +
+      "(node24) for running code and shell commands. Use runBash for commands, " +
+      "and the file tools to read, write, and list files inside the sandbox. " +
+      "Prefer doing real work in the sandbox over describing it. The user can " +
+      "store API secrets and connect OAuth accounts; use list_tokens to see " +
+      "what's available and get_token to fetch a value when a task needs one. " +
+      "Never print a fetched token value back to the user. Be concise and " +
+      "format answers in Markdown.",
+    tools,
   });
 
-  type ChatMessage = InferAgentUIMessage<typeof agent>;
+  // Message type includes the custom "chat-title" data part used below.
+  type ChatMessage = UIMessage<
+    unknown,
+    { "chat-title": string },
+    InferUITools<typeof tools>
+  >;
 
-  return createAgentUIStreamResponse({
-    agent,
-    uiMessages: messages as ChatMessage[],
+  const stream = createUIMessageStream<ChatMessage>({
     originalMessages: messages as ChatMessage[],
     // stable, server-generated ids for assistant messages (required for persistence)
-    generateMessageId: createIdGenerator({ prefix: "msg", size: 16 }),
+    generateId: createIdGenerator({ prefix: "msg", size: 16 }),
     onFinish: async ({ messages: final }) => {
       await saveMessages(chatId, final as unknown as UIMessage[]);
-      // backfill a title if it was still empty
-      if (!chat?.title) {
-        await renameChat(userId, chatId, firstUserText(messages).slice(0, 60));
+    },
+    execute: async ({ writer }) => {
+      // Stream the agent's response. The agent stream never emits data parts,
+      // so it's safe to widen it to the writer's (data-part-carrying) type.
+      writer.merge(
+        (await createAgentUIStream({
+          agent,
+          uiMessages: messages as ChatMessage[],
+        })) as unknown as Parameters<typeof writer.merge>[0],
+      );
+      // Once the parallel title resolves, persist it and push it to the client
+      // as a transient data part (not stored in the saved message history).
+      if (titlePromise) {
+        try {
+          const title = await titlePromise;
+          if (title) {
+            writer.write({
+              type: "data-chat-title",
+              data: title,
+              transient: true,
+            });
+            await renameChat(userId, chatId, title);
+          }
+        } catch {
+          // title generation is best-effort; leave the chat as "Untitled"
+        }
       }
     },
   });
+
+  return createUIMessageStreamResponse({ stream });
 }

@@ -55,6 +55,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { AgentMark, Logomark } from "@/components/brand/logo";
 import { ModelPicker } from "@/components/chat/model-picker";
+import { useChatStore } from "@/components/app/chat-store";
 import { DEFAULT_MODEL, type ModelOption } from "@/lib/models";
 
 export function Chat({
@@ -75,6 +76,7 @@ export function Chat({
   models?: ModelOption[];
 }) {
   const router = useRouter();
+  const { addPendingChat, setChatTitle: setStoreTitle } = useChatStore();
   const [model, setModel] = useState(initialModel ?? DEFAULT_MODEL);
   const [chatTitle, setChatTitle] = useState(title ?? "");
   const [isStarred, setIsStarred] = useState(starred);
@@ -102,8 +104,6 @@ export function Chat({
     router.push("/");
     deleteChatAction(id);
   }
-  // only the first completed turn of a NEW chat needs a server refresh
-  const needsSidebarRefresh = useRef(initialMessages.length === 0);
   const transport = useMemo(
     () => new DefaultChatTransport({ api: "/api/agent" }),
     [],
@@ -113,15 +113,29 @@ export function Chat({
     id,
     messages: initialMessages,
     transport,
-    onFinish: () => {
-      if (needsSidebarRefresh.current) {
-        needsSidebarRefresh.current = false;
-        router.refresh();
+    onData: (part) => {
+      // Generated title streamed from the server — update the header and the
+      // sidebar live, without re-rendering the chat.
+      if (part.type === "data-chat-title" && typeof part.data === "string") {
+        setChatTitle(part.data);
+        setStoreTitle(id, part.data);
       }
     },
   });
 
   const isWelcome = messages.length === 0;
+
+  // Keep the thinking dots until the assistant actually has content. The stream
+  // flips status to "streaming" on the opening chunk (before any token), so
+  // gating on status alone leaves a blank gap before the first text arrives.
+  const last = messages[messages.length - 1];
+  const assistantHasContent =
+    last?.role === "assistant" &&
+    last.parts.some(
+      (p) => p.type === "text" || p.type === "reasoning" || isToolUIPart(p),
+    );
+  const awaitingReply =
+    status === "submitted" || (status === "streaming" && !assistantHasContent);
 
   function submit(message: PromptInputMessage) {
     const text = message.text?.trim();
@@ -129,6 +143,8 @@ export function Chat({
     if (isWelcome && !navigated.current) {
       navigated.current = true;
       window.history.replaceState({}, "", `/chat/${id}`);
+      // Show the new chat in the sidebar immediately as "Untitled".
+      addPendingChat({ id, title: null, starred: false, updatedAt: new Date() });
     }
     sendMessage({ text }, { body: { model } });
   }
@@ -197,7 +213,7 @@ export function Chat({
               title="Double-click to rename"
               className="-ml-2 min-w-0 truncate rounded-md px-2 py-1 text-[14.5px] font-bold transition-colors hover:bg-accent"
             >
-              {chatTitle || "New chat"}
+              {chatTitle || "Untitled"}
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -303,7 +319,7 @@ export function Chat({
               </div>
             );
           })}
-          {status === "submitted" && (
+          {awaitingReply && (
             <div className="flex items-center gap-3">
               <AgentMark size={30} className="shrink-0" />
               <div className="flex items-center gap-1.5 rounded-[14px] border border-input bg-muted px-4 py-3.5">

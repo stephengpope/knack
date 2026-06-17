@@ -156,6 +156,9 @@ export const appSettings = pgTable("app_settings", {
   defaultModel: text("default_model")
     .default("anthropic/claude-opus-4.8")
     .notNull(),
+  // Lightweight model for background calls (e.g. chat titles). Null = "Same as
+  // AI Agent" — fall back to defaultModel. Same connection mode as defaultModel.
+  generalModel: text("general_model"),
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => new Date())
     .notNull(),
