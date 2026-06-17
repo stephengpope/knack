@@ -14,3 +14,15 @@ export async function requireUser() {
   if (!session?.user) redirect("/login");
   return session.user;
 }
+
+/** True when the current user is an admin. */
+export function isAdmin(user: { role?: string | null } | null | undefined) {
+  return user?.role === "admin";
+}
+
+/** Current admin user, or redirect. Use in admin-only pages/actions. */
+export async function requireAdmin() {
+  const user = await requireUser();
+  if (!isAdmin(user)) redirect("/");
+  return user;
+}

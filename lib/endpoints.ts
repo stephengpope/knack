@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { customEndpoint } from "@/lib/db/schema";
@@ -12,8 +12,8 @@ export type EndpointInfo = {
   model: string;
 };
 
-/** User's endpoints without secrets (for UI + model list). */
-export async function listEndpoints(userId: string): Promise<EndpointInfo[]> {
+/** Shared endpoints without secrets (for UI + model list). */
+export async function listEndpoints(): Promise<EndpointInfo[]> {
   return db
     .select({
       id: customEndpoint.id,
@@ -22,18 +22,18 @@ export async function listEndpoints(userId: string): Promise<EndpointInfo[]> {
       model: customEndpoint.model,
     })
     .from(customEndpoint)
-    .where(eq(customEndpoint.userId, userId))
     .orderBy(asc(customEndpoint.createdAt));
 }
 
-export async function addEndpoint(
-  userId: string,
-  data: { name: string; baseUrl: string; apiKey: string; model: string },
-): Promise<string> {
+export async function addEndpoint(data: {
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+}): Promise<string> {
   const id = nanoid();
   await db.insert(customEndpoint).values({
     id,
-    userId,
     name: data.name.trim(),
     baseUrl: data.baseUrl.trim(),
     encrypted: encrypt(data.apiKey.trim()),
@@ -42,18 +42,16 @@ export async function addEndpoint(
   return id;
 }
 
-export async function deleteEndpoint(userId: string, id: string) {
-  await db
-    .delete(customEndpoint)
-    .where(and(eq(customEndpoint.id, id), eq(customEndpoint.userId, userId)));
+export async function deleteEndpoint(id: string) {
+  await db.delete(customEndpoint).where(eq(customEndpoint.id, id));
 }
 
 /** Resolve one endpoint with its decrypted key — agent route only. */
-export async function getEndpointWithKey(userId: string, id: string) {
+export async function getEndpointWithKey(id: string) {
   const [row] = await db
     .select()
     .from(customEndpoint)
-    .where(and(eq(customEndpoint.id, id), eq(customEndpoint.userId, userId)))
+    .where(eq(customEndpoint.id, id))
     .limit(1);
   if (!row) return null;
   return {

@@ -1,27 +1,29 @@
 import { requireUser } from "@/lib/session";
-import { listUserKeys } from "@/lib/api-keys";
-import { getUserSettings } from "@/lib/settings";
-import { fetchGatewayModels } from "@/lib/gateway-models";
-import { listEndpoints } from "@/lib/endpoints";
 import { SettingsView } from "@/components/settings/settings-view";
+import { listSecrets } from "@/lib/user-secrets";
+import { PROVIDER_PRESETS, oauthRedirectUri } from "@/lib/oauth/providers";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const [keys, settings, catalog, endpoints] = await Promise.all([
-    listUserKeys(user.id),
-    getUserSettings(user.id),
-    fetchGatewayModels(),
-    listEndpoints(user.id),
+  const [secrets, redirectUri] = await Promise.all([
+    listSecrets(user.id),
+    oauthRedirectUri(),
   ]);
-  const last4 = Object.fromEntries(keys.map((k) => [k.provider, k.last4]));
+  const providers = PROVIDER_PRESETS.map((p) => ({
+    id: p.id,
+    label: p.label,
+    defaultScopes: p.defaultScopes,
+    custom: !!p.custom,
+    hint: p.hint ?? null,
+  }));
 
   return (
     <SettingsView
-      user={{ name: user.name, email: user.email }}
-      last4={last4}
-      settings={settings}
-      catalog={catalog}
-      endpoints={endpoints}
+      name={user.name}
+      email={user.email}
+      secrets={secrets}
+      redirectUri={redirectUri}
+      providers={providers}
     />
   );
 }

@@ -30,7 +30,12 @@ import {
   toggleStarAction,
 } from "@/app/(app)/actions";
 
-type SidebarUser = { name: string; email: string; image: string | null };
+type SidebarUser = {
+  name: string;
+  email: string;
+  image: string | null;
+  role: string;
+};
 
 type OptimisticAction =
   | { type: "star"; id: string }
@@ -106,8 +111,8 @@ export function Sidebar({
 
   return (
     <aside className="flex w-[272px] shrink-0 flex-col border-r border-border bg-sidebar">
-      <div className="flex items-center gap-[11px] px-4 pb-3 pt-[18px]">
-        <Logomark size={26} />
+      <div className="flex items-center gap-2 px-4 pb-3 pt-[18px]">
+        <Logomark size={26} className="ml-[7px]" />
         <span className="text-[19px] font-extrabold tracking-[-0.03em]">
           Knack
         </span>
@@ -125,17 +130,17 @@ export function Sidebar({
           href="/"
           className="flex items-center gap-3 rounded-[11px] px-[11px] py-[9px] text-[14px] font-bold text-accent-text transition-colors hover:bg-sidebar-accent"
         >
-          <span className="knack-gradient knack-glow flex size-[26px] shrink-0 items-center justify-center rounded-lg">
-            <Plus className="size-[15px] text-white" strokeWidth={2.6} />
+          <span className="knack-gradient knack-glow flex size-[24px] shrink-0 items-center justify-center rounded-[6px]">
+            <Plus className="size-[18px] text-white" strokeWidth={2.2} />
           </span>
           New chat
         </Link>
 
         <NavItem
-          href="/"
+          href="/chats"
           icon={<MessageSquare className="size-[18px]" strokeWidth={1.9} />}
           label="Chats"
-          active={pathname === "/" || pathname.startsWith("/chat/")}
+          active={pathname === "/chats"}
         />
 
         <button

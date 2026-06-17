@@ -15,8 +15,9 @@ import { VercelSandbox } from "@/lib/sandbox/vercel";
 import { isModelSlug } from "@/lib/models";
 import { isCatalogModel } from "@/lib/gateway-models";
 import { gatewayByokOptions } from "@/lib/gateway-byok";
-import { getUserSettings } from "@/lib/settings";
+import { getAppSettings } from "@/lib/settings";
 import { getEndpointWithKey } from "@/lib/endpoints";
+import { listSecrets, getToken } from "@/lib/user-secrets";
 
 export const maxDuration = 300; // one streamed turn, up to 5 min
 
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
 
   if (!chatId) return new Response("Missing chat id", { status: 400 });
 
-  const settings = await getUserSettings(userId);
+  const settings = await getAppSettings();
 
   // Resolve the model id string (also persisted on the chat). In compatible
   // mode this is an endpoint id; otherwise a gateway "provider/model" slug.
@@ -65,12 +66,12 @@ export async function POST(req: Request) {
 
   // Build the language model + provider options for the active mode:
   // - gateway:    deployment's hosted gateway key
-  // - custom:     user's own provider keys via gateway BYOK
+  // - custom:     shared provider keys via gateway BYOK
   // - compatible: direct OpenAI-compatible endpoint (no gateway)
   let agentModel: LanguageModel = modelId;
   let providerOptions: Awaited<ReturnType<typeof gatewayByokOptions>>;
   if (settings.connectionMode === "compatible") {
-    const ep = await getEndpointWithKey(userId, modelId);
+    const ep = await getEndpointWithKey(modelId);
     if (!ep) {
       return new Response("No OpenAI-compatible endpoint configured", {
         status: 400,
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
       apiKey: ep.apiKey,
     })(ep.model);
   } else if (settings.connectionMode === "custom") {
-    providerOptions = await gatewayByokOptions(userId);
+    providerOptions = await gatewayByokOptions();
   }
 
   // Ensure the chat exists and is owned by this user (created on first message).
@@ -101,7 +102,10 @@ export async function POST(req: Request) {
       "You are Knack, a capable AI agent. You have an isolated Linux sandbox " +
       "(node24) for running code and shell commands. Use runBash for commands, " +
       "and the file tools to read, write, and list files inside the sandbox. " +
-      "Prefer doing real work in the sandbox over describing it. Be concise and " +
+      "Prefer doing real work in the sandbox over describing it. The user can " +
+      "store API secrets and connect OAuth accounts; use list_tokens to see " +
+      "what's available and get_token to fetch a value when a task needs one. " +
+      "Never print a fetched token value back to the user. Be concise and " +
       "format answers in Markdown.",
     tools: {
       runBash: tool({
@@ -144,6 +148,40 @@ export async function POST(req: Request) {
           const box = await sandbox.getOrCreate(chatId);
           try {
             return { listing: await box.listDir(path) };
+          } catch (e) {
+            return { error: (e as Error).message };
+          }
+        },
+      }),
+      list_tokens: tool({
+        description:
+          "List the names, descriptions, and types of the user's stored " +
+          "secrets and connected accounts (NO values). Call this to discover " +
+          "what credentials are available before using get_token.",
+        inputSchema: z.object({}),
+        execute: async () => {
+          const items = await listSecrets(userId);
+          return {
+            tokens: items.map((t) => ({
+              name: t.name,
+              description: t.description,
+              kind: t.kind,
+              provider: t.provider,
+              scopes: t.scopes,
+              status: t.status,
+            })),
+          };
+        },
+      }),
+      get_token: tool({
+        description:
+          "Fetch a usable credential by name. Static secrets return the stored " +
+          "value; OAuth connections return a fresh access token. Returns an " +
+          "error if the name is unknown or a connection needs re-authentication.",
+        inputSchema: z.object({ name: z.string() }),
+        execute: async ({ name }) => {
+          try {
+            return { value: await getToken(userId, name) };
           } catch (e) {
             return { error: (e as Error).message };
           }

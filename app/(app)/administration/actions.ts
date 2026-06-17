@@ -1,38 +1,35 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { getSession } from "@/lib/session";
-import { setUserKey, deleteUserKey } from "@/lib/api-keys";
+import { requireAdmin } from "@/lib/session";
+import { setKey, deleteKey } from "@/lib/api-keys";
 import { setConnectionMode, setDefaultModel } from "@/lib/settings";
 import { isProviderId } from "@/lib/providers";
 import { MODELS_CACHE_TAG } from "@/lib/gateway-models";
 import { addEndpoint, deleteEndpoint } from "@/lib/endpoints";
 
-async function requireUser() {
-  const session = await getSession();
-  if (!session?.user) throw new Error("Unauthorized");
-  return session.user.id;
-}
-
 export async function setKeyAction(provider: string, key: string) {
+  await requireAdmin();
   if (!isProviderId(provider)) throw new Error("Unknown provider");
   const value = key.trim();
   if (!value) throw new Error("Empty key");
-  await setUserKey(await requireUser(), provider, value);
-  revalidatePath("/settings");
+  await setKey(provider, value);
+  revalidatePath("/administration");
 }
 
 export async function deleteKeyAction(provider: string) {
+  await requireAdmin();
   if (!isProviderId(provider)) throw new Error("Unknown provider");
-  await deleteUserKey(await requireUser(), provider);
-  revalidatePath("/settings");
+  await deleteKey(provider);
+  revalidatePath("/administration");
 }
 
 export async function setConnectionModeAction(
   mode: "gateway" | "custom" | "compatible",
 ) {
-  await setConnectionMode(await requireUser(), mode);
-  revalidatePath("/settings");
+  await requireAdmin();
+  await setConnectionMode(mode);
+  revalidatePath("/administration");
 }
 
 export async function addEndpointAction(data: {
@@ -41,29 +38,31 @@ export async function addEndpointAction(data: {
   apiKey: string;
   model: string;
 }) {
-  const userId = await requireUser();
+  await requireAdmin();
   if (!data.name.trim() || !data.baseUrl.trim() || !data.model.trim()) {
     throw new Error("Name, base URL and model are required");
   }
-  await addEndpoint(userId, data);
-  revalidatePath("/settings");
+  await addEndpoint(data);
+  revalidatePath("/administration");
 }
 
 export async function deleteEndpointAction(id: string) {
-  await deleteEndpoint(await requireUser(), id);
-  revalidatePath("/settings");
+  await requireAdmin();
+  await deleteEndpoint(id);
+  revalidatePath("/administration");
 }
 
 export async function setDefaultModelAction(model: string) {
+  await requireAdmin();
   // model may be a gateway "provider/model" slug or a custom-endpoint id;
   // validity per connection mode is enforced in the agent route.
   if (!model.trim()) throw new Error("No model selected");
-  await setDefaultModel(await requireUser(), model);
-  revalidatePath("/settings");
+  await setDefaultModel(model);
+  revalidatePath("/administration");
 }
 
 export async function refreshModelsAction() {
-  await requireUser();
+  await requireAdmin();
   revalidateTag(MODELS_CACHE_TAG, "seconds");
-  revalidatePath("/settings");
+  revalidatePath("/administration");
 }

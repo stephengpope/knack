@@ -7,9 +7,8 @@ import {
   ChevronsUpDown,
   Sun,
   Moon,
-  User,
   Settings,
-  CreditCard,
+  ShieldCheck,
   LifeBuoy,
   LogOut,
 } from "lucide-react";
@@ -40,10 +39,11 @@ function initials(name: string) {
 export function AccountMenu({
   user,
 }: {
-  user: { name: string; email: string; image: string | null };
+  user: { name: string; email: string; image: string | null; role: string };
 }) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
+  const isAdmin = user.role === "admin";
 
   async function logout() {
     await signOut();
@@ -58,7 +58,9 @@ export function AccountMenu({
           <Avatar name={user.name} image={user.image} />
           <div className="min-w-0 flex-1 text-left">
             <div className="truncate text-[13.5px] font-bold">{user.name}</div>
-            <div className="text-[11.5px] text-ink-faint">Free plan</div>
+            <div className="text-[11.5px] text-ink-faint">
+              {isAdmin ? "Admin" : "Member"}
+            </div>
           </div>
           <ChevronsUpDown className="size-4 text-ink-faint" />
         </DropdownMenuTrigger>
@@ -100,15 +102,14 @@ export function AccountMenu({
           </div>
           <DropdownMenuSeparator />
 
-          <DropdownMenuItem onClick={() => toast("Profile — coming soon")}>
-            <User className="size-[15px]" /> Profile
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push("/settings")}>
             <Settings className="size-[15px]" /> Settings
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => toast("Billing — coming soon")}>
-            <CreditCard className="size-[15px]" /> Billing & plan
-          </DropdownMenuItem>
+          {isAdmin && (
+            <DropdownMenuItem onClick={() => router.push("/administration")}>
+              <ShieldCheck className="size-[15px]" /> Administration
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => toast("Help — coming soon")}>
             <LifeBuoy className="size-[15px]" /> Help & support
           </DropdownMenuItem>

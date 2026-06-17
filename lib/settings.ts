@@ -1,7 +1,7 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { userSettings } from "@/lib/db/schema";
+import { appSettings } from "@/lib/db/schema";
 import { DEFAULT_MODEL } from "@/lib/models";
 
 export type ConnectionMode = "gateway" | "custom" | "compatible";
@@ -11,16 +11,20 @@ export type Settings = {
   defaultModel: string;
 };
 
+// Singleton row id — the deployment shares one config.
+const APP_ID = "app";
+
 const FALLBACK: Settings = {
   connectionMode: "gateway",
   defaultModel: DEFAULT_MODEL,
 };
 
-export async function getUserSettings(userId: string): Promise<Settings> {
+/** Shared deployment model config (admin-managed, used by every user). */
+export async function getAppSettings(): Promise<Settings> {
   const [row] = await db
     .select()
-    .from(userSettings)
-    .where(eq(userSettings.userId, userId))
+    .from(appSettings)
+    .where(eq(appSettings.id, APP_ID))
     .limit(1);
   if (!row) return FALLBACK;
   return {
@@ -29,18 +33,18 @@ export async function getUserSettings(userId: string): Promise<Settings> {
   };
 }
 
-async function upsert(userId: string, patch: Partial<Settings>) {
-  const current = await getUserSettings(userId);
+async function upsert(patch: Partial<Settings>) {
+  const current = await getAppSettings();
   const next = { ...current, ...patch };
   await db
-    .insert(userSettings)
+    .insert(appSettings)
     .values({
-      userId,
+      id: APP_ID,
       connectionMode: next.connectionMode,
       defaultModel: next.defaultModel,
     })
     .onConflictDoUpdate({
-      target: userSettings.userId,
+      target: appSettings.id,
       set: {
         connectionMode: next.connectionMode,
         defaultModel: next.defaultModel,
@@ -49,10 +53,10 @@ async function upsert(userId: string, patch: Partial<Settings>) {
     });
 }
 
-export async function setConnectionMode(userId: string, mode: ConnectionMode) {
-  await upsert(userId, { connectionMode: mode });
+export async function setConnectionMode(mode: ConnectionMode) {
+  await upsert({ connectionMode: mode });
 }
 
-export async function setDefaultModel(userId: string, model: string) {
-  await upsert(userId, { defaultModel: model });
+export async function setDefaultModel(model: string) {
+  await upsert({ defaultModel: model });
 }

@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "dotenv -e .env.local -- drizzle-kit migrate",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
-    "db:studio": "dotenv -e .env.local -- drizzle-kit studio"
+    "db:studio": "dotenv -e .env.local -- drizzle-kit studio",
+    "seed:admin": "node --env-file=.env.local --experimental-strip-types scripts/seed-admin.ts"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.50",
@@ -23,6 +24,7 @@
     "@streamdown/mermaid": "^1.0.2",
     "@vercel/sandbox": "^2.2.1",
     "ai": "^6.0.206",
+    "arctic": "^3.7.0",
     "better-auth": "^1.6.18",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

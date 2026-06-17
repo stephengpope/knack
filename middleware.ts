@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
-const AUTH_ROUTES = ["/login", "/signup", "/forgot-password", "/reset-password"];
+const AUTH_ROUTES = [
+  "/login",
+  "/forgot-password",
+  "/reset-password",
+  "/accept-invite",
+];
 
 export function middleware(request: NextRequest) {
   // Optimistic check only — reads the signed session cookie, no DB, no headers().

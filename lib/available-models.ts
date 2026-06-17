@@ -1,6 +1,6 @@
 import "server-only";
-import { getUserSettings } from "@/lib/settings";
-import { listUserKeys } from "@/lib/api-keys";
+import { getAppSettings } from "@/lib/settings";
+import { listKeys } from "@/lib/api-keys";
 import { listEndpoints } from "@/lib/endpoints";
 import { fetchGatewayModels } from "@/lib/gateway-models";
 import { type ModelOption } from "@/lib/models";
@@ -13,18 +13,20 @@ function pickDefault(models: ModelOption[], saved: string): string {
 }
 
 /**
- * Models the user can pick, given their connection mode:
+ * Models available to every user, given the shared connection mode:
  * - gateway: the full live catalog (deployment's gateway key)
- * - custom: catalog filtered to providers they have a key for (gateway BYOK)
- * - compatible: their saved OpenAI-compatible endpoints (direct)
+ * - custom: catalog filtered to providers with a stored key (gateway BYOK)
+ * - compatible: the saved OpenAI-compatible endpoints (direct)
  */
-export async function getAvailableModels(
-  userId: string,
-): Promise<{ models: ModelOption[]; defaultModel: string; gateway: boolean }> {
-  const settings = await getUserSettings(userId);
+export async function getAvailableModels(): Promise<{
+  models: ModelOption[];
+  defaultModel: string;
+  gateway: boolean;
+}> {
+  const settings = await getAppSettings();
 
   if (settings.connectionMode === "compatible") {
-    const endpoints = await listEndpoints(userId);
+    const endpoints = await listEndpoints();
     const models = endpoints.map((e) => ({ id: e.id, label: e.name }));
     return {
       models,
@@ -34,7 +36,7 @@ export async function getAvailableModels(
   }
 
   const [keys, catalog] = await Promise.all([
-    listUserKeys(userId),
+    listKeys(),
     fetchGatewayModels(),
   ]);
 

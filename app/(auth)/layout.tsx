@@ -12,7 +12,7 @@ export default async function AuthLayout({
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">
-      <div className="mb-8 flex items-center gap-3">
+      <div className="mb-8 flex items-center gap-2">
         <Logomark size={32} />
         <span className="text-2xl font-extrabold tracking-[-0.03em]">Knack</span>
       </div>

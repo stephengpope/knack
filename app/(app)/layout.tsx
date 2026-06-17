@@ -21,6 +21,7 @@ export default async function AppLayout({
           name: session.user.name,
           email: session.user.email,
           image: session.user.image ?? null,
+          role: (session.user as { role?: string }).role ?? "user",
         }}
       />
       <main className="relative flex min-w-0 flex-1 flex-col bg-background">

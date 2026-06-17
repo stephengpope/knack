@@ -16,7 +16,7 @@ export default async function ChatPage({
   const [chat, messages, { models, defaultModel }] = await Promise.all([
     getChat(user.id, chatId),
     loadMessages(chatId),
-    getAvailableModels(user.id),
+    getAvailableModels(),
   ]);
   if (!chat) notFound();
 
@@ -26,6 +26,7 @@ export default async function ChatPage({
       initialMessages={messages}
       initialModel={chat.model ?? defaultModel}
       title={chat.title}
+      starred={chat.starred}
       userName={user.name}
       models={models}
     />

@@ -5,7 +5,7 @@ import { Chat } from "@/components/chat/chat";
 
 export default async function HomePage() {
   const user = await requireUser();
-  const { models, defaultModel } = await getAvailableModels(user.id);
+  const { models, defaultModel } = await getAvailableModels();
   const id = nanoid();
   return (
     <Chat
