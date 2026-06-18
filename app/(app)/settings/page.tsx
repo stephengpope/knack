@@ -1,13 +1,17 @@
 import { requireUser } from "@/lib/session";
 import { SettingsView } from "@/components/settings/settings-view";
 import { listSecrets } from "@/lib/user-secrets";
+import { getGithubAccount } from "@/lib/github-account";
+import { listProjects } from "@/lib/projects";
 import { PROVIDER_PRESETS, oauthRedirectUri } from "@/lib/oauth/providers";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const [secrets, redirectUri] = await Promise.all([
+  const [secrets, redirectUri, githubAccount, projects] = await Promise.all([
     listSecrets(user.id),
     oauthRedirectUri(),
+    getGithubAccount(user.id),
+    listProjects(user.id),
   ]);
   const providers = PROVIDER_PRESETS.map((p) => ({
     id: p.id,
@@ -24,6 +28,8 @@ export default async function SettingsPage() {
       secrets={secrets}
       redirectUri={redirectUri}
       providers={providers}
+      githubAccount={githubAccount}
+      projects={projects}
     />
   );
 }

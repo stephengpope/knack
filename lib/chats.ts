@@ -36,7 +36,13 @@ export async function getChat(userId: string, id: string) {
 
 export async function createChat(
   userId: string,
-  opts: { id?: string; title?: string | null; model?: string | null } = {},
+  opts: {
+    id?: string;
+    title?: string | null;
+    model?: string | null;
+    projectId?: string | null;
+    systemPrompt?: string | null;
+  } = {},
 ) {
   const [row] = await db
     .insert(chat)
@@ -45,6 +51,8 @@ export async function createChat(
       userId,
       title: opts.title ?? null,
       model: opts.model ?? null,
+      projectId: opts.projectId ?? null,
+      systemPrompt: opts.systemPrompt ?? null,
     })
     .returning();
   return row;

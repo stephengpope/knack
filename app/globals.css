@@ -183,3 +183,15 @@
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Knack lock-on loader: counter-spinning rings + breathing center dot.
+   Classes reference the keyframes so the CSS pipeline keeps them. */
+@keyframes ko-spin { to { transform: rotate(360deg); } }
+@keyframes ko-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes ko-breathe {
+  0%, 100% { transform: scale(0.85); }
+  50% { transform: scale(1.12); }
+}
+.ko-outer { transform-origin: 50% 50%; animation: ko-spin 2.4s linear infinite; }
+.ko-inner { transform-origin: 50% 50%; animation: ko-spin-rev 2s linear infinite; }
+.ko-dot { animation: ko-breathe 1.4s ease-in-out infinite; }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
 import {
@@ -8,7 +9,14 @@ import {
   isToolUIPart,
   type UIMessage,
 } from "ai";
-import { ChevronDown, Share, Star, Pencil, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  Share,
+  Star,
+  Pencil,
+  Trash2,
+  FolderPlus,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -49,39 +57,38 @@ import {
   PromptInputBody,
   PromptInputTextarea,
   PromptInputFooter,
-  PromptInputTools,
   PromptInputSubmit,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
-import { AgentMark, Logomark } from "@/components/brand/logo";
-import { ModelPicker } from "@/components/chat/model-picker";
-import { useChatStore } from "@/components/app/chat-store";
-import { DEFAULT_MODEL, type ModelOption } from "@/lib/models";
+import { Logomark } from "@/components/brand/logo";
+import { KnackLoader } from "@/components/brand/loader";
+import { addPendingChat, setChatTitleOverride } from "@/components/app/chat-store";
+import { ProjectPicker } from "@/components/chat/project-picker";
+import type { ProjectSummary } from "@/lib/projects";
 
 export function Chat({
   id,
   initialMessages,
-  initialModel,
   title,
   starred = false,
   userName,
-  models = [],
+  projects = [],
+  initialProjectId = null,
 }: {
   id: string;
   initialMessages: UIMessage[];
-  initialModel?: string | null;
   title?: string | null;
   starred?: boolean;
   userName: string;
-  models?: ModelOption[];
+  projects?: ProjectSummary[];
+  initialProjectId?: string | null;
 }) {
   const router = useRouter();
-  const { addPendingChat, setChatTitle: setStoreTitle } = useChatStore();
-  const [model, setModel] = useState(initialModel ?? DEFAULT_MODEL);
   const [chatTitle, setChatTitle] = useState(title ?? "");
   const [isStarred, setIsStarred] = useState(starred);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(title ?? "");
+  const [projectId, setProjectId] = useState<string | null>(initialProjectId);
   const navigated = useRef(false);
 
   function startRename() {
@@ -118,35 +125,41 @@ export function Chat({
       // sidebar live, without re-rendering the chat.
       if (part.type === "data-chat-title" && typeof part.data === "string") {
         setChatTitle(part.data);
-        setStoreTitle(id, part.data);
+        setChatTitleOverride(id, part.data);
       }
     },
   });
 
   const isWelcome = messages.length === 0;
 
-  // Keep the thinking dots until the assistant actually has content. The stream
-  // flips status to "streaming" on the opening chunk (before any token), so
-  // gating on status alone leaves a blank gap before the first text arrives.
+  // Show the loader until the assistant produces real content. The stream flips
+  // status to "streaming" on its opening chunk (before any token) and seeds an
+  // empty text part, so we require non-empty text/reasoning (or a tool call).
   const last = messages[messages.length - 1];
-  const assistantHasContent =
-    last?.role === "assistant" &&
-    last.parts.some(
-      (p) => p.type === "text" || p.type === "reasoning" || isToolUIPart(p),
-    );
   const awaitingReply =
-    status === "submitted" || (status === "streaming" && !assistantHasContent);
+    status === "submitted" ||
+    (status === "streaming" &&
+      !(
+        last?.role === "assistant" &&
+        last.parts.some(
+          (p) =>
+            (p.type === "text" && p.text.trim().length > 0) ||
+            (p.type === "reasoning" && p.text.trim().length > 0) ||
+            isToolUIPart(p),
+        )
+      ));
 
   function submit(message: PromptInputMessage) {
     const text = message.text?.trim();
     if (!text) return;
     if (isWelcome && !navigated.current) {
       navigated.current = true;
-      window.history.replaceState({}, "", `/chat/${id}`);
-      // Show the new chat in the sidebar immediately as "Untitled".
+      // We're already at /chat/<id>; just surface it in the sidebar as "Untitled".
       addPendingChat({ id, title: null, starred: false, updatedAt: new Date() });
     }
-    sendMessage({ text }, { body: { model } });
+    // projectId is only honored server-side on chat creation; for existing
+    // chats the stored project wins. Sending it always is harmless.
+    sendMessage({ text }, { body: { projectId } });
   }
 
   const composer = (
@@ -161,17 +174,28 @@ export function Chat({
         />
       </PromptInputBody>
       <PromptInputFooter>
-        <PromptInputTools>
-          <ModelPicker
-            model={model}
-            onModelChange={setModel}
-            models={models}
+        {projects.length > 0 ? (
+          <ProjectPicker
+            value={projectId ?? projects[0].id}
+            onChange={setProjectId}
+            projects={projects}
+            disabled={!isWelcome}
           />
-        </PromptInputTools>
+        ) : (
+          isWelcome && (
+            <Link
+              href="/settings?tab=Projects"
+              className="flex items-center gap-1.5 text-[13px] font-semibold text-primary outline-none transition-colors hover:underline"
+            >
+              <FolderPlus className="size-[14px]" />
+              Add a project
+            </Link>
+          )
+        )}
         <PromptInputSubmit
           status={status}
           onStop={stop}
-          className="knack-gradient knack-glow size-9 rounded-[11px] text-white"
+          className="knack-gradient knack-glow ml-auto size-9 rounded-[11px] text-white"
         />
       </PromptInputFooter>
     </PromptInput>
@@ -272,9 +296,17 @@ export function Chat({
                 </Message>
               );
             }
+            // Skip the assistant message until it has real content, so no empty
+            // bubble flashes in before the first token (the loader covers that).
+            const hasRenderable = m.parts.some(
+              (p) =>
+                (p.type === "text" && p.text.trim().length > 0) ||
+                (p.type === "reasoning" && p.text.trim().length > 0) ||
+                isToolUIPart(p),
+            );
+            if (!hasRenderable) return null;
             return (
               <div key={m.id} className="flex gap-3">
-                <AgentMark size={30} className="mt-1 shrink-0" />
                 <Message from="assistant" className="max-w-full flex-1">
                   <MessageContent>
                     {m.parts.map((part, i) => {
@@ -321,7 +353,7 @@ export function Chat({
           })}
           {awaitingReply && (
             <div className="flex items-center gap-3">
-              <AgentMark size={30} className="shrink-0" />
+              <KnackLoader size={30} className="shrink-0" />
               <div className="flex items-center gap-1.5 rounded-[14px] border border-input bg-muted px-4 py-3.5">
                 {[0, 0.2, 0.4].map((d) => (
                   <span

@@ -1,9 +1,9 @@
-import { Logomark } from "@/components/brand/logo";
+import { KnackLoader } from "@/components/brand/loader";
 
 export default function Loading() {
   return (
     <div className="flex flex-1 items-center justify-center">
-      <Logomark size={30} className="animate-pulse opacity-40" />
+      <KnackLoader size={72} label="Getting your workspace ready…" />
     </div>
   );
 }

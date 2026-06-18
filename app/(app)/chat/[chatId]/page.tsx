@@ -1,7 +1,6 @@
-import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getChat, loadMessages } from "@/lib/chats";
-import { getAvailableModels } from "@/lib/available-models";
+import { listProjects, getDefaultProject } from "@/lib/projects";
 import { Chat } from "@/components/chat/chat";
 
 export default async function ChatPage({
@@ -12,23 +11,25 @@ export default async function ChatPage({
   const { chatId } = await params;
   const user = await requireUser();
 
-  // All three reads are independent — run them in one round-trip.
-  const [chat, messages, { models, defaultModel }] = await Promise.all([
+  // Independent reads — run them in one round-trip. A new chat's id has no row
+  // yet (created on first message), so `chat` may be null — render it empty.
+  const [chat, messages, projects, defaultProject] = await Promise.all([
     getChat(user.id, chatId),
     loadMessages(chatId),
-    getAvailableModels(),
+    listProjects(user.id),
+    getDefaultProject(user.id),
   ]);
-  if (!chat) notFound();
 
   return (
     <Chat
+      key={chatId}
       id={chatId}
       initialMessages={messages}
-      initialModel={chat.model ?? defaultModel}
-      title={chat.title}
-      starred={chat.starred}
+      title={chat?.title ?? null}
+      starred={chat?.starred ?? false}
       userName={user.name}
-      models={models}
+      projects={projects}
+      initialProjectId={chat ? chat.projectId : (defaultProject?.id ?? null)}
     />
   );
 }

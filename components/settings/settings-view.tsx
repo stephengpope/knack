@@ -15,9 +15,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { authClient, signOut } from "@/lib/auth-client";
 import { SecretsTab } from "@/components/settings/secrets-tab";
 import type { ProviderOption } from "@/components/settings/secrets-tab";
+import { ProjectsTab } from "@/components/settings/projects-tab";
 import type { SecretSummary } from "@/lib/user-secrets";
+import type { GithubAccountSummary } from "@/lib/github-account";
+import type { ProjectSummary } from "@/lib/projects";
 
-const TABS = ["Account", "Secrets", "Appearance"] as const;
+const TABS = ["Account", "Projects", "Secrets", "Appearance"] as const;
 type Tab = (typeof TABS)[number];
 
 export function SettingsView({
@@ -26,12 +29,16 @@ export function SettingsView({
   secrets,
   redirectUri,
   providers,
+  githubAccount,
+  projects,
 }: {
   name: string;
   email: string;
   secrets: SecretSummary[];
   redirectUri: string;
   providers: ProviderOption[];
+  githubAccount: GithubAccountSummary | null;
+  projects: ProjectSummary[];
 }) {
   const params = useSearchParams();
   const tabParam = params.get("tab");
@@ -74,6 +81,9 @@ export function SettingsView({
         <div className="flex-1 overflow-y-auto px-9 pb-14 pt-8">
           <div className="max-w-[620px]">
             {tab === "Account" && <AccountTab name={name} email={email} />}
+            {tab === "Projects" && (
+              <ProjectsTab account={githubAccount} projects={projects} />
+            )}
             {tab === "Secrets" && (
               <SecretsTab
                 secrets={secrets}

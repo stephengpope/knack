@@ -1,0 +1,156 @@
+import "server-only";
+
+// Minimal GitHub REST client (raw fetch, no Octokit). All calls are
+// authenticated with a user's Personal Access Token. Server-only — a PAT must
+// never reach the client.
+
+const API = "https://api.github.com";
+
+function headers(pat: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${pat}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+}
+
+export type GithubUser = { login: string; id: number; name: string | null };
+
+/** Validate a PAT and return the owning account. Throws on invalid/expired. */
+export async function verifyPat(pat: string): Promise<GithubUser> {
+  const res = await fetch(`${API}/user`, { headers: headers(pat) });
+  if (res.status === 401) throw new Error("Invalid or expired GitHub token.");
+  if (!res.ok) throw new Error(`GitHub error (${res.status}).`);
+  const j = (await res.json()) as { login: string; id: number; name?: string };
+  return { login: j.login, id: j.id, name: j.name ?? null };
+}
+
+export type CreatedRepo = {
+  owner: string;
+  repo: string;
+  fullName: string;
+  defaultBranch: string;
+  htmlUrl: string;
+};
+
+/** Create an empty repo under the authenticated user. No auto_init (no README)
+ * — the first putFile creates the initial commit and the default branch. */
+export async function createRepo(
+  pat: string,
+  input: { name: string; private?: boolean; description?: string },
+): Promise<CreatedRepo> {
+  const res = await fetch(`${API}/user/repos`, {
+    method: "POST",
+    headers: { ...headers(pat), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: input.name,
+      description: input.description,
+      private: input.private ?? true,
+      auto_init: false,
+    }),
+  });
+  if (res.status === 422) {
+    throw new Error("A repo with that name already exists, or the name is invalid.");
+  }
+  if (res.status === 403) {
+    throw new Error("Token lacks permission to create repositories (needs the 'repo' scope).");
+  }
+  if (!res.ok) throw new Error(`Couldn't create repository (${res.status}).`);
+  const j = (await res.json()) as {
+    name: string;
+    full_name: string;
+    default_branch: string;
+    html_url: string;
+    owner: { login: string };
+  };
+  return {
+    owner: j.owner.login,
+    repo: j.name,
+    fullName: j.full_name,
+    defaultBranch: j.default_branch ?? "main",
+    htmlUrl: j.html_url,
+  };
+}
+
+/** Create or overwrite a single file via the Contents API (one commit). */
+export async function putFile(
+  pat: string,
+  owner: string,
+  repo: string,
+  path: string,
+  content: string,
+  message: string,
+): Promise<void> {
+  const res = await fetch(
+    `${API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`,
+    {
+      method: "PUT",
+      headers: { ...headers(pat), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        content: Buffer.from(content, "utf8").toString("base64"),
+      }),
+    },
+  );
+  if (!res.ok) throw new Error(`Couldn't write ${path} (${res.status}).`);
+}
+
+/** Read a file's raw text. Returns null on 404 (file absent). */
+export async function getFileContents(
+  pat: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref?: string,
+): Promise<string | null> {
+  const url = new URL(
+    `${API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`,
+  );
+  if (ref) url.searchParams.set("ref", ref);
+  const res = await fetch(url, {
+    headers: { ...headers(pat), Accept: "application/vnd.github.raw+json" },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Couldn't read ${path} (${res.status}).`);
+  return res.text();
+}
+
+export type RepoDirEntry = { name: string; type: "file" | "dir" };
+
+/**
+ * List the entries directly under a directory in a repo (one Contents-API call).
+ * Returns [] when the directory doesn't exist (404). Used to discover skills
+ * under `.skills/` without pulling the whole repo tree.
+ */
+export async function listRepoDir(
+  pat: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref?: string,
+): Promise<RepoDirEntry[]> {
+  const url = new URL(
+    `${API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`,
+  );
+  if (ref) url.searchParams.set("ref", ref);
+  const res = await fetch(url, { headers: headers(pat) });
+  if (res.status === 404) return [];
+  if (!res.ok) throw new Error(`Couldn't list ${path} (${res.status}).`);
+  const json = (await res.json()) as { name: string; type: string }[];
+  // A directory path returns an array; a file path returns an object. Guard so
+  // pointing at a file doesn't throw.
+  if (!Array.isArray(json)) return [];
+  return json.map((e) => ({
+    name: e.name,
+    type: e.type === "dir" ? "dir" : "file",
+  }));
+}
+
+/** HTTPS clone URL with the PAT embedded for git auth inside the sandbox. */
+export function cloneUrlWithToken(
+  pat: string,
+  owner: string,
+  repo: string,
+): string {
+  return `https://x-access-token:${pat}@github.com/${owner}/${repo}.git`;
+}

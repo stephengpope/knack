@@ -12,9 +12,16 @@ import {
 import { z } from "zod";
 import { getSession } from "@/lib/session";
 import { getChat, createChat, renameChat, saveMessages } from "@/lib/chats";
+import type { Project } from "@/lib/db/schema";
 import { VercelSandbox } from "@/lib/sandbox/vercel";
 import { resolveAgentModel, resolveGeneralModel } from "@/lib/llm";
 import { listSecrets, getToken } from "@/lib/user-secrets";
+import { getProject, getDefaultProject } from "@/lib/projects";
+import { getGithubAuth } from "@/lib/github-account";
+import { buildInstructions } from "@/lib/prompt/build";
+import { REPO_DIR, SKILLS_DIR } from "@/lib/prompt/paths";
+import { scanSkills, type Skill } from "@/lib/prompt/skills";
+import { cloneUrlWithToken } from "@/lib/github";
 
 export const maxDuration = 300; // one streamed turn, up to 5 min
 
@@ -40,7 +47,13 @@ export async function POST(req: Request) {
     messages,
     id: chatId,
     model: requestedModel,
-  }: { messages: UIMessage[]; id: string; model?: string } = await req.json();
+    projectId: requestedProjectId,
+  }: {
+    messages: UIMessage[];
+    id: string;
+    model?: string;
+    projectId?: string | null;
+  } = await req.json();
 
   if (!chatId) return new Response("Missing chat id", { status: 400 });
 
@@ -58,8 +71,57 @@ export async function POST(req: Request) {
   // New chats start untitled; the title is generated below.
   const existing = await getChat(userId, chatId);
   const needsTitle = !existing?.title;
+
+  // Resolve the project the chat works in. Existing chats keep their stored
+  // project (we never trust the request body for them — the sandbox is already
+  // cloned for that repo). New chats use the requested project, falling back to
+  // the user's default.
+  let project: Project | null = null;
+  if (existing) {
+    project = existing.projectId
+      ? await getProject(userId, existing.projectId)
+      : null;
+  } else {
+    project = requestedProjectId
+      ? await getProject(userId, requestedProjectId)
+      : await getDefaultProject(userId);
+  }
+
+  // GitHub auth (PAT + commit identity) when this chat has a project.
+  const githubAuth = project ? await getGithubAuth(userId) : null;
+
+  // System prompt: assembled and frozen when the chat is created, then reused
+  // every turn (no rebuild, no rescan). On a new chat we scan the project's
+  // skills and build the prompt now — skills are read from GitHub, not the
+  // sandbox, so this works before any box exists.
+  let instructions: string;
+  if (existing?.systemPrompt) {
+    instructions = existing.systemPrompt;
+  } else {
+    let skills: Skill[] = [];
+    if (project && githubAuth) {
+      try {
+        skills = await scanSkills(githubAuth.pat, project);
+      } catch {
+        skills = []; // a scan failure must not block creating the chat
+      }
+    }
+    instructions = await buildInstructions(
+      project,
+      githubAuth?.pat ?? null,
+      skills,
+    );
+  }
+
+  // Create the chat row on its first message, with the prompt baked in.
   if (!existing) {
-    await createChat(userId, { id: chatId, title: null, model: modelId });
+    await createChat(userId, {
+      id: chatId,
+      title: null,
+      model: modelId,
+      projectId: project?.id ?? null,
+      systemPrompt: instructions,
+    });
   }
 
   // Generate a title for brand-new chats with the General AI model, in parallel
@@ -70,10 +132,10 @@ export async function POST(req: Request) {
           generateText({
             model,
             providerOptions: po,
+            maxOutputTokens: 250,
             system:
-              "Generate a concise 3-6 word title for a conversation that opens " +
-              "with the user's message. Plain text only: no quotes, no " +
-              "markdown, no trailing punctuation.",
+              "Generate a short (3-6 word) title for this chat based on the " +
+              "user's first message. Return ONLY the title, nothing else.",
             prompt: firstUserText(messages),
           }),
         )
@@ -82,22 +144,61 @@ export async function POST(req: Request) {
 
   const sandbox = new VercelSandbox();
 
+  // Get the chat's box, checking out the project repo on first use. The repo is
+  // checked out at the sandbox root (REPO_DIR), which may already exist, so we
+  // init + fetch + reset rather than `git clone <dir>` (which needs an empty
+  // target). The PAT is embedded in the origin URL so the agent can pull/push
+  // via runBash; the box is per-chat and isolated. (Phase 2: move auth to a
+  // credential helper so the PAT isn't persisted in the sandbox's .git/config.)
+  let repoChecked = false;
+  async function box() {
+    const b = await sandbox.getOrCreate(chatId);
+    if (project && githubAuth && !repoChecked) {
+      const check = await b.run("bash", [
+        "-c",
+        `test -d ${REPO_DIR}/.git && echo ok || echo no`,
+      ]);
+      if (check.stdout.trim() !== "ok") {
+        const url = cloneUrlWithToken(
+          githubAuth.pat,
+          project.repoOwner,
+          project.repoName,
+        );
+        const branch = JSON.stringify(project.defaultBranch);
+        const email = githubAuth.githubUserId
+          ? `${githubAuth.githubUserId}+${githubAuth.login}@users.noreply.github.com`
+          : `${githubAuth.login}@users.noreply.github.com`;
+        await b.run("bash", [
+          "-c",
+          `cd ${REPO_DIR} && ` +
+            `git init -q -b ${branch} && ` +
+            `git remote add origin ${url} && ` +
+            `git fetch -q --depth=1 origin ${branch} && ` +
+            `git reset -q --hard origin/${project.defaultBranch} && ` +
+            `git branch -q --set-upstream-to=origin/${project.defaultBranch} ${branch} && ` +
+            `git config user.name ${JSON.stringify(githubAuth.login)} && ` +
+            `git config user.email ${JSON.stringify(email)}`,
+        ]);
+      }
+      repoChecked = true;
+    }
+    return b;
+  }
+
   const tools = {
       runBash: tool({
         description: "Run a shell command inside the isolated sandbox.",
         inputSchema: z.object({ cmd: z.string() }),
         execute: async ({ cmd }) => {
-          const box = await sandbox.getOrCreate(chatId);
-          return box.run("bash", ["-c", cmd]);
+          return (await box()).run("bash", ["-c", cmd]);
         },
       }),
       readFile: tool({
         description: "Read a file from the sandbox filesystem.",
         inputSchema: z.object({ path: z.string() }),
         execute: async ({ path }) => {
-          const box = await sandbox.getOrCreate(chatId);
           try {
-            return { content: await box.readFile(path) };
+            return { content: await (await box()).readFile(path) };
           } catch (e) {
             return { error: (e as Error).message };
           }
@@ -107,9 +208,8 @@ export async function POST(req: Request) {
         description: "Write (or overwrite) a file in the sandbox filesystem.",
         inputSchema: z.object({ path: z.string(), content: z.string() }),
         execute: async ({ path, content }) => {
-          const box = await sandbox.getOrCreate(chatId);
           try {
-            await box.writeFile(path, content);
+            await (await box()).writeFile(path, content);
             return { ok: true, path };
           } catch (e) {
             return { error: (e as Error).message };
@@ -120,9 +220,28 @@ export async function POST(req: Request) {
         description: "List the contents of a directory in the sandbox.",
         inputSchema: z.object({ path: z.string().default(".") }),
         execute: async ({ path }) => {
-          const box = await sandbox.getOrCreate(chatId);
           try {
-            return { listing: await box.listDir(path) };
+            return { listing: await (await box()).listDir(path) };
+          } catch (e) {
+            return { error: (e as Error).message };
+          }
+        },
+      }),
+      load_skill: tool({
+        description:
+          "Load a skill's full instructions by name. The available skills are " +
+          "listed in <available_skills> in your system prompt; call this when a " +
+          "task matches a skill's description, then follow the instructions it " +
+          "returns (running any bundled scripts with runBash).",
+        inputSchema: z.object({ name: z.string() }),
+        execute: async ({ name }) => {
+          // Names follow the Agent Skills spec; this also blocks path traversal.
+          if (!/^[a-z0-9-]+$/.test(name)) {
+            return { error: `Invalid skill name "${name}".` };
+          }
+          try {
+            const path = `${REPO_DIR}/${SKILLS_DIR}/${name}/SKILL.md`;
+            return { name, instructions: await (await box()).readFile(path) };
           } catch (e) {
             return { error: (e as Error).message };
           }
@@ -167,15 +286,7 @@ export async function POST(req: Request) {
   const agent = new ToolLoopAgent({
     model: agentModel,
     providerOptions, // request-scoped BYOK when present (gateway custom mode)
-    instructions:
-      "You are Knack, a capable AI agent. You have an isolated Linux sandbox " +
-      "(node24) for running code and shell commands. Use runBash for commands, " +
-      "and the file tools to read, write, and list files inside the sandbox. " +
-      "Prefer doing real work in the sandbox over describing it. The user can " +
-      "store API secrets and connect OAuth accounts; use list_tokens to see " +
-      "what's available and get_token to fetch a value when a task needs one. " +
-      "Never print a fetched token value back to the user. Be concise and " +
-      "format answers in Markdown.",
+    instructions, // base prompt, plus project repo context when the chat has one
     tools,
   });
 

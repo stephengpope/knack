@@ -90,6 +90,16 @@ export const chat = pgTable(
     title: text("title"),
     starred: boolean("starred").default(false).notNull(),
     model: text("model"),
+    // The full system prompt, assembled and frozen when the chat is created
+    // (identity + guidance + skills + playbook + memory + user). Reused every
+    // turn so we don't rebuild or rescan. Null only for chats created before
+    // this column existed.
+    systemPrompt: text("system_prompt"),
+    // The GitHub-backed project this chat works in (chosen at creation). Null =
+    // no project. Set null (not cascade) so deleting a project keeps the chat.
+    projectId: text("project_id").references(() => project.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at")
       .$defaultFn(() => new Date())
       .notNull(),
@@ -220,6 +230,57 @@ export const userSecret = pgTable(
   (t) => [uniqueIndex("user_secret_user_name_idx").on(t.userId, t.name)],
 );
 
+// PER-USER GitHub connection (one row per user). The PAT is AES-256-GCM
+// encrypted at rest; `login` is cached from GitHub on connect for display and
+// commit identity. Validated against GET /user when (re)connected.
+export const githubAccount = pgTable(
+  "github_account",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    encryptedPat: text("encrypted_pat").notNull(), // iv:tag:ciphertext (base64)
+    login: text("login").notNull(), // GitHub username
+    githubUserId: bigint("github_user_id", { mode: "number" }), // for noreply email
+    status: text("status").default("connected").notNull(), // 'connected' | 'invalid'
+    createdAt: timestamp("created_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [uniqueIndex("github_account_user_idx").on(t.userId)],
+);
+
+// PER-USER projects. Each maps 1:1 to a GitHub repo (created from the bundled
+// template on creation). One project per user may be the default, used for new
+// chats. Repo metadata is cached here; file contents always come from GitHub.
+export const project = pgTable(
+  "project",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    repoOwner: text("repo_owner").notNull(),
+    repoName: text("repo_name").notNull(),
+    repoFullName: text("repo_full_name").notNull(), // "owner/repo"
+    defaultBranch: text("default_branch").default("main").notNull(),
+    htmlUrl: text("html_url").notNull(),
+    isDefault: boolean("is_default").default(false).notNull(),
+    createdAt: timestamp("created_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("project_user_idx").on(t.userId)],
+);
+
 // Better Auth rate limiter (storage: "database").
 export const rateLimit = pgTable("rate_limit", {
   id: text("id").primaryKey(),
@@ -234,3 +295,5 @@ export type ApiKey = typeof apiKey.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type CustomEndpoint = typeof customEndpoint.$inferSelect;
 export type UserSecret = typeof userSecret.$inferSelect;
+export type GithubAccount = typeof githubAccount.$inferSelect;
+export type Project = typeof project.$inferSelect;

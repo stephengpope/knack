@@ -1,19 +1,10 @@
+import { redirect } from "next/navigation";
 import { nanoid } from "nanoid";
 import { requireUser } from "@/lib/session";
-import { getAvailableModels } from "@/lib/available-models";
-import { Chat } from "@/components/chat/chat";
 
+// New chats live at a real /chat/[id] URL. The root just mints a fresh id and
+// forwards there so direct visits / post-login land on a proper chat page.
 export default async function HomePage() {
-  const user = await requireUser();
-  const { models, defaultModel } = await getAvailableModels();
-  const id = nanoid();
-  return (
-    <Chat
-      id={id}
-      initialMessages={[]}
-      userName={user.name}
-      initialModel={defaultModel}
-      models={models}
-    />
-  );
+  await requireUser();
+  redirect(`/chat/${nanoid()}`);
 }

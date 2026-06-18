@@ -1,7 +1,8 @@
 "use client";
 
-import { useOptimistic, startTransition, useState } from "react";
+import { useOptimistic, startTransition, useState, useMemo } from "react";
 import Link from "next/link";
+import { nanoid } from "nanoid";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Plus,
@@ -15,7 +16,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { Logomark } from "@/components/brand/logo";
 import { AccountMenu } from "@/components/app/account-menu";
 import {
   DropdownMenu,
@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ChatListItem } from "@/lib/chats";
-import { useChatStore } from "@/components/app/chat-store";
+import { useChatOverrides } from "@/components/app/chat-store";
 import {
   renameChatAction,
   deleteChatAction,
@@ -43,9 +43,24 @@ type OptimisticAction =
   | { type: "rename"; id: string; title: string }
   | { type: "delete"; id: string };
 
-export function Sidebar({ user }: { user: SidebarUser }) {
-  // Chats come from the shared store (server list + live pending/title updates).
-  const { chats: chatsProp } = useChatStore();
+export function Sidebar({
+  chats: serverChats,
+  user,
+}: {
+  chats: ChatListItem[];
+  user: SidebarUser;
+}) {
+  // Merge the server list with live overrides (new chats + generated titles).
+  // Subscribing here keeps these updates isolated to the sidebar.
+  const { pending, titles } = useChatOverrides();
+  const chatsProp = useMemo(() => {
+    const serverIds = new Set(serverChats.map((c) => c.id));
+    const merged = [
+      ...pending.filter((p) => !serverIds.has(p.id)),
+      ...serverChats,
+    ];
+    return merged.map((c) => (titles[c.id] ? { ...c, title: titles[c.id] } : c));
+  }, [serverChats, pending, titles]);
   const router = useRouter();
   const pathname = usePathname();
   const activeId = pathname.startsWith("/chat/") ? pathname.split("/")[2] : null;
@@ -109,8 +124,7 @@ export function Sidebar({ user }: { user: SidebarUser }) {
   return (
     <aside className="flex w-[272px] shrink-0 flex-col border-r border-border bg-sidebar">
       <div className="flex items-center gap-2 px-4 pb-3 pt-[18px]">
-        <Logomark size={26} className="ml-[7px]" />
-        <span className="text-[19px] font-extrabold tracking-[-0.03em]">
+        <span className="ml-[7px] text-[19px] font-extrabold tracking-[-0.03em]">
           Knack
         </span>
         <button
@@ -123,15 +137,15 @@ export function Sidebar({ user }: { user: SidebarUser }) {
       </div>
 
       <nav className="flex flex-col gap-0.5 px-3 pb-1 pt-1.5">
-        <Link
-          href="/"
+        <button
+          onClick={() => router.push(`/chat/${nanoid()}`)}
           className="flex items-center gap-3 rounded-[11px] px-[11px] py-[9px] text-[14px] font-bold text-accent-text transition-colors hover:bg-sidebar-accent"
         >
           <span className="knack-gradient knack-glow flex size-[24px] shrink-0 items-center justify-center rounded-[6px]">
             <Plus className="size-[18px] text-white" strokeWidth={2.2} />
           </span>
           New chat
-        </Link>
+        </button>
 
         <NavItem
           href="/chats"

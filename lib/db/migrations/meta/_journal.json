@@ -71,6 +71,20 @@
       "when": 1781739687542,
       "tag": "0009_nosy_the_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1781747557891,
+      "tag": "0010_breezy_baron_strucker",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1781818590207,
+      "tag": "0011_flimsy_norman_osborn",
+      "breakpoints": true
     }
   ]
 }
