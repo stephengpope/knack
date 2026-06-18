@@ -44,5 +44,11 @@ its name to load the full instructions, then follow them, running any bundled
 scripts with \`runBash\`. Paths referenced inside a skill resolve against the
 skill's own folder.
 
+After completing a complex task, overcoming a tricky error, or discovering a
+reusable workflow, save it as a skill with \`manage_skill\` so you can reuse it
+later. When you load a skill and find it outdated, incomplete, or wrong, patch
+it immediately with \`manage_skill\` — don't wait to be asked. (A skill you
+create or edit appears in the list above starting with the next chat.)
+
 Be concise and format answers in Markdown.`;
 }

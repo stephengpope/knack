@@ -21,6 +21,8 @@ import { getGithubAuth } from "@/lib/github-account";
 import { buildInstructions } from "@/lib/prompt/build";
 import { REPO_DIR, SKILLS_DIR } from "@/lib/prompt/paths";
 import { scanSkills, type Skill } from "@/lib/prompt/skills";
+import { manageSkill } from "@/lib/skills/manage";
+import { validateSkillName } from "@/lib/skills/validate";
 import { cloneUrlWithToken } from "@/lib/github";
 
 export const maxDuration = 300; // one streamed turn, up to 5 min
@@ -235,10 +237,8 @@ export async function POST(req: Request) {
           "returns (running any bundled scripts with runBash).",
         inputSchema: z.object({ name: z.string() }),
         execute: async ({ name }) => {
-          // Names follow the Agent Skills spec; this also blocks path traversal.
-          if (!/^[a-z0-9-]+$/.test(name)) {
-            return { error: `Invalid skill name "${name}".` };
-          }
+          const nameErr = validateSkillName(name);
+          if (nameErr) return { error: nameErr };
           try {
             const path = `${REPO_DIR}/${SKILLS_DIR}/${name}/SKILL.md`;
             return { name, instructions: await (await box()).readFile(path) };
@@ -246,6 +246,61 @@ export async function POST(req: Request) {
             return { error: (e as Error).message };
           }
         },
+      }),
+      manage_skill: tool({
+        description:
+          "Create, edit, or delete a skill — your reusable, saved procedures for " +
+          "recurring task types. Skills live in the project repo under " +
+          ".skills/<name>/ and are validated and committed automatically.\n\n" +
+          "Actions: create (new skill — full SKILL.md), patch (targeted " +
+          "find-and-replace — PREFERRED for fixes), edit (full SKILL.md rewrite " +
+          "— major overhauls only), delete, write_file (add a supporting file " +
+          "under references/, templates/, scripts/, or assets/), remove_file.\n\n" +
+          "A SKILL.md needs YAML frontmatter with `name` (matching the skill's " +
+          "folder) and a specific `description` (what it does AND when to use it), " +
+          "then a markdown body: trigger conditions, numbered steps with exact " +
+          "commands, pitfalls, and verification steps.\n\n" +
+          "Create when: a complex task succeeded, you overcame a tricky error, or " +
+          "you discovered a reusable workflow worth keeping. Patch a skill the " +
+          "moment you find it outdated or wrong — don't wait to be asked.\n\n" +
+          "Note: a newly created or edited skill appears in your available-skills " +
+          "list starting with the NEXT chat, not the current one.",
+        inputSchema: z.object({
+          action: z
+            .enum(["create", "edit", "patch", "delete", "write_file", "remove_file"])
+            .describe("The action to perform."),
+          name: z
+            .string()
+            .describe("Skill name (lowercase, hyphens; matches the skill's folder)."),
+          content: z
+            .string()
+            .optional()
+            .describe("Full SKILL.md content (frontmatter + body). Required for create/edit."),
+          old_string: z
+            .string()
+            .optional()
+            .describe("For patch: text to find. Include enough context to be unique."),
+          new_string: z
+            .string()
+            .optional()
+            .describe("For patch: replacement text (empty string to delete the match)."),
+          replace_all: z
+            .boolean()
+            .optional()
+            .describe("For patch: replace all occurrences instead of requiring a unique match."),
+          file_path: z
+            .string()
+            .optional()
+            .describe(
+              "Supporting-file path under references/templates/scripts/assets/. " +
+                "Required for write_file/remove_file; optional for patch (defaults to SKILL.md).",
+            ),
+          file_content: z
+            .string()
+            .optional()
+            .describe("Content for the file. Required for write_file."),
+        }),
+        execute: async (a) => manageSkill(await box(), a),
       }),
       list_tokens: tool({
         description:

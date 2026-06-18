@@ -74,9 +74,14 @@ export function renderSkillsSection(skills: Skill[]): string {
   if (skills.length === 0) return "";
 
   const lines = [
-    "The following skills provide specialized instructions for specific tasks.",
-    "When a task matches a skill's description, call the load_skill tool with " +
-      "its name to load the full instructions, then follow them.",
+    "## Skills (mandatory)",
+    "Before replying, scan the skills below. If a skill matches — or is even " +
+      "partially relevant to — the task, you MUST load it with load_skill(name) " +
+      "and follow its instructions. Err on the side of loading: it is better to " +
+      "have context you don't need than to miss critical steps or pitfalls. " +
+      "Skills encode specialized, proven workflows and the user's preferred " +
+      "approach — load them even for tasks you think you could handle with basic " +
+      "tools.",
     "",
     "<available_skills>",
   ];
@@ -87,6 +92,8 @@ export function renderSkillsSection(skills: Skill[]): string {
     lines.push("  </skill>");
   }
   lines.push("</available_skills>");
+  lines.push("");
+  lines.push("Only proceed without loading a skill if genuinely none are relevant.");
   return lines.join("\n");
 }
 
