@@ -251,7 +251,7 @@ export async function POST(req: Request) {
         description:
           "Create, edit, or delete a skill — your reusable, saved procedures for " +
           "recurring task types. Skills live in the project repo under " +
-          ".skills/<name>/ and are validated and committed automatically.\n\n" +
+          ".skills/<name>/; this tool validates them before writing the files.\n\n" +
           "Actions: create (new skill — full SKILL.md), patch (targeted " +
           "find-and-replace — PREFERRED for fixes), edit (full SKILL.md rewrite " +
           "— major overhauls only), delete, write_file (add a supporting file " +

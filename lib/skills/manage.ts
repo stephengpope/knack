@@ -36,7 +36,6 @@ export type ManageResult =
 const err = (error: string, preview?: string): ManageResult => ({ success: false, error, preview });
 const ok = (message: string): ManageResult => ({ success: true, message });
 
-const skillRel = (name: string) => `${SKILLS_DIR}/${name}`;
 const skillAbs = (name: string) => `${REPO_DIR}/${SKILLS_DIR}/${name}`;
 
 async function exists(box: SandboxBox, abs: string): Promise<boolean> {
@@ -56,24 +55,6 @@ async function writeFileAt(box: SandboxBox, abs: string, content: string): Promi
   const dir = abs.slice(0, abs.lastIndexOf("/"));
   await box.run("bash", ["-c", `mkdir -p '${dir}'`]);
   await box.writeFile(abs, content);
-}
-
-/**
- * Stage the skill path, and commit+push if anything changed. The repo is
- * already configured with a commit identity and a token-bearing origin during
- * checkout (see the agent route), so this persists the skill to GitHub — which
- * is what makes it discoverable in future chats.
- */
-async function commit(box: SandboxBox, rel: string, message: string): Promise<ManageResult | null> {
-  const script =
-    `cd '${REPO_DIR}' && git add -A -- '${rel}' && ` +
-    `if git diff --cached --quiet; then echo NOCHANGE; else ` +
-    `git commit -q -m '${message}' && git push -q && echo PUSHED; fi`;
-  const r = await box.run("bash", ["-c", script]);
-  if (r.exitCode !== 0) {
-    return err(`Saved locally but commit/push failed: ${r.stderr.trim() || "unknown error"}`);
-  }
-  return null; // success; caller returns its own message
 }
 
 export async function manageSkill(box: SandboxBox, args: ManageArgs): Promise<ManageResult> {
@@ -104,8 +85,6 @@ export async function manageSkill(box: SandboxBox, args: ManageArgs): Promise<Ma
       }
 
       await writeFileAt(box, `${skillAbs(name)}/SKILL.md`, content);
-      const c = await commit(box, skillRel(name), `skill: ${action} ${name}`);
-      if (c) return c;
       return ok(`Skill '${name}' ${action === "create" ? "created" : "updated"}.`);
     }
 
@@ -145,8 +124,6 @@ export async function manageSkill(box: SandboxBox, args: ManageArgs): Promise<Ma
       if (sizeErr) return err(sizeErr);
 
       await writeFileAt(box, targetAbs, result.content);
-      const c = await commit(box, skillRel(name), `skill: patch ${name}`);
-      if (c) return c;
       return ok(
         `Patched ${args.file_path ?? "SKILL.md"} in '${name}' ` +
           `(${result.count} replacement${result.count === 1 ? "" : "s"}, ${result.strategy}).`,
@@ -156,8 +133,6 @@ export async function manageSkill(box: SandboxBox, args: ManageArgs): Promise<Ma
     case "delete": {
       if (!(await exists(box, skillAbs(name)))) return err(`Skill '${name}' not found.`);
       await box.run("bash", ["-c", `rm -rf '${skillAbs(name)}'`]);
-      const c = await commit(box, skillRel(name), `skill: delete ${name}`);
-      if (c) return c;
       return ok(`Skill '${name}' deleted.`);
     }
 
@@ -175,8 +150,6 @@ export async function manageSkill(box: SandboxBox, args: ManageArgs): Promise<Ma
         return err(`Skill '${name}' not found. Create the skill before adding files.`);
       }
       await writeFileAt(box, `${skillAbs(name)}/${args.file_path}`, fileContent);
-      const c = await commit(box, skillRel(name), `skill: write ${name}/${args.file_path}`);
-      if (c) return c;
       return ok(`Wrote ${args.file_path} to skill '${name}'.`);
     }
 
@@ -189,8 +162,6 @@ export async function manageSkill(box: SandboxBox, args: ManageArgs): Promise<Ma
         return err(`File not found: ${args.file_path} in skill '${name}'.`);
       }
       await box.run("bash", ["-c", `rm -f '${targetAbs}'`]);
-      const c = await commit(box, skillRel(name), `skill: remove ${name}/${args.file_path}`);
-      if (c) return c;
       return ok(`Removed ${args.file_path} from skill '${name}'.`);
     }
 
