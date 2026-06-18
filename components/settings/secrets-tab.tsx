@@ -21,13 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -50,6 +43,8 @@ export type ProviderOption = {
   custom: boolean;
   hint: string | null;
 };
+
+type Mode = "token" | "oauth";
 
 function oauthErrorMessage(code: string): string {
   switch (code) {
@@ -77,18 +72,22 @@ export function SecretsTab({
 }) {
   const router = useRouter();
   const params = useSearchParams();
+  const connected = params.get("connected");
+  const error = params.get("error");
+
+  const [mode, setMode] = useState<Mode>(
+    connected || error ? "oauth" : "token",
+  );
 
   // Surface the OAuth callback outcome, then strip the query params.
   useEffect(() => {
-    const connected = params.get("connected");
-    const error = params.get("error");
     if (connected) toast.success(`Connected ${connected}`);
     else if (error) toast.error(oauthErrorMessage(error));
     if (connected || error) router.replace("/settings?tab=Secrets");
-  }, [params, router]);
+  }, [connected, error, router]);
 
-  const staticSecrets = secrets.filter((s) => s.kind === "static");
-  const oauthSecrets = secrets.filter((s) => s.kind === "oauth");
+  const tokens = secrets.filter((s) => s.kind === "static");
+  const conns = secrets.filter((s) => s.kind === "oauth");
 
   return (
     <>
@@ -96,74 +95,114 @@ export function SecretsTab({
         Secrets
       </h1>
       <p className="mt-1 text-[13.5px] text-ink-soft">
-        API keys and connected accounts your agent can use on your behalf.
+        API tokens and connected accounts your agent can use on your behalf.
       </p>
 
-      <Section
-        title="API Secrets"
-        desc="Plain values (API keys, tokens) the agent can fetch by name."
-        action={<AddStaticDialog onDone={() => router.refresh()} />}
-      >
-        {staticSecrets.length === 0 ? (
-          <Empty>No API secrets yet.</Empty>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {staticSecrets.map((s) => (
-              <StaticRow key={s.id} secret={s} onChanged={() => router.refresh()} />
-            ))}
-          </div>
-        )}
-      </Section>
+      <div className="mt-6 inline-flex rounded-[10px] border border-input bg-muted p-0.5">
+        <SegBtn active={mode === "token"} onClick={() => setMode("token")}>
+          <KeyRound className="size-[14px]" /> Token
+        </SegBtn>
+        <SegBtn active={mode === "oauth"} onClick={() => setMode("oauth")}>
+          <Link2 className="size-[14px]" /> OAuth
+        </SegBtn>
+      </div>
 
-      <Section
-        title="Connected Accounts"
-        desc="OAuth connections. You supply the client ID/secret; we store the granted tokens and refresh them automatically."
-        action={
-          <AddConnectionDialog
-            providers={providers}
-            redirectUri={redirectUri}
-          />
-        }
-      >
-        {oauthSecrets.length === 0 ? (
-          <Empty>No connected accounts yet.</Empty>
+      <div className="mt-5 flex flex-col gap-5">
+        {mode === "token" ? (
+          <>
+            <TokenForm onDone={() => router.refresh()} />
+            {tokens.length === 0 ? (
+              <Empty>No API tokens yet.</Empty>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {tokens.map((s) => (
+                  <StaticRow
+                    key={s.id}
+                    secret={s}
+                    onChanged={() => router.refresh()}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         ) : (
-          <div className="flex flex-col gap-2">
-            {oauthSecrets.map((s) => (
-              <OAuthRow key={s.id} secret={s} onChanged={() => router.refresh()} />
-            ))}
-          </div>
+          <>
+            <ConnectionForm providers={providers} redirectUri={redirectUri} />
+            {conns.length === 0 ? (
+              <Empty>No connected accounts yet.</Empty>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {conns.map((s) => (
+                  <OAuthRow
+                    key={s.id}
+                    secret={s}
+                    onChanged={() => router.refresh()}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
-      </Section>
+      </div>
     </>
   );
 }
 
 /* --------------------------------- layout --------------------------------- */
 
-function Section({
-  title,
-  desc,
-  action,
+function SegBtn({
+  active,
+  onClick,
   children,
 }: {
-  title: string;
-  desc: string;
-  action: React.ReactNode;
+  active: boolean;
+  onClick: () => void;
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-8">
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div>
-          <div className="text-[15px] font-bold">{title}</div>
-          <div className="mt-0.5 max-w-[440px] text-[12.5px] text-ink-soft">
-            {desc}
-          </div>
-        </div>
-        {action}
-      </div>
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-1.5 rounded-[8px] px-3.5 py-1.5 text-[13px] font-bold transition-colors",
+        active
+          ? "bg-background text-accent-text shadow-sm"
+          : "text-ink-soft hover:text-foreground",
+      )}
+    >
       {children}
+    </button>
+  );
+}
+
+function FormCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-[14px] border border-border bg-card p-5">
+      <div className="mb-3.5 text-[14px] font-bold">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <Label className="text-[12px] text-ink-soft">{label}</Label>
+      {children}
+      {hint && <p className="text-[11.5px] text-ink-faint">{hint}</p>}
     </div>
   );
 }
@@ -200,7 +239,91 @@ function StatusBadge({ status }: { status: string | null }) {
   );
 }
 
-/* --------------------------------- static --------------------------------- */
+function PwInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        onClick={() => setShow((v) => !v)}
+      >
+        {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+      </Button>
+    </div>
+  );
+}
+
+/* ---------------------------------- token ---------------------------------- */
+
+function TokenForm({ onDone }: { onDone: () => void }) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setBusy(true);
+    try {
+      await addStaticSecretAction({ name, description, value });
+      toast.success("Token added");
+      setName("");
+      setDescription("");
+      setValue("");
+      onDone();
+    } catch (e) {
+      toast.error((e as Error).message || "Couldn't add token");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <FormCard title="Add token">
+      <div className="flex flex-col gap-3">
+        <Field label="Name" hint="e.g. STRIPE_API_KEY">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="STRIPE_API_KEY"
+          />
+        </Field>
+        <Field label="Description" hint="Optional">
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Stripe live secret key"
+          />
+        </Field>
+        <Field label="Value">
+          <PwInput value={value} onChange={setValue} placeholder="sk_live_…" />
+        </Field>
+        <Button
+          onClick={submit}
+          disabled={busy || !name.trim() || !value.trim()}
+          className="knack-gradient w-fit font-bold text-white"
+        >
+          {busy ? <Spinner /> : <Plus className="size-4" />} Add token
+        </Button>
+      </div>
+    </FormCard>
+  );
+}
 
 function StaticRow({
   secret,
@@ -211,7 +334,7 @@ function StaticRow({
 }) {
   const [busy, setBusy] = useState(false);
   async function remove() {
-    if (!confirm(`Delete secret "${secret.name}"?`)) return;
+    if (!confirm(`Delete token "${secret.name}"?`)) return;
     setBusy(true);
     try {
       await deleteSecretAction(secret.id);
@@ -233,7 +356,7 @@ function StaticRow({
           </div>
         )}
       </div>
-      <span className="font-mono text-[13px] text-ink-faint">••••••••</span>
+      <span className="text-[13px] text-ink-faint">••••••••</span>
       <Button variant="ghost" size="icon-sm" onClick={remove} disabled={busy}>
         {busy ? <Spinner /> : <Trash2 className="size-4" />}
       </Button>
@@ -241,101 +364,178 @@ function StaticRow({
   );
 }
 
-function AddStaticDialog({ onDone }: { onDone: () => void }) {
-  const [open, setOpen] = useState(false);
+/* ---------------------------------- oauth ---------------------------------- */
+
+function ConnectionForm({
+  providers,
+  redirectUri,
+}: {
+  providers: ProviderOption[];
+  redirectUri: string;
+}) {
+  const [providerId, setProviderId] = useState(providers[0]?.id ?? "google");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [value, setValue] = useState("");
-  const [show, setShow] = useState(false);
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [authUrl, setAuthUrl] = useState("");
+  const [tokenUrl, setTokenUrl] = useState("");
+  const [scopes, setScopes] = useState(
+    (providers[0]?.defaultScopes ?? []).join(" "),
+  );
   const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  function reset() {
-    setName("");
-    setDescription("");
-    setValue("");
-    setShow(false);
+  const selected = providers.find((p) => p.id === providerId);
+
+  function onProvider(id: string) {
+    setProviderId(id);
+    const p = providers.find((x) => x.id === id);
+    setScopes((p?.defaultScopes ?? []).join(" "));
+  }
+
+  async function copyRedirect() {
+    await navigator.clipboard.writeText(redirectUri);
+    setCopied(true);
+    toast.success("Redirect URI copied");
+    setTimeout(() => setCopied(false), 1500);
   }
 
   async function submit() {
     setBusy(true);
     try {
-      await addStaticSecretAction({ name, description, value });
-      toast.success("Secret added");
-      setOpen(false);
-      reset();
-      onDone();
+      const { id } = await addOAuthConnectionAction({
+        name,
+        description,
+        provider: providerId,
+        clientId,
+        clientSecret,
+        authUrl: selected?.custom ? authUrl : undefined,
+        tokenUrl: selected?.custom ? tokenUrl : undefined,
+        scopes: scopes.split(/\s+/).filter(Boolean),
+      });
+      const { url } = await startConnectAction(id);
+      window.location.href = url; // hand off to the provider's consent screen
     } catch (e) {
-      toast.error((e as Error).message || "Couldn't add secret");
-    } finally {
+      toast.error((e as Error).message || "Couldn't create connection");
       setBusy(false);
     }
   }
 
+  const canSubmit =
+    !!name.trim() &&
+    !!clientId.trim() &&
+    !!clientSecret.trim() &&
+    (!selected?.custom || (!!authUrl.trim() && !!tokenUrl.trim()));
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <Button
-        size="sm"
-        className="knack-gradient shrink-0 font-bold text-white"
-        onClick={() => setOpen(true)}
-      >
-        <Plus className="size-4" /> Add secret
-      </Button>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add API secret</DialogTitle>
-          <DialogDescription>
-            Stored encrypted. The agent fetches it by name with get_token.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex flex-col gap-3">
-          <Field label="Name" hint="e.g. STRIPE_API_KEY">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="STRIPE_API_KEY"
-              autoFocus
-            />
-          </Field>
-          <Field label="Description" hint="Optional — helps the agent know its purpose">
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Stripe live secret key"
-            />
-          </Field>
-          <Field label="Value">
-            <div className="flex items-center gap-2">
+    <FormCard title="Connect account">
+      <div className="flex flex-col gap-3">
+        <Field label="Provider">
+          <Select value={providerId} onValueChange={onProvider}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {providers.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selected?.hint && (
+            <p className="text-[11.5px] text-ink-faint">{selected.hint}</p>
+          )}
+        </Field>
+
+        <Field
+          label="Redirect URI"
+          hint="Register this exact URL in your provider's console"
+        >
+          <div className="flex items-center gap-2">
+            <Input readOnly value={redirectUri} className="text-[13px]" />
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={copyRedirect}
+              title="Copy"
+            >
+              {copied ? (
+                <Check className="size-4 text-emerald-500" />
+              ) : (
+                <Copy className="size-4" />
+              )}
+            </Button>
+          </div>
+        </Field>
+
+        <Field label="Name" hint="e.g. GOOGLE_DRIVE">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="GOOGLE_DRIVE"
+          />
+        </Field>
+        <Field label="Description" hint="Optional">
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="My Google Drive"
+          />
+        </Field>
+
+        {selected?.custom && (
+          <>
+            <Field label="Authorization URL">
               <Input
-                type={show ? "text" : "password"}
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="sk_live_…"
-                className="font-mono"
+                value={authUrl}
+                onChange={(e) => setAuthUrl(e.target.value)}
+                placeholder="https://provider.com/oauth/authorize"
+                className="text-[13px]"
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShow((v) => !v)}
-              >
-                {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </Button>
-            </div>
-          </Field>
-          <Button
-            onClick={submit}
-            disabled={busy || !name.trim() || !value.trim()}
-            className="knack-gradient mt-1 font-bold text-white"
-          >
-            {busy ? <Spinner /> : "Add secret"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+            </Field>
+            <Field label="Token URL">
+              <Input
+                value={tokenUrl}
+                onChange={(e) => setTokenUrl(e.target.value)}
+                placeholder="https://provider.com/oauth/token"
+                className="text-[13px]"
+              />
+            </Field>
+          </>
+        )}
+
+        <Field label="Client ID">
+          <Input
+            value={clientId}
+            onChange={(e) => setClientId(e.target.value)}
+          />
+        </Field>
+        <Field label="Client Secret">
+          <PwInput value={clientSecret} onChange={setClientSecret} />
+        </Field>
+        <Field label="Scopes" hint="Space-separated. Edit to add or remove access.">
+          <Input
+            value={scopes}
+            onChange={(e) => setScopes(e.target.value)}
+            placeholder="openid email profile"
+            className="text-[13px]"
+          />
+        </Field>
+
+        <Button
+          onClick={submit}
+          disabled={busy || !canSubmit}
+          className="knack-gradient w-fit font-bold text-white"
+        >
+          {busy ? <Spinner /> : <Link2 className="size-4" />} Save & connect
+        </Button>
+      </div>
+    </FormCard>
   );
 }
-
-/* ---------------------------------- oauth ---------------------------------- */
 
 function OAuthRow({
   secret,
@@ -390,9 +590,7 @@ function OAuthRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-[13.5px] font-bold">{secret.name}</span>
-          <span className="text-[11.5px] text-ink-faint">
-            {secret.provider}
-          </span>
+          <span className="text-[11.5px] text-ink-faint">{secret.provider}</span>
           <StatusBadge status={secret.status} />
         </div>
         <div className="truncate text-[12px] text-ink-soft">
@@ -403,17 +601,8 @@ function OAuthRow({
               : "Not yet authorized")}
         </div>
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={reauth}
-        disabled={busy !== null}
-      >
-        {busy === "connect" ? (
-          <Spinner />
-        ) : (
-          <RefreshCw className="size-3.5" />
-        )}
+      <Button variant="outline" size="sm" onClick={reauth} disabled={busy !== null}>
+        {busy === "connect" ? <Spinner /> : <RefreshCw className="size-3.5" />}
         {connected ? "Re-auth" : "Connect"}
       </Button>
       {connected && (
@@ -436,234 +625,6 @@ function OAuthRow({
       >
         {busy === "delete" ? <Spinner /> : <Trash2 className="size-4" />}
       </Button>
-    </div>
-  );
-}
-
-function AddConnectionDialog({
-  providers,
-  redirectUri,
-}: {
-  providers: ProviderOption[];
-  redirectUri: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [providerId, setProviderId] = useState(providers[0]?.id ?? "google");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [clientId, setClientId] = useState("");
-  const [clientSecret, setClientSecret] = useState("");
-  const [showSecret, setShowSecret] = useState(false);
-  const [authUrl, setAuthUrl] = useState("");
-  const [tokenUrl, setTokenUrl] = useState("");
-  const [scopes, setScopes] = useState(
-    (providers[0]?.defaultScopes ?? []).join(" "),
-  );
-  const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const selected = providers.find((p) => p.id === providerId);
-
-  function onProvider(id: string) {
-    setProviderId(id);
-    const p = providers.find((x) => x.id === id);
-    setScopes((p?.defaultScopes ?? []).join(" "));
-  }
-
-  async function copyRedirect() {
-    await navigator.clipboard.writeText(redirectUri);
-    setCopied(true);
-    toast.success("Redirect URI copied");
-    setTimeout(() => setCopied(false), 1500);
-  }
-
-  async function submit() {
-    setBusy(true);
-    try {
-      const { id } = await addOAuthConnectionAction({
-        name,
-        description,
-        provider: providerId,
-        clientId,
-        clientSecret,
-        authUrl: selected?.custom ? authUrl : undefined,
-        tokenUrl: selected?.custom ? tokenUrl : undefined,
-        scopes: scopes.split(/\s+/).filter(Boolean),
-      });
-      // hand off to the provider's consent screen
-      const { url } = await startConnectAction(id);
-      window.location.href = url;
-    } catch (e) {
-      toast.error((e as Error).message || "Couldn't create connection");
-      setBusy(false);
-    }
-  }
-
-  const canSubmit =
-    !!name.trim() &&
-    !!clientId.trim() &&
-    !!clientSecret.trim() &&
-    (!selected?.custom || (!!authUrl.trim() && !!tokenUrl.trim()));
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <Button
-        size="sm"
-        className="knack-gradient shrink-0 font-bold text-white"
-        onClick={() => setOpen(true)}
-      >
-        <Plus className="size-4" /> Connect account
-      </Button>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Connect an account</DialogTitle>
-          <DialogDescription>
-            Register the redirect URI below in your provider, then paste your
-            OAuth client credentials.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto pr-1">
-          <Field label="Provider">
-            <Select value={providerId} onValueChange={onProvider}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {providers.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selected?.hint && (
-              <p className="mt-1 text-[11.5px] text-ink-faint">{selected.hint}</p>
-            )}
-          </Field>
-
-          <Field label="Redirect URI" hint="Register this exact URL in your provider's console">
-            <div className="flex items-center gap-2">
-              <Input readOnly value={redirectUri} className="text-[13px]" />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={copyRedirect}
-                title="Copy"
-              >
-                {copied ? (
-                  <Check className="size-4 text-emerald-500" />
-                ) : (
-                  <Copy className="size-4" />
-                )}
-              </Button>
-            </div>
-          </Field>
-
-          <Field label="Name" hint="e.g. GOOGLE_DRIVE">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="GOOGLE_DRIVE"
-            />
-          </Field>
-          <Field label="Description" hint="Optional">
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="My Google Drive"
-            />
-          </Field>
-
-          {selected?.custom && (
-            <>
-              <Field label="Authorization URL">
-                <Input
-                  value={authUrl}
-                  onChange={(e) => setAuthUrl(e.target.value)}
-                  placeholder="https://provider.com/oauth/authorize"
-                  className="text-[13px]"
-                />
-              </Field>
-              <Field label="Token URL">
-                <Input
-                  value={tokenUrl}
-                  onChange={(e) => setTokenUrl(e.target.value)}
-                  placeholder="https://provider.com/oauth/token"
-                  className="text-[13px]"
-                />
-              </Field>
-            </>
-          )}
-
-          <Field label="Client ID">
-            <Input
-              value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              className="text-[13px]"
-            />
-          </Field>
-          <Field label="Client Secret">
-            <div className="flex items-center gap-2">
-              <Input
-                type={showSecret ? "text" : "password"}
-                value={clientSecret}
-                onChange={(e) => setClientSecret(e.target.value)}
-                className="text-[13px]"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setShowSecret((v) => !v)}
-              >
-                {showSecret ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
-                )}
-              </Button>
-            </div>
-          </Field>
-          <Field label="Scopes" hint="Space-separated. Edit to add or remove access.">
-            <Input
-              value={scopes}
-              onChange={(e) => setScopes(e.target.value)}
-              placeholder="openid email profile"
-              className="text-[13px]"
-            />
-          </Field>
-        </div>
-
-        <Button
-          onClick={submit}
-          disabled={busy || !canSubmit}
-          className="knack-gradient font-bold text-white"
-        >
-          {busy ? <Spinner /> : "Save & connect"}
-        </Button>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-/* --------------------------------- shared --------------------------------- */
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="grid gap-1.5">
-      <Label className="text-[12px] text-ink-soft">{label}</Label>
-      {children}
-      {hint && <p className="text-[11.5px] text-ink-faint">{hint}</p>}
     </div>
   );
 }
