@@ -231,17 +231,43 @@ export async function POST(req: Request) {
       }),
       load_skill: tool({
         description:
-          "Load a skill's full instructions by name. The available skills are " +
-          "listed in <available_skills> in your system prompt; call this when a " +
-          "task matches a skill's description, then follow the instructions it " +
-          "returns (running any bundled scripts with runBash).",
-        inputSchema: z.object({ name: z.string() }),
-        execute: async ({ name }) => {
+          "Load a skill's full instructions by name. The result also lists the " +
+          "skill's bundled files (references/scripts/templates); call again with " +
+          "`file` to load one. The available skills are listed in " +
+          "<available_skills> in your system prompt; call this when a task " +
+          "matches a skill's description, then follow the instructions it returns.",
+        inputSchema: z.object({
+          name: z.string(),
+          file: z
+            .string()
+            .optional()
+            .describe(
+              "Optional bundled file within the skill (e.g. 'scripts/run.sh') " +
+                "to load instead of SKILL.md.",
+            ),
+        }),
+        execute: async ({ name, file }) => {
           const nameErr = validateSkillName(name);
           if (nameErr) return { error: nameErr };
+          const dir = `${REPO_DIR}/${SKILLS_DIR}/${name}`;
           try {
-            const path = `${REPO_DIR}/${SKILLS_DIR}/${name}/SKILL.md`;
-            return { name, instructions: await (await box()).readFile(path) };
+            const b = await box();
+            if (file) {
+              if (file.includes("..") || !/^[A-Za-z0-9._/-]+$/.test(file)) {
+                return { error: `Invalid file path "${file}".` };
+              }
+              return { name, file, content: await b.readFile(`${dir}/${file}`) };
+            }
+            const instructions = await b.readFile(`${dir}/SKILL.md`);
+            const ls = await b.run("bash", [
+              "-c",
+              `cd '${dir}' && find . -type f ! -name SKILL.md | sed 's|^\\./||' | sort`,
+            ]);
+            const files = ls.stdout
+              .split("\n")
+              .map((s) => s.trim())
+              .filter(Boolean);
+            return { name, instructions, files };
           } catch (e) {
             return { error: (e as Error).message };
           }

@@ -2,6 +2,7 @@ import "server-only";
 import type { Project } from "@/lib/db/schema";
 import { getFileContents, listRepoDir } from "@/lib/github";
 import { SKILLS_DIR } from "@/lib/prompt/paths";
+import { MAX_DESCRIPTION } from "@/lib/skills/validate";
 
 // A discovered skill's prompt-level metadata. Only name + description go into
 // the prompt (the Agent Skills progressive-disclosure model). The full SKILL.md
@@ -42,8 +43,10 @@ export async function scanSkills(
         project.defaultBranch,
       ).catch(() => null);
       if (!body) return null;
-      const description = parseDescription(body);
-      if (!description) return null; // spec: description is required
+      // Prefer the frontmatter description; fall back to the first real body
+      // line so a skill without one still shows up (matches hermes discovery).
+      const description = parseDescription(body) ?? deriveDescriptionFromBody(body);
+      if (!description) return null;
       return { name: dir.name, description };
     }),
   );
@@ -63,6 +66,22 @@ function parseDescription(md: string): string | null {
   if (!line) return null;
   const value = line[1].trim().replace(/^["']|["']$/g, "").trim();
   return value || null;
+}
+
+/**
+ * Fallback description: the first non-empty, non-heading line of the body (after
+ * any frontmatter). Used only for discovery when frontmatter has no description.
+ */
+function deriveDescriptionFromBody(md: string): string | null {
+  const fm = md.match(/^---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n/);
+  const body = fm ? md.slice(fm[0].length) : md;
+  for (const line of body.split(/\r?\n/)) {
+    const t = line.trim();
+    if (t && !t.startsWith("#")) {
+      return t.length > MAX_DESCRIPTION ? t.slice(0, MAX_DESCRIPTION - 3) + "..." : t;
+    }
+  }
+  return null;
 }
 
 /**

@@ -23,12 +23,6 @@ import { renderSkillsSection, type Skill } from "@/lib/prompt/skills";
 // canonical order below, not in fetch order).
 const REPO_FILES = ["SOUL.md", "AGENT.md", "MEMORY.md", "USER.md"] as const;
 
-/** Wrap a section body in an XML-style tag, or "" when the body is empty. */
-function section(tag: string, body: string): string {
-  const trimmed = body.trim();
-  return trimmed ? `<${tag}>\n${trimmed}\n</${tag}>` : "";
-}
-
 /**
  * Build the agent's system prompt in the canonical order above. A project is
  * required; without one (or without GitHub auth) there's no identity to load,
@@ -58,13 +52,15 @@ export async function buildInstructions(
   );
   const repo = new Map(fetched);
 
+  // Each repo file already starts with its own markdown header (# Soul, # Agent,
+  // …), so they're injected raw and separated by blank lines — no wrapper tags.
   const parts = [
-    section("SOUL.md", repo.get("SOUL.md") ?? ""),
+    (repo.get("SOUL.md") ?? "").trim(),
     knackGuidance(project),
     renderSkillsSection(skills),
-    section("AGENT.md", repo.get("AGENT.md") ?? ""),
-    section("MEMORY.md", repo.get("MEMORY.md") ?? ""),
-    section("USER.md", repo.get("USER.md") ?? ""),
+    (repo.get("AGENT.md") ?? "").trim(),
+    (repo.get("MEMORY.md") ?? "").trim(),
+    (repo.get("USER.md") ?? "").trim(),
   ];
 
   return parts.filter(Boolean).join("\n\n");
