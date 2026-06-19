@@ -16,7 +16,7 @@ import {
 export type SecretKind = "static" | "oauth";
 export type OAuthStatus = "disconnected" | "connected" | "expired";
 
-// Masked view for the UI and the agent's `list_tokens` — never any value.
+// Masked view for the UI and the agent's `secrets_list` — never any value.
 export type SecretSummary = {
   id: string;
   name: string;
@@ -42,7 +42,7 @@ function toSummary(r: UserSecret): SecretSummary {
   };
 }
 
-export async function listSecrets(userId: string): Promise<SecretSummary[]> {
+export async function secretsList(userId: string): Promise<SecretSummary[]> {
   const rows = await db
     .select()
     .from(userSecret)
@@ -238,7 +238,7 @@ class NeedsReauthError extends Error {
  * - oauth  → a fresh access token (refreshed on demand)
  * Throws if the name is unknown or an OAuth connection needs re-auth.
  */
-export async function getToken(userId: string, name: string): Promise<string> {
+export async function secretGet(userId: string, name: string): Promise<string> {
   const [row] = await db
     .select()
     .from(userSecret)

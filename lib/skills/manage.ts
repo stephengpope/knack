@@ -57,7 +57,7 @@ async function writeFileAt(box: SandboxBox, abs: string, content: string): Promi
   await box.writeFile(abs, content);
 }
 
-export async function manageSkill(box: SandboxBox, args: ManageArgs): Promise<ManageResult> {
+export async function skillManage(box: SandboxBox, args: ManageArgs): Promise<ManageResult> {
   const { action, name } = args;
 
   const nameErr = validateSkillName(name);

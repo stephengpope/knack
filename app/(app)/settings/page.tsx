@@ -1,6 +1,6 @@
 import { requireUser } from "@/lib/session";
 import { SettingsView } from "@/components/settings/settings-view";
-import { listSecrets } from "@/lib/user-secrets";
+import { secretsList } from "@/lib/user-secrets";
 import { getGithubAccount } from "@/lib/github-account";
 import { listProjects } from "@/lib/projects";
 import { PROVIDER_PRESETS, oauthRedirectUri } from "@/lib/oauth/providers";
@@ -8,7 +8,7 @@ import { PROVIDER_PRESETS, oauthRedirectUri } from "@/lib/oauth/providers";
 export default async function SettingsPage() {
   const user = await requireUser();
   const [secrets, redirectUri, githubAccount, projects] = await Promise.all([
-    listSecrets(user.id),
+    secretsList(user.id),
     oauthRedirectUri(),
     getGithubAccount(user.id),
     listProjects(user.id),

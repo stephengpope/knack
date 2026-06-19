@@ -15,14 +15,14 @@ import { getChat, createChat, renameChat, saveMessages } from "@/lib/chats";
 import type { Project } from "@/lib/db/schema";
 import { VercelSandbox } from "@/lib/sandbox/vercel";
 import { resolveAgentModel, resolveGeneralModel } from "@/lib/llm";
-import { listSecrets, getToken } from "@/lib/user-secrets";
+import { secretsList, secretGet } from "@/lib/user-secrets";
 import { getProject, getDefaultProject } from "@/lib/projects";
 import { getGithubAuth } from "@/lib/github-account";
 import { buildInstructions } from "@/lib/prompt/build";
-import { REPO_DIR, SKILLS_DIR } from "@/lib/prompt/paths";
-import { scanSkills, type Skill } from "@/lib/prompt/skills";
-import { manageSkill } from "@/lib/skills/manage";
-import { validateSkillName } from "@/lib/skills/validate";
+import { REPO_DIR } from "@/lib/prompt/paths";
+import { scanSkills, type Skill } from "@/lib/skills/discover";
+import { skillLoad, skillsList } from "@/lib/skills/read";
+import { skillManage } from "@/lib/skills/manage";
 import { cloneUrlWithToken } from "@/lib/github";
 
 export const maxDuration = 300; // one streamed turn, up to 5 min
@@ -150,7 +150,7 @@ export async function POST(req: Request) {
   // checked out at the sandbox root (REPO_DIR), which may already exist, so we
   // init + fetch + reset rather than `git clone <dir>` (which needs an empty
   // target). The PAT is embedded in the origin URL so the agent can pull/push
-  // via runBash; the box is per-chat and isolated. (Phase 2: move auth to a
+  // via bash_run; the box is per-chat and isolated. (Phase 2: move auth to a
   // credential helper so the PAT isn't persisted in the sandbox's .git/config.)
   let repoChecked = false;
   async function box() {
@@ -188,14 +188,14 @@ export async function POST(req: Request) {
   }
 
   const tools = {
-      runBash: tool({
+      bash_run: tool({
         description: "Run a shell command inside the isolated sandbox.",
         inputSchema: z.object({ cmd: z.string() }),
         execute: async ({ cmd }) => {
           return (await box()).run("bash", ["-c", cmd]);
         },
       }),
-      readFile: tool({
+      file_read: tool({
         description: "Read a file from the sandbox filesystem.",
         inputSchema: z.object({ path: z.string() }),
         execute: async ({ path }) => {
@@ -206,7 +206,7 @@ export async function POST(req: Request) {
           }
         },
       }),
-      writeFile: tool({
+      file_write: tool({
         description: "Write (or overwrite) a file in the sandbox filesystem.",
         inputSchema: z.object({ path: z.string(), content: z.string() }),
         execute: async ({ path, content }) => {
@@ -218,7 +218,7 @@ export async function POST(req: Request) {
           }
         },
       }),
-      listFiles: tool({
+      files_list: tool({
         description: "List the contents of a directory in the sandbox.",
         inputSchema: z.object({ path: z.string().default(".") }),
         execute: async ({ path }) => {
@@ -229,7 +229,7 @@ export async function POST(req: Request) {
           }
         },
       }),
-      load_skill: tool({
+      skill_load: tool({
         description:
           "Load a skill's full instructions by name. The result also lists the " +
           "skill's bundled files (references/scripts/templates); call again with " +
@@ -246,34 +246,18 @@ export async function POST(req: Request) {
                 "to load instead of SKILL.md.",
             ),
         }),
-        execute: async ({ name, file }) => {
-          const nameErr = validateSkillName(name);
-          if (nameErr) return { error: nameErr };
-          const dir = `${REPO_DIR}/${SKILLS_DIR}/${name}`;
-          try {
-            const b = await box();
-            if (file) {
-              if (file.includes("..") || !/^[A-Za-z0-9._/-]+$/.test(file)) {
-                return { error: `Invalid file path "${file}".` };
-              }
-              return { name, file, content: await b.readFile(`${dir}/${file}`) };
-            }
-            const instructions = await b.readFile(`${dir}/SKILL.md`);
-            const ls = await b.run("bash", [
-              "-c",
-              `cd '${dir}' && find . -type f ! -name SKILL.md | sed 's|^\\./||' | sort`,
-            ]);
-            const files = ls.stdout
-              .split("\n")
-              .map((s) => s.trim())
-              .filter(Boolean);
-            return { name, instructions, files };
-          } catch (e) {
-            return { error: (e as Error).message };
-          }
-        },
+        execute: async ({ name, file }) => skillLoad(await box(), name, file),
       }),
-      manage_skill: tool({
+      skills_list: tool({
+        description:
+          "List the project's skills (name + description), read live from the " +
+          "repo. Use this to see the current set — including skills created or " +
+          "edited this chat — which may not yet appear in the <available_skills> " +
+          "list in your prompt (that list is fixed when the chat starts).",
+        inputSchema: z.object({}),
+        execute: async () => skillsList(await box()),
+      }),
+      skill_manage: tool({
         description:
           "Create, edit, or delete a skill — your reusable, saved procedures for " +
           "recurring task types. Skills live in the project repo under " +
@@ -326,18 +310,18 @@ export async function POST(req: Request) {
             .optional()
             .describe("Content for the file. Required for write_file."),
         }),
-        execute: async (a) => manageSkill(await box(), a),
+        execute: async (a) => skillManage(await box(), a),
       }),
-      list_tokens: tool({
+      secrets_list: tool({
         description:
           "List the names, descriptions, and types of the user's stored " +
           "secrets and connected accounts (NO values). Call this to discover " +
-          "what credentials are available before using get_token.",
+          "what credentials are available before using secret_get.",
         inputSchema: z.object({}),
         execute: async () => {
-          const items = await listSecrets(userId);
+          const items = await secretsList(userId);
           return {
-            tokens: items.map((t) => ({
+            secrets: items.map((t) => ({
               name: t.name,
               description: t.description,
               kind: t.kind,
@@ -348,15 +332,16 @@ export async function POST(req: Request) {
           };
         },
       }),
-      get_token: tool({
+      secret_get: tool({
         description:
           "Fetch a usable credential by name. Static secrets return the stored " +
           "value; OAuth connections return a fresh access token. Returns an " +
-          "error if the name is unknown or a connection needs re-authentication.",
+          "error if the name is unknown or a connection needs re-authentication. " +
+          "Never print a fetched secret value back to the user.",
         inputSchema: z.object({ name: z.string() }),
         execute: async ({ name }) => {
           try {
-            return { value: await getToken(userId, name) };
+            return { value: await secretGet(userId, name) };
           } catch (e) {
             return { error: (e as Error).message };
           }

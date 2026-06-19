@@ -2,7 +2,8 @@ import "server-only";
 import type { Project } from "@/lib/db/schema";
 import { getFileContents } from "@/lib/github";
 import { knackGuidance } from "@/lib/prompt/knack-guidance";
-import { renderSkillsSection, type Skill } from "@/lib/prompt/skills";
+import { renderSkillsSection } from "@/lib/skills/render";
+import type { Skill } from "@/lib/skills/discover";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CANONICAL SYSTEM-PROMPT ORDER (source of truth — keep assembly below in sync)

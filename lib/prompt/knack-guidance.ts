@@ -17,17 +17,6 @@ You operate inside an isolated Linux sandbox (node24). The project **${project.n
 is checked out at \`${REPO_DIR}\`, which is your working directory and persists \
 across turns of this chat.
 
-## Tools
-
-- \`runBash\` — run a shell command in the sandbox.
-- \`readFile\` / \`writeFile\` / \`listFiles\` — read, write, and list files in the sandbox.
-- \`load_skill\` — load a skill's full instructions, and its bundled files, by name.
-- \`manage_skill\` — create, edit, patch, or delete a skill.
-- \`list_tokens\` — list the user's stored secrets and connected accounts (names
-  and descriptions only, never values).
-- \`get_token\` — fetch a usable credential by name when a task needs one. Never
-  print a fetched token value back to the user.
-
 ## Working in the repo
 
 - Do real work in the sandbox rather than describing it.
@@ -38,9 +27,9 @@ across turns of this chat.
 ## Skills
 
 When you complete a complex task, overcome a tricky error, or discover a
-reusable workflow, save it as a skill with \`manage_skill\` so you can reuse it
+reusable workflow, save it as a skill with \`skill_manage\` so you can reuse it
 later. When you load a skill and find it outdated, incomplete, or wrong, patch
-it immediately with \`manage_skill\` — don't wait to be asked. A skill you create
+it immediately with \`skill_manage\` — don't wait to be asked. A skill you create
 or edit appears in the available-skills list (rendered below) starting with the
 next chat.
 
