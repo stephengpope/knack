@@ -10,8 +10,16 @@ import {
   type InferUITools,
 } from "ai";
 import { z } from "zod";
+import { after } from "next/server";
 import { getSession } from "@/lib/session";
-import { getChat, createChat, renameChat, saveMessages } from "@/lib/chats";
+import {
+  getChat,
+  createChat,
+  renameChat,
+  saveMessages,
+  setChatGitState,
+} from "@/lib/chats";
+import { gitSync } from "@/lib/git/sync";
 import type { Project } from "@/lib/db/schema";
 import { VercelSandbox } from "@/lib/sandbox/vercel";
 import { resolveAgentModel, resolveGeneralModel } from "@/lib/llm";
@@ -23,6 +31,9 @@ import { REPO_DIR } from "@/lib/prompt/paths";
 import { scanSkills, type Skill } from "@/lib/skills/discover";
 import { skillLoad, skillsList } from "@/lib/skills/read";
 import { skillManage } from "@/lib/skills/manage";
+import { fileRead } from "@/lib/files/read";
+import { fileEdit } from "@/lib/files/edit";
+import { searchFiles } from "@/lib/files/search";
 import { cloneUrlWithToken } from "@/lib/github";
 
 export const maxDuration = 300; // one streamed turn, up to 5 min
@@ -189,26 +200,56 @@ export async function POST(req: Request) {
 
   const tools = {
       bash_run: tool({
-        description: "Run a shell command inside the isolated sandbox.",
-        inputSchema: z.object({ cmd: z.string() }),
+        description:
+          "Run a shell command inside the isolated per-chat sandbox. The repo is " +
+          "checked out at the working directory. Use for builds, tests, git, and " +
+          "package managers. For routine file work prefer the dedicated tools — " +
+          "file_read instead of cat/head/tail, file_edit instead of sed/awk, " +
+          "file_write instead of echo/heredoc, search_files instead of grep/find — " +
+          "they return structured results and are easier to get right.",
+        inputSchema: z.object({
+          cmd: z.string().describe("Shell command, run via `bash -c`."),
+        }),
         execute: async ({ cmd }) => {
           return (await box()).run("bash", ["-c", cmd]);
         },
       }),
       file_read: tool({
-        description: "Read a file from the sandbox filesystem.",
-        inputSchema: z.object({ path: z.string() }),
-        execute: async ({ path }) => {
-          try {
-            return { content: await (await box()).readFile(path) };
-          } catch (e) {
-            return { error: (e as Error).message };
-          }
-        },
+        description:
+          "Read a text file with line numbers and pagination. Use this instead of " +
+          "cat/head/tail. Output format is 'LINE|CONTENT' per line. Use offset and " +
+          "limit to read sections of large files; a selected range over ~100K " +
+          "characters is rejected (narrow it). Suggests similar filenames if the " +
+          "path is not found. Cannot read images or binary files.",
+        inputSchema: z.object({
+          path: z.string().describe("Path to the file (absolute, or relative to the repo root)."),
+          offset: z
+            .number()
+            .int()
+            .min(1)
+            .default(1)
+            .describe("1-indexed line to start from (default 1)."),
+          limit: z
+            .number()
+            .int()
+            .min(1)
+            .max(2000)
+            .default(500)
+            .describe("Max lines to return (default 500, max 2000)."),
+        }),
+        execute: async ({ path, offset, limit }) => fileRead(await box(), path, offset, limit),
       }),
       file_write: tool({
-        description: "Write (or overwrite) a file in the sandbox filesystem.",
-        inputSchema: z.object({ path: z.string(), content: z.string() }),
+        description:
+          "Write content to a file, completely replacing any existing content. Use " +
+          "this instead of echo/cat heredoc. Creates parent directories " +
+          "automatically. OVERWRITES the entire file — for targeted changes to an " +
+          "existing file use file_edit instead, which is safer and far cheaper than " +
+          "rewriting. Read the file first if you're not creating it fresh.",
+        inputSchema: z.object({
+          path: z.string().describe("Path to write (created if absent, overwritten if present)."),
+          content: z.string().describe("Complete file content."),
+        }),
         execute: async ({ path, content }) => {
           try {
             await (await box()).writeFile(path, content);
@@ -218,9 +259,41 @@ export async function POST(req: Request) {
           }
         },
       }),
+      file_edit: tool({
+        description:
+          "Make a targeted find-and-replace edit in an existing file — the " +
+          "preferred way to change a file (use file_write only to create or fully " +
+          "replace one). Finds old_string and replaces it with new_string. Matching " +
+          "tries an exact match first, then tolerates minor whitespace, " +
+          "indentation, escape, and smart-quote drift. old_string must be UNIQUE in " +
+          "the file unless replace_all is set — include enough surrounding context " +
+          "to single out the spot. Pass an empty new_string to delete the matched " +
+          "text. Returns a unified diff and re-reads the file to confirm the edit " +
+          "landed; if no match is found you get a 'did you mean?' hint.",
+        inputSchema: z.object({
+          path: z.string().describe("Path to the existing file to edit."),
+          old_string: z
+            .string()
+            .describe("Exact text to find. Must be unique unless replace_all is true; include surrounding lines for uniqueness."),
+          new_string: z
+            .string()
+            .describe("Replacement text. Empty string deletes the matched text."),
+          replace_all: z
+            .boolean()
+            .default(false)
+            .describe("Replace every occurrence instead of requiring a unique match (default false)."),
+        }),
+        execute: async ({ path, old_string, new_string, replace_all }) =>
+          fileEdit(await box(), path, old_string, new_string, replace_all),
+      }),
       files_list: tool({
-        description: "List the contents of a directory in the sandbox.",
-        inputSchema: z.object({ path: z.string().default(".") }),
+        description:
+          "List the immediate contents of a directory. For finding files by name " +
+          "across the tree, or searching inside file contents, use search_files " +
+          "instead.",
+        inputSchema: z.object({
+          path: z.string().default(".").describe("Directory to list (default repo root)."),
+        }),
         execute: async ({ path }) => {
           try {
             return { listing: await (await box()).listDir(path) };
@@ -228,6 +301,44 @@ export async function POST(req: Request) {
             return { error: (e as Error).message };
           }
         },
+      }),
+      search_files: tool({
+        description:
+          "Search the codebase. Use this instead of grep/rg/find/ls. Two modes via " +
+          "`target`: 'content' (default) runs a regex search inside files; 'files' " +
+          "finds files by name using a glob pattern (e.g. '*.ts', '*config*'). " +
+          "ripgrep-backed (falls back to grep/find), faster than shelling out. For " +
+          "content search, output_mode picks the shape: 'content' shows matching " +
+          "lines with line numbers, 'files_only' lists just the file paths, 'count' " +
+          "gives per-file match counts. Use file_glob to restrict which files are " +
+          "searched, and context for surrounding lines.",
+        inputSchema: z.object({
+          pattern: z
+            .string()
+            .describe("Regex pattern for content search, or a glob (e.g. '*.ts') when target='files'."),
+          target: z
+            .enum(["content", "files"])
+            .default("content")
+            .describe("'content' searches inside files; 'files' finds files by name."),
+          path: z.string().default(".").describe("Directory or file to search in (default repo root)."),
+          file_glob: z
+            .string()
+            .optional()
+            .describe("Restrict content search to files matching this glob (e.g. '*.ts')."),
+          output_mode: z
+            .enum(["content", "files_only", "count"])
+            .default("content")
+            .describe("Content-search output: matching lines, file paths only, or per-file counts."),
+          context: z
+            .number()
+            .int()
+            .min(0)
+            .default(0)
+            .describe("Lines of context before/after each match (content mode)."),
+          limit: z.number().int().min(1).default(50).describe("Max results to return (default 50)."),
+          offset: z.number().int().min(0).default(0).describe("Skip the first N results (pagination)."),
+        }),
+        execute: async (a) => searchFiles(await box(), a),
       }),
       skill_load: tool({
         description:
@@ -398,6 +509,23 @@ export async function POST(req: Request) {
       }
     },
   });
+
+  // After the turn (and its file edits) finish streaming, commit + push the
+  // chat's repo in the background. Runs after the response is sent (`after`), so
+  // it never blocks the user's next message; persists the outcome on the chat
+  // row for the git indicators. Best-effort — failures just leave the chat dirty
+  // and the next turn's sync re-attempts.
+  if (project && githubAuth) {
+    const branch = project.defaultBranch;
+    after(async () => {
+      try {
+        const result = await gitSync(await box(), branch);
+        await setChatGitState(userId, chatId, result);
+      } catch {
+        // swallow — the dot reflects DB state, which simply won't advance
+      }
+    });
+  }
 
   return createUIMessageStreamResponse({ stream });
 }

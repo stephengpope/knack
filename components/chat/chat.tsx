@@ -29,6 +29,7 @@ import {
   renameChatAction,
   deleteChatAction,
   toggleStarAction,
+  getChatGitStatusAction,
 } from "@/app/(app)/actions";
 import {
   Conversation,
@@ -63,8 +64,44 @@ import {
 import { Logomark } from "@/components/brand/logo";
 import { KnackLoader } from "@/components/brand/loader";
 import { addPendingChat, setChatTitleOverride } from "@/components/app/chat-store";
+import { setChatGitStatus } from "@/components/app/git-status-store";
 import { ProjectPicker } from "@/components/chat/project-picker";
+import { GitCommitBadge } from "@/components/chat/git-commit-badge";
 import type { ProjectSummary } from "@/lib/projects";
+
+/**
+ * After a turn, gitSync runs in the background (`after()`), so re-read this
+ * chat's git status until a write newer than the pre-turn baseline appears, then
+ * push it into the store. Both timestamps come from the DB (no clock skew). This
+ * updates the sidebar dot + commit badge only — never the chat message window or
+ * the layout. Best-effort: if it never settles, the value is correct on the next
+ * navigation (the indicators also hydrate from server state).
+ */
+async function pollGitStatus(id: string) {
+  let baseline = 0;
+  try {
+    const b = await getChatGitStatusAction(id);
+    baseline = b.syncedAt ? new Date(b.syncedAt).getTime() : 0;
+  } catch {
+    // ignore
+  }
+  // Poll generously (~32s): gitSync can be slow when the commit-message model
+  // lags, a push is slow, or the fixer runs. If it still doesn't land, the
+  // indicators are correct on the next navigation anyway.
+  for (let i = 0; i < 16; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const s = await getChatGitStatusAction(id);
+      const t = s.syncedAt ? new Date(s.syncedAt).getTime() : 0;
+      if (t > baseline) {
+        setChatGitStatus(id, { state: s.state, sha: s.sha });
+        return;
+      }
+    } catch {
+      // ignore — reflects on next navigation
+    }
+  }
+}
 
 export function Chat({
   id,
@@ -74,6 +111,8 @@ export function Chat({
   userName,
   projects = [],
   initialProjectId = null,
+  initialGitState = null,
+  initialGitSha = null,
 }: {
   id: string;
   initialMessages: UIMessage[];
@@ -82,6 +121,8 @@ export function Chat({
   userName: string;
   projects?: ProjectSummary[];
   initialProjectId?: string | null;
+  initialGitState?: string | null;
+  initialGitSha?: string | null;
 }) {
   const router = useRouter();
   const [chatTitle, setChatTitle] = useState(title ?? "");
@@ -128,6 +169,11 @@ export function Chat({
         setChatTitleOverride(id, part.data);
       }
     },
+    onFinish: () => {
+      // The turn's edits get committed by gitSync in the background; reflect the
+      // result on the indicators once it settles.
+      void pollGitStatus(id);
+    },
   });
 
   const isWelcome = messages.length === 0;
@@ -155,8 +201,18 @@ export function Chat({
     if (isWelcome && !navigated.current) {
       navigated.current = true;
       // We're already at /chat/<id>; just surface it in the sidebar as "Untitled".
-      addPendingChat({ id, title: null, starred: false, updatedAt: new Date() });
+      addPendingChat({
+        id,
+        title: null,
+        starred: false,
+        updatedAt: new Date(),
+        gitState: null,
+        lastCommitSha: null,
+      });
     }
+    // Clear the success badge for this turn — it reappears once the new turn's
+    // gitSync settles (the "clears on next message" behaviour).
+    setChatGitStatus(id, { state: null, sha: null });
     // projectId is only honored server-side on chat creation; for existing
     // chats the stored project wins. Sending it always is harmless.
     sendMessage({ text }, { body: { projectId } });
@@ -192,6 +248,15 @@ export function Chat({
             </Link>
           )
         )}
+        <GitCommitBadge
+          chatId={id}
+          initialState={initialGitState}
+          initialSha={initialGitSha}
+          repoUrl={
+            projects.find((p) => p.id === (projectId ?? projects[0]?.id))
+              ?.htmlUrl ?? null
+          }
+        />
         <PromptInputSubmit
           status={status}
           onStop={stop}
@@ -206,7 +271,7 @@ export function Chat({
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
         <div className="mb-8 flex items-center gap-4">
           <Logomark size={38} strokeWidth={1.6} />
-          <h1 className="font-heading text-[42px] font-medium tracking-[-0.02em]">
+          <h1 className="font-heading text-[34px] font-semibold tracking-[-0.02em]">
             Hey there, {userName.split(" ")[0]}
           </h1>
         </div>

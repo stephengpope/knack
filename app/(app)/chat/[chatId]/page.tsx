@@ -30,6 +30,8 @@ export default async function ChatPage({
       userName={user.name}
       projects={projects}
       initialProjectId={chat ? chat.projectId : (defaultProject?.id ?? null)}
+      initialGitState={chat?.gitState ?? null}
+      initialGitSha={chat?.lastCommitSha ?? null}
     />
   );
 }

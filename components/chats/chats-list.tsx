@@ -15,7 +15,7 @@ export function ChatsList({ chats }: { chats: ChatListItem[] }) {
   return (
     <div className="flex-1 overflow-y-auto px-6 py-10">
       <div className="mx-auto max-w-[780px]">
-        <h1 className="font-heading text-[30px] font-medium tracking-[-0.01em]">
+        <h1 className="font-heading text-[30px] font-bold tracking-[-0.01em]">
           Chats
         </h1>
         <p className="mt-1 text-[14px] text-ink-soft">

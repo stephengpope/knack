@@ -41,7 +41,8 @@ auth → build (or reuse) the system prompt → build sandbox tools → run
   (assembled in `lib/prompt/build.ts`; skills scanned from the repo then); later
   turns reuse it. Composition: `lib/prompt/CLAUDE.md`.
 - Tools (all `noun_verb`, snake_case): `bash_run`/`file_read`/`file_write`/
-  `files_list` (sandbox) · `secrets_list`/`secret_get` (per-user secrets vault) ·
+  `file_edit`/`files_list`/`search_files` (sandbox — file logic in
+  `lib/files/CLAUDE.md`) · `secrets_list`/`secret_get` (per-user secrets vault) ·
   `skill_load`/`skill_manage`/`skills_list` (project skills — `lib/skills/CLAUDE.md`).
   All sandbox ops go through one box per chat. Tool *definitions* live here in
   route.ts; each tool with logic delegates to a same-named function. Tool schemas

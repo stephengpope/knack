@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ChatListItem } from "@/lib/chats";
 import { useChatOverrides } from "@/components/app/chat-store";
+import { GitDot } from "@/components/app/git-dot";
 import {
   renameChatAction,
   deleteChatAction,
@@ -318,6 +319,7 @@ function ChatRow({
         <span className="min-w-0 flex-1 truncate">
           {chat.title || "Untitled"}
         </span>
+        <GitDot chatId={chat.id} initial={chat.gitState} />
       </Link>
       <DropdownMenu>
         <DropdownMenuTrigger

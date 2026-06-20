@@ -1,7 +1,7 @@
 import "server-only";
 import type { SandboxBox } from "@/lib/sandbox/types";
 import { REPO_DIR, SKILLS_DIR } from "@/lib/prompt/paths";
-import { fuzzyFindAndReplace, formatNoMatchHint } from "@/lib/skills/fuzzy-match";
+import { fuzzyFindAndReplace, formatNoMatchHint } from "@/lib/files/fuzzy-match";
 import {
   MAX_FILE_BYTES,
   validateContentSize,

@@ -5,11 +5,15 @@ import type { UIMessage } from "ai";
 import { db } from "@/lib/db";
 import { chat, message } from "@/lib/db/schema";
 
+export type GitState = "clean" | "dirty";
+
 export type ChatListItem = {
   id: string;
   title: string | null;
   starred: boolean;
   updatedAt: Date;
+  gitState: string | null;
+  lastCommitSha: string | null;
 };
 
 export async function listChats(userId: string): Promise<ChatListItem[]> {
@@ -19,10 +23,47 @@ export async function listChats(userId: string): Promise<ChatListItem[]> {
       title: chat.title,
       starred: chat.starred,
       updatedAt: chat.updatedAt,
+      gitState: chat.gitState,
+      lastCommitSha: chat.lastCommitSha,
     })
     .from(chat)
     .where(eq(chat.userId, userId))
     .orderBy(desc(chat.updatedAt));
+}
+
+/** Persist gitSync's outcome on the chat row. No revalidatePath — the git
+ *  indicators update via the client store, never by re-running the layout. */
+export async function setChatGitState(
+  userId: string,
+  id: string,
+  result: { state: GitState; sha?: string | null },
+) {
+  await db
+    .update(chat)
+    .set({
+      gitState: result.state,
+      lastCommitSha: result.sha ?? null,
+      lastSyncedAt: new Date(),
+    })
+    .where(and(eq(chat.id, id), eq(chat.userId, userId)));
+}
+
+/** Read just the git fields for one chat (for the post-turn live re-read).
+ *  `syncedAt` lets the client tell a fresh post-turn write from a stale one. */
+export async function getChatGitStatus(
+  userId: string,
+  id: string,
+): Promise<{ state: string | null; sha: string | null; syncedAt: Date | null }> {
+  const [row] = await db
+    .select({
+      state: chat.gitState,
+      sha: chat.lastCommitSha,
+      syncedAt: chat.lastSyncedAt,
+    })
+    .from(chat)
+    .where(and(eq(chat.id, id), eq(chat.userId, userId)))
+    .limit(1);
+  return row ?? { state: null, sha: null, syncedAt: null };
 }
 
 export async function getChat(userId: string, id: string) {

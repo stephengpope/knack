@@ -100,6 +100,13 @@ export const chat = pgTable(
     projectId: text("project_id").references(() => project.id, {
       onDelete: "set null",
     }),
+    // Git sync state of the chat's sandbox repo, written by gitSync after each
+    // turn. "clean" = committed + pushed; "dirty" = uncommitted/unpushed/failed
+    // (work lives only in the sandbox, which auto-stops after ~5min). null =
+    // never synced. `lastCommitSha` links the success indicator to the commit.
+    gitState: text("git_state"),
+    lastCommitSha: text("last_commit_sha"),
+    lastSyncedAt: timestamp("last_synced_at"),
     createdAt: timestamp("created_at")
       .$defaultFn(() => new Date())
       .notNull(),

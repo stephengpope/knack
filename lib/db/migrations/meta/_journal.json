@@ -85,6 +85,13 @@
       "when": 1781818590207,
       "tag": "0011_flimsy_norman_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1781942268615,
+      "tag": "0012_groovy_salo",
+      "breakpoints": true
     }
   ]
 }

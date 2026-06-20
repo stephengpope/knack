@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-hanken), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-newsreader), Georgia, serif;
+  --font-heading: var(--font-hanken), system-ui, sans-serif;
 
   /* shadcn semantic tokens */
   --color-sidebar-ring: var(--sidebar-ring);
@@ -163,7 +163,8 @@
     @apply font-sans;
   }
   h1, h2, h3, .font-heading {
-    font-family: var(--font-newsreader), Georgia, serif;
+    font-family: var(--font-hanken), system-ui, sans-serif;
+    font-weight: 700;
   }
 }
 

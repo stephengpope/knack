@@ -21,9 +21,10 @@ only name + description go in the prompt; the body loads on demand.
   No git** — the agent commits via its normal flow. `patch` uses the fuzzy matcher.
 - `validate.ts` — name (agentskills.io rule), frontmatter, size, file-path rules.
   Strict on authoring (create/edit must have `name` + non-empty `description`).
-- `fuzzy-match.ts` — `fuzzyFindAndReplace`: 9-strategy fuzzy find-and-replace
-  (exact → line-trimmed → … → context-aware) ported faithfully from hermes; backs
-  `skill_manage` `patch` so the model's `old_string` need not match byte-for-byte.
+- The fuzzy matcher now lives at `lib/files/fuzzy-match.ts` (shared file-edit
+  infra). `skill_manage` `patch` imports `fuzzyFindAndReplace`/`formatNoMatchHint`
+  from there so the model's `old_string` need not match byte-for-byte. See
+  `lib/files/CLAUDE.md`.
 
 ## Tools (defined in `app/api/agent/route.ts`)
 `skill_load`→`skillLoad`, `skill_manage`→`skillManage`, `skills_list`→`skillsList`.

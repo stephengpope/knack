@@ -4,7 +4,8 @@ import "server-only";
  * Multi-strategy fuzzy find-and-replace, ported faithfully from hermes'
  * tools/fuzzy_match.py. Robustly locates `oldString` in `content` despite the
  * whitespace / indentation / escape drift common in LLM-generated edits, then
- * replaces it. Used by the skill `patch` action.
+ * replaces it. Shared file-edit infra: backs the `file_edit` tool (general repo
+ * files) and the skill `patch` action.
  *
  * 9-strategy chain, tried in order until one matches:
  *   exact → line-trimmed → whitespace-normalized → indentation-flexible →

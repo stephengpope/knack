@@ -91,7 +91,7 @@ export function SecretsTab({
 
   return (
     <>
-      <h1 className="font-heading text-[27px] font-medium tracking-[-0.01em]">
+      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
         Secrets
       </h1>
       <p className="mt-1 text-[13.5px] text-ink-soft">
