@@ -89,6 +89,11 @@ export const chat = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     title: text("title"),
     starred: boolean("starred").default(false).notNull(),
+    // What triggered this chat. "user" = interactive; "cron" = a scheduled run.
+    // Room for "api"/"webhook" later. `sourceRef` ties a run back to its
+    // schedule (`projectId:jobName`) so all runs of one job can be grouped.
+    source: text("source").default("user").notNull(),
+    sourceRef: text("source_ref"),
     model: text("model"),
     // The full system prompt, assembled and frozen when the chat is created
     // (identity + guidance + skills + playbook + memory + user). Reused every
@@ -278,6 +283,9 @@ export const project = pgTable(
     defaultBranch: text("default_branch").default("main").notNull(),
     htmlUrl: text("html_url").notNull(),
     isDefault: boolean("is_default").default(false).notNull(),
+    // Active projects run their cron schedules and appear in the chat selector.
+    // Default true so existing projects stay active after the migration.
+    active: boolean("active").default(true).notNull(),
     createdAt: timestamp("created_at")
       .$defaultFn(() => new Date())
       .notNull(),
@@ -286,6 +294,41 @@ export const project = pgTable(
       .notNull(),
   },
   (t) => [index("project_user_idx").on(t.userId)],
+);
+
+// CACHE of the schedules parsed from each project repo's `cron.json` — the
+// dispatcher's working set. GitHub is the source of truth; this table lets the
+// per-tick dispatch be one indexed query and lets a 304 (unchanged file) tick
+// fire jobs without re-fetching. One row per (project, job name). `nextRunAt`
+// is precomputed from `schedule`; the tick fires rows where it's <= now and
+// recomputes it. `etag` is GitHub's ETag for the cron file (conditional GETs).
+export const cronState = pgTable(
+  "cron_state",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => project.id, { onDelete: "cascade" }),
+    jobName: text("job_name").notNull(),
+    schedule: text("schedule").notNull(),
+    prompt: text("prompt").notNull(),
+    model: text("model"),
+    enabled: boolean("enabled").default(true).notNull(),
+    etag: text("etag"),
+    nextRunAt: timestamp("next_run_at").notNull(),
+    lastRunAt: timestamp("last_run_at"),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [
+    uniqueIndex("cron_state_project_job_idx").on(t.projectId, t.jobName),
+    index("cron_state_due_idx").on(t.nextRunAt),
+  ],
 );
 
 // Better Auth rate limiter (storage: "database").
@@ -304,3 +347,4 @@ export type CustomEndpoint = typeof customEndpoint.$inferSelect;
 export type UserSecret = typeof userSecret.$inferSelect;
 export type GithubAccount = typeof githubAccount.$inferSelect;
 export type Project = typeof project.$inferSelect;
+export type CronState = typeof cronState.$inferSelect;

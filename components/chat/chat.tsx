@@ -208,6 +208,7 @@ export function Chat({
         updatedAt: new Date(),
         gitState: null,
         lastCommitSha: null,
+        source: "user",
       });
     }
     // Clear the success badge for this turn — it reappears once the new turn's

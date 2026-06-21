@@ -21,6 +21,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -75,6 +82,7 @@ export function SecretsTab({
   const connected = params.get("connected");
   const error = params.get("error");
 
+  const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>(
     connected || error ? "oauth" : "token",
   );
@@ -91,60 +99,87 @@ export function SecretsTab({
 
   return (
     <>
-      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
-        Secrets
-      </h1>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
-        API tokens and connected accounts your agent can use on your behalf.
-      </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+            Secrets
+          </h1>
+          <p className="mt-1 text-[13.5px] text-ink-soft">
+            API tokens and connected accounts your agent can use on your behalf.
+          </p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button className="knack-gradient shrink-0 font-bold text-white">
+              <Plus className="size-4" /> Add secret
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add secret</DialogTitle>
+            </DialogHeader>
 
-      <div className="mt-6 inline-flex rounded-[10px] border border-input bg-muted p-0.5">
-        <SegBtn active={mode === "token"} onClick={() => setMode("token")}>
-          <KeyRound className="size-[14px]" /> Token
-        </SegBtn>
-        <SegBtn active={mode === "oauth"} onClick={() => setMode("oauth")}>
-          <Link2 className="size-[14px]" /> OAuth
-        </SegBtn>
+            <div className="inline-flex rounded-[10px] border border-input bg-muted p-0.5">
+              <SegBtn active={mode === "token"} onClick={() => setMode("token")}>
+                <KeyRound className="size-[14px]" /> Token
+              </SegBtn>
+              <SegBtn active={mode === "oauth"} onClick={() => setMode("oauth")}>
+                <Link2 className="size-[14px]" /> OAuth
+              </SegBtn>
+            </div>
+
+            {mode === "token" ? (
+              <TokenForm
+                onDone={() => {
+                  setOpen(false);
+                  router.refresh();
+                }}
+              />
+            ) : (
+              <ConnectionForm providers={providers} redirectUri={redirectUri} />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="mt-5 flex flex-col gap-5">
-        {mode === "token" ? (
-          <>
-            <TokenForm onDone={() => router.refresh()} />
-            {tokens.length === 0 ? (
-              <Empty>No API tokens yet.</Empty>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {tokens.map((s) => (
-                  <StaticRow
-                    key={s.id}
-                    secret={s}
-                    onChanged={() => router.refresh()}
-                  />
-                ))}
-              </div>
-            )}
-          </>
+      <div className="mt-6 flex flex-col gap-2">
+        <SectionLabel>API tokens</SectionLabel>
+        {tokens.length === 0 ? (
+          <Empty>No API tokens yet.</Empty>
         ) : (
-          <>
-            <ConnectionForm providers={providers} redirectUri={redirectUri} />
-            {conns.length === 0 ? (
-              <Empty>No connected accounts yet.</Empty>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {conns.map((s) => (
-                  <OAuthRow
-                    key={s.id}
-                    secret={s}
-                    onChanged={() => router.refresh()}
-                  />
-                ))}
-              </div>
-            )}
-          </>
+          tokens.map((s) => (
+            <StaticRow
+              key={s.id}
+              secret={s}
+              onChanged={() => router.refresh()}
+            />
+          ))
+        )}
+      </div>
+
+      <div className="mt-6 flex flex-col gap-2">
+        <SectionLabel>Connected accounts</SectionLabel>
+        {conns.length === 0 ? (
+          <Empty>No connected accounts yet.</Empty>
+        ) : (
+          conns.map((s) => (
+            <OAuthRow
+              key={s.id}
+              secret={s}
+              onChanged={() => router.refresh()}
+            />
+          ))
         )}
       </div>
     </>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[12px] font-bold uppercase tracking-wide text-ink-faint">
+      {children}
+    </div>
   );
 }
 
@@ -171,21 +206,6 @@ function SegBtn({
     >
       {children}
     </button>
-  );
-}
-
-function FormCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-[14px] border border-border bg-card p-5">
-      <div className="mb-3.5 text-[14px] font-bold">{title}</div>
-      {children}
-    </div>
   );
 }
 
@@ -294,9 +314,8 @@ function TokenForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <FormCard title="Add token">
-      <div className="flex flex-col gap-3">
-        <Field label="Name" hint="e.g. STRIPE_API_KEY">
+    <div className="flex flex-col gap-3">
+      <Field label="Name" hint="e.g. STRIPE_API_KEY">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -321,7 +340,6 @@ function TokenForm({ onDone }: { onDone: () => void }) {
           {busy ? <Spinner /> : <Plus className="size-4" />} Add token
         </Button>
       </div>
-    </FormCard>
   );
 }
 
@@ -429,9 +447,8 @@ function ConnectionForm({
     (!selected?.custom || (!!authUrl.trim() && !!tokenUrl.trim()));
 
   return (
-    <FormCard title="Connect account">
-      <div className="flex flex-col gap-3">
-        <Field label="Provider">
+    <div className="flex flex-col gap-3">
+      <Field label="Provider">
           <Select value={providerId} onValueChange={onProvider}>
             <SelectTrigger className="w-full">
               <SelectValue />
@@ -533,7 +550,6 @@ function ConnectionForm({
           {busy ? <Spinner /> : <Link2 className="size-4" />} Save & connect
         </Button>
       </div>
-    </FormCard>
   );
 }
 

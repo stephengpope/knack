@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ import {
   disconnectGithubAction,
   createProjectAction,
   setDefaultProjectAction,
+  setProjectActiveAction,
   deleteProjectAction,
 } from "@/app/(app)/settings/project-actions";
 
@@ -403,7 +405,7 @@ function ProjectRow({
   project: ProjectSummary;
   onChanged: () => void;
 }) {
-  const [busy, setBusy] = useState<null | "default" | "delete">(null);
+  const [busy, setBusy] = useState<null | "default" | "active" | "delete">(null);
 
   async function makeDefault() {
     setBusy("default");
@@ -413,6 +415,20 @@ function ProjectRow({
       onChanged();
     } catch (e) {
       toast.error((e as Error).message || "Couldn't set default");
+      setBusy(null);
+    }
+  }
+
+  async function toggleActive() {
+    setBusy("active");
+    try {
+      await setProjectActiveAction(project.id, !project.active);
+      toast.success(
+        project.active ? `${project.name} deactivated` : `${project.name} activated`,
+      );
+      onChanged();
+    } catch (e) {
+      toast.error((e as Error).message || "Couldn't change active state");
       setBusy(null);
     }
   }
@@ -432,7 +448,12 @@ function ProjectRow({
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-[12px] border border-border bg-card px-4 py-3">
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-[12px] border border-border bg-card px-4 py-3",
+        !project.active && "opacity-60",
+      )}
+    >
       <FolderGit2 className="size-4 shrink-0 text-ink-faint" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -440,6 +461,11 @@ function ProjectRow({
           {project.isDefault && (
             <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-bold text-primary">
               Default
+            </span>
+          )}
+          {!project.active && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-ink-faint">
+              Inactive
             </span>
           )}
         </div>
@@ -465,6 +491,17 @@ function ProjectRow({
           Default
         </Button>
       )}
+      <Switch
+        checked={project.active}
+        onCheckedChange={toggleActive}
+        disabled={busy !== null}
+        aria-label={project.active ? "Deactivate project" : "Activate project"}
+        title={
+          project.active
+            ? "Active — switch off to pause cron and hide from new chats"
+            : "Inactive — switch on to activate"
+        }
+      />
       <Button
         variant="ghost"
         size="icon-sm"

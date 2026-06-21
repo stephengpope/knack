@@ -20,6 +20,14 @@ export default async function ChatPage({
     getDefaultProject(user.id),
   ]);
 
+  // New chats can only be started in active projects. Keep the current project
+  // visible too, so an existing chat tied to a now-inactive project still shows
+  // its name (the picker is disabled there anyway).
+  const initialProjectId = chat ? chat.projectId : (defaultProject?.id ?? null);
+  const pickerProjects = projects.filter(
+    (p) => p.active || p.id === initialProjectId,
+  );
+
   return (
     <Chat
       key={chatId}
@@ -28,8 +36,8 @@ export default async function ChatPage({
       title={chat?.title ?? null}
       starred={chat?.starred ?? false}
       userName={user.name}
-      projects={projects}
-      initialProjectId={chat ? chat.projectId : (defaultProject?.id ?? null)}
+      projects={pickerProjects}
+      initialProjectId={initialProjectId}
       initialGitState={chat?.gitState ?? null}
       initialGitSha={chat?.lastCommitSha ?? null}
     />

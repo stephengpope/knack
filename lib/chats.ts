@@ -14,6 +14,7 @@ export type ChatListItem = {
   updatedAt: Date;
   gitState: string | null;
   lastCommitSha: string | null;
+  source: string;
 };
 
 export async function listChats(userId: string): Promise<ChatListItem[]> {
@@ -25,6 +26,7 @@ export async function listChats(userId: string): Promise<ChatListItem[]> {
       updatedAt: chat.updatedAt,
       gitState: chat.gitState,
       lastCommitSha: chat.lastCommitSha,
+      source: chat.source,
     })
     .from(chat)
     .where(eq(chat.userId, userId))
@@ -83,6 +85,8 @@ export async function createChat(
     model?: string | null;
     projectId?: string | null;
     systemPrompt?: string | null;
+    source?: string;
+    sourceRef?: string | null;
   } = {},
 ) {
   const [row] = await db
@@ -94,9 +98,37 @@ export async function createChat(
       model: opts.model ?? null,
       projectId: opts.projectId ?? null,
       systemPrompt: opts.systemPrompt ?? null,
+      source: opts.source ?? "user",
+      sourceRef: opts.sourceRef ?? null,
     })
     .returning();
   return row;
+}
+
+/**
+ * Most recent cron run per schedule, for the cron view. Maps `sourceRef`
+ * (`projectId:jobName`) → the latest cron chat's id and creation time (= when
+ * that run fired). One query across all the user's cron chats.
+ */
+export async function latestCronRuns(
+  userId: string,
+): Promise<Map<string, { chatId: string; at: Date }>> {
+  const rows = await db
+    .select({
+      id: chat.id,
+      sourceRef: chat.sourceRef,
+      createdAt: chat.createdAt,
+    })
+    .from(chat)
+    .where(and(eq(chat.userId, userId), eq(chat.source, "cron")))
+    .orderBy(desc(chat.createdAt));
+  const map = new Map<string, { chatId: string; at: Date }>();
+  for (const r of rows) {
+    if (r.sourceRef && !map.has(r.sourceRef)) {
+      map.set(r.sourceRef, { chatId: r.id, at: r.createdAt });
+    }
+  }
+  return map;
 }
 
 export async function renameChat(userId: string, id: string, title: string) {

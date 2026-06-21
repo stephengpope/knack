@@ -155,18 +155,12 @@ export function Sidebar({
           active={pathname === "/chats"}
         />
 
-        <button
-          onClick={() => toast("Cron — scheduled jobs are coming soon")}
-          className="flex items-center gap-3 rounded-[11px] px-[11px] py-[9px] text-[14px] font-semibold text-foreground transition-colors hover:bg-accent"
-        >
-          <span className="flex w-[26px] shrink-0 justify-center text-ink-soft">
-            <Clock className="size-[18px]" strokeWidth={1.9} />
-          </span>
-          Cron
-          <span className="ml-auto rounded-full bg-sidebar-accent px-[7px] py-0.5 text-[10.5px] font-bold text-accent-text">
-            Soon
-          </span>
-        </button>
+        <NavItem
+          href="/cron"
+          icon={<Clock className="size-[18px]" strokeWidth={1.9} />}
+          label="Cron"
+          active={pathname === "/cron"}
+        />
       </nav>
 
       <div className="mt-1.5 flex-1 overflow-y-auto px-3 pb-2 pt-2.5">
@@ -316,6 +310,9 @@ function ChatRow({
             : "font-medium text-ink-soft hover:bg-accent",
         )}
       >
+        {chat.source === "cron" && (
+          <Clock className="mr-1.5 size-[13px] shrink-0 text-primary" />
+        )}
         <span className="min-w-0 flex-1 truncate">
           {chat.title || "Untitled"}
         </span>

@@ -115,6 +115,43 @@ export async function getFileContents(
   return res.text();
 }
 
+/**
+ * Conditional read of a file's raw text. Pass the ETag from a previous call as
+ * `etag`; GitHub returns 304 (no body, and — importantly — not counted against
+ * the rate limit) when the file is unchanged. Used by the cron dispatcher to
+ * poll each repo's `cron.json` cheaply every tick.
+ *   - 200: file present and changed/new — `content` + fresh `etag` returned.
+ *   - 304: unchanged — caller should use its cached parse.
+ *   - 404: file absent.
+ */
+export async function getFileContentsConditional(
+  pat: string,
+  owner: string,
+  repo: string,
+  path: string,
+  ref?: string,
+  etag?: string | null,
+): Promise<{ status: 200 | 304 | 404; content?: string; etag?: string }> {
+  const url = new URL(
+    `${API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`,
+  );
+  if (ref) url.searchParams.set("ref", ref);
+  const h: Record<string, string> = {
+    ...headers(pat),
+    Accept: "application/vnd.github.raw+json",
+  };
+  if (etag) h["If-None-Match"] = etag;
+  const res = await fetch(url, { headers: h, cache: "no-store" });
+  if (res.status === 304) return { status: 304 };
+  if (res.status === 404) return { status: 404 };
+  if (!res.ok) throw new Error(`Couldn't read ${path} (${res.status}).`);
+  return {
+    status: 200,
+    content: await res.text(),
+    etag: res.headers.get("etag") ?? undefined,
+  };
+}
+
 export type RepoDirEntry = { name: string; type: "file" | "dir" };
 
 /**

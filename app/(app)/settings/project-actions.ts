@@ -9,6 +9,7 @@ import {
 import {
   createProject,
   setDefaultProject,
+  setProjectActive,
   deleteProject,
   type ProjectSummary,
 } from "@/lib/projects";
@@ -59,6 +60,15 @@ export async function createProjectAction(input: {
 export async function setDefaultProjectAction(id: string): Promise<void> {
   const user = await requireUser();
   await setDefaultProject(user.id, id);
+  revalidatePath("/settings");
+}
+
+export async function setProjectActiveAction(
+  id: string,
+  active: boolean,
+): Promise<void> {
+  const user = await requireUser();
+  await setProjectActive(user.id, id, active); // throws if deactivating the default
   revalidatePath("/settings");
 }
 

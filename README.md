@@ -16,7 +16,7 @@ Built with **Next.js (App Router)** · **Tailwind v4** · **shadcn/ui** ·
 - 💬 Persisted multi-chat history (Postgres) with star / rename / delete
 - 🔐 Email + password auth (Better Auth) with branded shadcn screens
 - 🌗 Light / dark theme matching the Knack brand
-- 🕘 Cron view stubbed for phase 2
+- 🕘 Scheduled agent runs — per-project `cron.json`, driven by a Vercel cron heartbeat
 
 ## One-click deploy
 
@@ -85,6 +85,9 @@ providers means adding one adapter under `lib/sandbox/` — nothing else changes
 
 - **Password reset email** transport is not configured — wire a `sendResetPassword`
   handler in `lib/auth.ts` to send real links.
-- **Cron** view is stubbed; back it with Vercel Cron + a `schedules` table.
+- **Scheduled runs** are live: a daily Vercel cron heartbeat (`vercel.json` →
+  `/api/cron/tick`) polls each active project's `cron.json` and fires due jobs as
+  agent turns. Set `CRON_SECRET`; raise the heartbeat to `*/30 * * * *` (Pro) for
+  finer timing.
 - Confirm the model slugs in `lib/models.ts` against the live
   [AI Gateway model list](https://vercel.com/ai-gateway/models).

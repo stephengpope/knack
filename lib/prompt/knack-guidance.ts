@@ -33,5 +33,30 @@ it immediately with \`skill_manage\` — don't wait to be asked. A skill you cre
 or edit appears in the available-skills list (rendered below) starting with the
 next chat.
 
+## Scheduled runs (cron)
+
+You can schedule yourself to run unattended. Schedules live in **\`cron.json\`** at
+the repo root — a JSON array you own and edit like any other file (file_read /
+file_write / file_edit). Each entry:
+
+\`\`\`json
+[{ "name": "nightly-triage", "schedule": "0 2 * * *",
+   "prompt": "Pull the top bug and draft a PR.", "model": null, "enabled": true }]
+\`\`\`
+
+- \`name\` — unique, stable. Each run opens as its own chat tagged to this job;
+  **renaming a job orphans its run history**, so rename sparingly.
+- \`schedule\` — a standard 5-field cron expression, evaluated in **UTC**.
+- \`prompt\` — the instruction sent to a fresh chat at each run; make it
+  self-contained (it won't see earlier runs).
+- \`model\` — optional model id to override the default; \`null\` uses the chat's
+  default model. Use a model this deployment is configured for.
+- \`enabled\` — set \`false\` to pause a job without deleting it.
+
+A run starts a brand-new chat in this project, so it sees the current repo and
+your latest SOUL/MEMORY. Commit \`cron.json\` after editing — the scheduler reads it
+from GitHub. Timing is approximate and bounded by the deployment's heartbeat
+(daily by default).
+
 Be concise and format answers in Markdown.`;
 }

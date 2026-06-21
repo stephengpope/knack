@@ -13,6 +13,7 @@ export type ProjectSummary = {
   repoFullName: string;
   htmlUrl: string;
   isDefault: boolean;
+  active: boolean;
 };
 
 function toSummary(p: Project): ProjectSummary {
@@ -22,6 +23,7 @@ function toSummary(p: Project): ProjectSummary {
     repoFullName: p.repoFullName,
     htmlUrl: p.htmlUrl,
     isDefault: p.isDefault,
+    active: p.active,
   };
 }
 
@@ -55,6 +57,60 @@ export async function getDefaultProject(
     .where(and(eq(project.userId, userId), eq(project.isDefault, true)))
     .limit(1);
   return row ?? null;
+}
+
+/**
+ * Look up a project by id WITHOUT a userId. Used by the cron dispatcher, which
+ * has no session — it derives the owning user from `project.userId`. Never
+ * expose this to a user-facing path; all interactive lookups must scope by user.
+ */
+export async function getProjectById(id: string): Promise<Project | null> {
+  const [row] = await db
+    .select()
+    .from(project)
+    .where(eq(project.id, id))
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * All active projects across all users — the cron tick's working set. System
+ * query (no user scope); each row carries its own `userId` for PAT resolution.
+ */
+export async function listActiveProjects(): Promise<Project[]> {
+  return db.select().from(project).where(eq(project.active, true));
+}
+
+/** A user's active projects as full rows (the cron view needs repo coordinates). */
+export async function listActiveProjectsForUser(
+  userId: string,
+): Promise<Project[]> {
+  return db
+    .select()
+    .from(project)
+    .where(and(eq(project.userId, userId), eq(project.active, true)))
+    .orderBy(desc(project.createdAt));
+}
+
+/** Toggle a project active/inactive. Deactivating the default is rejected —
+ *  the caller must reassign the default first. */
+export async function setProjectActive(
+  userId: string,
+  id: string,
+  active: boolean,
+): Promise<void> {
+  if (!active) {
+    const p = await getProject(userId, id);
+    if (p?.isDefault) {
+      throw new Error(
+        "Can't deactivate the default project. Make another project the default first.",
+      );
+    }
+  }
+  await db
+    .update(project)
+    .set({ active, updatedAt: new Date() })
+    .where(and(eq(project.userId, userId), eq(project.id, id)));
 }
 
 /**
@@ -114,6 +170,7 @@ export async function createProject(
     repoFullName: repo.fullName,
     htmlUrl: repo.htmlUrl,
     isDefault,
+    active: true,
   };
 }
 
