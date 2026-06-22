@@ -13,8 +13,9 @@ export type CardContract = {
   title: string | null;
   iteration: number;
   userStory: string | null;
+  details: string | null;
   acceptanceCriteria: ChecklistItem[];
-  definitionOfDone: ChecklistItem[];
+  tasks: ChecklistItem[];
   testCases: TestCase[];
 };
 
@@ -59,11 +60,14 @@ export function renderContract(c: CardContract): string {
     "User story:",
     c.userStory?.trim() ? `  ${c.userStory.trim()}` : "  (none)",
     "",
+    "Details:",
+    c.details?.trim() ? `  ${c.details.trim()}` : "  (none)",
+    "",
+    "Tasks:",
+    renderChecklist(c.tasks),
+    "",
     "Acceptance criteria:",
     renderChecklist(c.acceptanceCriteria),
-    "",
-    "Definition of done:",
-    renderChecklist(c.definitionOfDone),
     "",
     "Test cases:",
     renderTests(c.testCases),

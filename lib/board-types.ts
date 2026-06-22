@@ -28,10 +28,11 @@ export type BoardCard = {
   cardSeq: number | null;
   title: string | null;
   kanbanStatus: KanbanStatus;
-  superviseEnabled: boolean;
+  supervisorEnabled: boolean;
   userStory: string | null;
+  details: string | null;
   acceptanceCriteria: ChecklistItem[];
-  definitionOfDone: ChecklistItem[];
+  tasks: ChecklistItem[];
   testCases: TestCase[];
   activeRole: string | null;
   blockedReason: string | null;
@@ -46,9 +47,10 @@ export type BoardCard = {
 export type CardPatch = Partial<{
   title: string;
   userStory: string | null;
+  details: string | null;
   acceptanceCriteria: ChecklistItem[];
-  definitionOfDone: ChecklistItem[];
+  tasks: ChecklistItem[];
   testCases: TestCase[];
   kanbanStatus: KanbanStatus;
-  superviseEnabled: boolean;
+  supervisorEnabled: boolean;
 }>;

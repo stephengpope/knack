@@ -40,7 +40,7 @@ export default async function ChatPage({
       initialProjectId={initialProjectId}
       initialGitState={chat?.gitState ?? null}
       initialGitSha={chat?.lastCommitSha ?? null}
-      initialSupervise={chat?.superviseEnabled ?? false}
+      initialSupervise={chat?.supervisorEnabled ?? false}
     />
   );
 }

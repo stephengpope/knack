@@ -59,12 +59,16 @@ async function findFiles(
   offset: number,
 ): Promise<SearchResult> {
   let engine = "ripgrep";
-  let r = await sh(box, `rg --files ${shq(path)} -g ${shq(glob)} 2>&1 | head -n ${FETCH_CAP}`);
+  // No 2>&1 — keep stderr separate so a missing `rg` (or a real error) doesn't
+  // get merged into stdout and returned as a fake result.
+  let r = await sh(box, `rg --files ${shq(path)} -g ${shq(glob)} | head -n ${FETCH_CAP}`);
   if (notFound(r)) {
     engine = "find";
-    r = await sh(box, `find ${shq(path)} -type f -name ${shq(glob)} 2>/dev/null | head -n ${FETCH_CAP}`);
+    r = await sh(box, `find ${shq(path)} -type f -name ${shq(glob)} | head -n ${FETCH_CAP}`);
   }
   const all = r.stdout.split("\n").map((s) => s.trim()).filter(Boolean);
+  // Empty output + a real error on stderr = surface it, don't return [] silently.
+  if (!all.length && r.stderr.trim()) return { error: r.stderr.trim() };
   const files = all.slice(offset, offset + limit);
   return { files, truncated: all.length > offset + limit, engine };
 }
@@ -90,7 +94,7 @@ async function grepContent(
   }
   if (glob) rgFlags.push("-g", shq(glob));
   const rgCmd =
-    `rg ${rgFlags.join(" ")} -e ${shq(args.pattern)} ${shq(path)} 2>&1 | head -n ${FETCH_CAP}`;
+    `rg ${rgFlags.join(" ")} -e ${shq(args.pattern)} ${shq(path)} | head -n ${FETCH_CAP}`;
 
   let engine = "ripgrep";
   let r = await sh(box, rgCmd);
@@ -106,10 +110,12 @@ async function grepContent(
     if (glob) gFlags.push(`--include=${shq(glob)}`);
     r = await sh(
       box,
-      `grep ${gFlags.join(" ")} -e ${shq(args.pattern)} ${shq(path)} 2>/dev/null | head -n ${FETCH_CAP}`,
+      `grep ${gFlags.join(" ")} -e ${shq(args.pattern)} ${shq(path)} | head -n ${FETCH_CAP}`,
     );
   }
 
+  // Empty output + a real error on stderr = surface it (don't hide it).
+  if (!r.stdout.trim() && r.stderr.trim()) return { error: r.stderr.trim() };
   const lines = r.stdout.split("\n").filter((l) => l.length > 0 && l !== "--");
 
   if (mode === "files_only") {

@@ -1,0 +1,1 @@
+ALTER TABLE "chat" RENAME COLUMN "supervise_enabled" TO "supervisor_enabled";

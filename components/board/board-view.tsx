@@ -8,7 +8,7 @@ import {
   X,
   Shield,
   RotateCw,
-  Trash2,
+  SquareMinus,
   Check,
   Loader2,
 } from "lucide-react";
@@ -116,7 +116,7 @@ export function BoardView({
   }
 
   function toggleSupervise(id: string, enabled: boolean) {
-    applyPatch(id, { superviseEnabled: enabled });
+    applyPatch(id, { supervisorEnabled: enabled });
     void setSuperviseAction(id, enabled);
   }
 
@@ -271,7 +271,7 @@ function CardChip({
       )}
     >
       <div className="mb-2 flex items-center gap-2">
-        {card.superviseEnabled && (
+        {card.supervisorEnabled && (
           <span
             title="Supervised"
             className="flex items-center rounded-md bg-green-600/10 px-1.5 py-0.5 text-green-600"
@@ -284,7 +284,7 @@ function CardChip({
         </span>
       </div>
       <div className="mb-2 text-[13.5px] font-bold leading-snug">
-        {card.title ?? "Untitled card"}
+        {card.title ?? "Untitled"}
       </div>
       {acTotal > 0 && (
         <div className="mb-2 flex items-center gap-2">
@@ -343,6 +343,12 @@ function CardDrawer({
             {ref(card)}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link href={`/chat/${card.id}`}>
+                <MessageSquare className="size-3.5" />
+                Open chat
+              </Link>
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -350,13 +356,7 @@ function CardDrawer({
               onClick={openSupervisor}
             >
               <Shield className="size-3.5 text-green-600" />
-              Supervisor chat
-            </Button>
-            <Button asChild variant="outline" size="sm" className="gap-1.5">
-              <Link href={`/chat/${card.id}`}>
-                <MessageSquare className="size-3.5" />
-                Open chat
-              </Link>
+              Supervisor Logs
             </Button>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="size-4" />
@@ -367,11 +367,12 @@ function CardDrawer({
         <div className="flex-1 space-y-5 overflow-y-auto p-5">
           <Input
             defaultValue={card.title ?? ""}
+            placeholder="Untitled"
             onBlur={(e) => {
               const v = e.target.value.trim();
               if (v && v !== card.title) onPatch({ title: v });
             }}
-            className="h-auto border-0 px-0 text-[19px] font-extrabold shadow-none focus-visible:ring-0"
+            className="h-auto border-0 px-0 text-2xl font-extrabold tracking-tight shadow-none placeholder:font-extrabold placeholder:text-ink-faint focus-visible:ring-0 md:text-2xl"
           />
 
           <div className="flex gap-2.5">
@@ -396,14 +397,14 @@ function CardDrawer({
               </Select>
             </div>
             <div className="flex-1">
-              <Label>Supervise</Label>
+              <Label>Supervisor</Label>
               <div className="mt-1.5 flex h-9 items-center gap-2.5 rounded-[10px] border px-3">
                 <Switch
-                  checked={card.superviseEnabled}
+                  checked={card.supervisorEnabled}
                   onCheckedChange={onToggleSupervise}
                 />
                 <span className="text-[13px] font-bold">
-                  {card.superviseEnabled ? "On" : "Off"}
+                  {card.supervisorEnabled ? "On" : "Off"}
                 </span>
               </div>
             </div>
@@ -423,21 +424,35 @@ function CardDrawer({
                 if (e.target.value !== (card.userStory ?? ""))
                   onPatch({ userStory: e.target.value });
               }}
-              rows={3}
+              rows={2}
               placeholder="As a [user], I want [goal], so that [benefit]."
               className="mt-1.5"
             />
           </div>
 
+          <div>
+            <Label>Details</Label>
+            <Textarea
+              defaultValue={card.details ?? ""}
+              onBlur={(e) => {
+                if (e.target.value !== (card.details ?? ""))
+                  onPatch({ details: e.target.value });
+              }}
+              rows={5}
+              placeholder="Detailed brief — context, constraints, specifics the agent should know."
+              className="mt-1.5"
+            />
+          </div>
+
+          <Checklist
+            label="Tasks"
+            items={card.tasks}
+            onChange={(items) => onPatch({ tasks: items })}
+          />
           <Checklist
             label="Acceptance criteria"
             items={card.acceptanceCriteria}
             onChange={(items) => onPatch({ acceptanceCriteria: items })}
-          />
-          <Checklist
-            label="Definition of done"
-            items={card.definitionOfDone}
-            onChange={(items) => onPatch({ definitionOfDone: items })}
           />
 
           <div className="rounded-[12px] border p-4">
@@ -471,34 +486,36 @@ function CardDrawer({
             variant="ghost"
             size="sm"
             onClick={onRemove}
-            className="gap-1.5 text-red-600 hover:text-red-600"
+            className="gap-1.5 text-ink-soft hover:text-foreground"
           >
-            <Trash2 className="size-3.5" />
+            <SquareMinus className="size-3.5" />
             Remove from board
           </Button>
         </div>
       </aside>
 
       <Dialog open={supOpen} onOpenChange={setSupOpen}>
-        <DialogContent className="max-h-[85vh] max-w-3xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-[15px]">
-              <Shield className="size-4 text-green-600" />
-              Supervisor chat · {ref(card)}
+        <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-5xl">
+          <DialogHeader className="shrink-0 border-b pb-3">
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <Shield className="size-[18px] text-green-600" />
+              Supervisor Logs · {ref(card)}
             </DialogTitle>
           </DialogHeader>
-          {supLoading ? (
-            <div className="py-10 text-center text-sm text-ink-faint">
-              Loading…
-            </div>
-          ) : supMsgs && supMsgs.length ? (
-            <ChatConversationUI messages={supMsgs} />
-          ) : (
-            <div className="py-10 text-center text-sm text-ink-faint">
-              No supervisor activity yet — it runs when the card is In Progress
-              with Supervise on.
-            </div>
-          )}
+          <div className="min-h-0 flex-1 overflow-y-auto pt-1">
+            {supLoading ? (
+              <div className="py-10 text-center text-sm text-ink-faint">
+                Loading…
+              </div>
+            ) : supMsgs && supMsgs.length ? (
+              <ChatConversationUI messages={supMsgs} />
+            ) : (
+              <div className="py-10 text-center text-sm text-ink-faint">
+                No supervisor activity yet — it runs when the card is In Progress
+                with Supervisor on.
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </>

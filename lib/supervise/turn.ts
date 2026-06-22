@@ -35,7 +35,7 @@ const decisionSchema = z.object({
   nextPrompt: z.string().nullable(),
   criteriaUpdates: z.object({
     acceptanceCriteria: z.array(checklistItem).nullable(),
-    definitionOfDone: z.array(checklistItem).nullable(),
+    tasks: z.array(checklistItem).nullable(),
     testCases: z.array(testCase).nullable(),
   }),
 });
@@ -166,18 +166,17 @@ export async function runSupervisorTurn(params: {
     experimental_output: Output.object({ schema: decisionSchema }),
   });
 
-  // Persist the supervisor's turn (reasoning + tool calls) to its chat. We store
-  // a light round marker as the user message (not the big worker-convo dump that
-  // went to the LLM), then the streamed assistant turn.
-  const round = prior.filter((m) => m.role === "user").length + 1;
-  const marker: UIMessage = {
+  // Persist the REAL turn: the actual prompt the supervisor received (its full
+  // context) as the user message, then its actual streamed reply. No markers,
+  // no stripping — the supervisor chat is exactly what was sent and what came back.
+  const userMsg: UIMessage = {
     id: createIdGenerator({ prefix: "msg", size: 16 })(),
     role: "user",
-    parts: [{ type: "text", text: `Round ${round} — reviewing the worker's latest work.` }],
+    parts: [{ type: "text", text: roundPrompt }],
   };
 
   const uiStream = createUIMessageStream({
-    originalMessages: [...prior, marker],
+    originalMessages: [...prior, userMsg],
     generateId: createIdGenerator({ prefix: "msg", size: 16 }),
     onFinish: async ({ messages }) => {
       await saveMessages(supervisorChatId, messages as UIMessage[]);
@@ -194,23 +193,6 @@ export async function runSupervisorTurn(params: {
 
   const decision = await result.output;
   const usage = await result.totalUsage;
-
-  // Append the decision as a final part so the popup can render a decision card
-  // and the drawer can read the latest verdict. Reload + re-save the full list
-  // (saveMessages reindexes by position).
-  const after = await loadMessages(supervisorChatId);
-  const last = after[after.length - 1];
-  if (last && last.role === "assistant") {
-    (last.parts as unknown[]).push({
-      type: "data-decision",
-      data: {
-        verdict: decision.verdict,
-        reason: decision.reason,
-        nextPrompt: decision.nextPrompt,
-      },
-    });
-    await saveMessages(supervisorChatId, after);
-  }
 
   return {
     decision,

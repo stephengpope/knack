@@ -21,7 +21,7 @@ export async function listEligibleCardIds(
     .from(chat)
     .where(
       and(
-        eq(chat.superviseEnabled, true),
+        eq(chat.supervisorEnabled, true),
         eq(chat.kanbanStatus, "in_progress"),
         or(isNull(chat.leaseUntil), lt(chat.leaseUntil, now)),
       ),
@@ -48,7 +48,7 @@ export async function claimCard(chatId: string): Promise<ClaimedCard | null> {
     .where(
       and(
         eq(chat.id, chatId),
-        eq(chat.superviseEnabled, true),
+        eq(chat.supervisorEnabled, true),
         eq(chat.kanbanStatus, "in_progress"),
         or(isNull(chat.leaseUntil), lt(chat.leaseUntil, now)),
       ),

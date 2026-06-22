@@ -382,7 +382,7 @@ export function Chat({
             )}
           >
             <Shield className="size-[15px]" />
-            {supervised ? "Supervising" : "Supervise"}
+            {supervised ? "Supervising" : "Supervisor"}
           </button>
           <button
             onClick={() => toast("Sharing is coming soon")}

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, isNull, ne, not, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, not, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { UIMessage } from "ai";
 import { db } from "@/lib/db";
@@ -29,17 +29,10 @@ export async function listChats(userId: string): Promise<ChatListItem[]> {
       source: chat.source,
     })
     .from(chat)
-    // Cards live on the Board, not in the Chats list (open them via the
-    // drawer's "Open chat"). A card is any chat with a non-null kanbanStatus.
-    // Supervisor chats (source='supervisor') are internal — only reachable from
-    // their card — so they're excluded too.
-    .where(
-      and(
-        eq(chat.userId, userId),
-        isNull(chat.kanbanStatus),
-        ne(chat.source, "supervisor"),
-      ),
-    )
+    // All of the user's chats, including cards — only supervisor chats
+    // (source='supervisor') are hidden, since they're internal and reachable
+    // only from their card.
+    .where(and(eq(chat.userId, userId), ne(chat.source, "supervisor")))
     .orderBy(desc(chat.updatedAt));
 }
 

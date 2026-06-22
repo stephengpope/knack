@@ -1,0 +1,1 @@
+ALTER TABLE "chat" RENAME COLUMN "definition_of_done" TO "tasks";

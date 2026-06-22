@@ -122,13 +122,13 @@ export const chat = pgTable(
     // A card IS a chat. The board is the set of chats with a non-null
     // kanbanStatus; null = an ordinary chat, not a card.
     kanbanStatus: text("kanban_status"), // todo|in_progress|blocked|review|done
-    superviseEnabled: boolean("supervise_enabled").default(false).notNull(),
+    supervisorEnabled: boolean("supervisor_enabled").default(false).notNull(),
     cardSeq: integer("card_seq"), // KNK-<n> ref, from the card_seq sequence
     userStory: text("user_story"),
+    details: text("details"), // freeform detailed brief
     acceptanceCriteria:
       jsonb("acceptance_criteria").$type<{ text: string; done: boolean }[]>(),
-    definitionOfDone:
-      jsonb("definition_of_done").$type<{ text: string; done: boolean }[]>(),
+    tasks: jsonb("tasks").$type<{ text: string; done: boolean }[]>(),
     testCases: jsonb("test_cases").$type<
       { desc: string; status: "idle" | "running" | "pass" | "fail" }[]
     >(),

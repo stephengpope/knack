@@ -28,10 +28,11 @@ const cardSelect = {
   cardSeq: chat.cardSeq,
   title: chat.title,
   kanbanStatus: chat.kanbanStatus,
-  superviseEnabled: chat.superviseEnabled,
+  supervisorEnabled: chat.supervisorEnabled,
   userStory: chat.userStory,
+  details: chat.details,
   acceptanceCriteria: chat.acceptanceCriteria,
-  definitionOfDone: chat.definitionOfDone,
+  tasks: chat.tasks,
   testCases: chat.testCases,
   activeRole: chat.activeRole,
   blockedReason: chat.blockedReason,
@@ -47,11 +48,11 @@ const cardSelect = {
 // nullable; normalize() fills them in.
 type CardRow = Omit<
   BoardCard,
-  "kanbanStatus" | "acceptanceCriteria" | "definitionOfDone" | "testCases"
+  "kanbanStatus" | "acceptanceCriteria" | "tasks" | "testCases"
 > & {
   kanbanStatus: string | null;
   acceptanceCriteria: ChecklistItem[] | null;
-  definitionOfDone: ChecklistItem[] | null;
+  tasks: ChecklistItem[] | null;
   testCases: TestCase[] | null;
 };
 
@@ -60,7 +61,7 @@ function normalize(row: CardRow): BoardCard {
     ...row,
     kanbanStatus: (row.kanbanStatus ?? "todo") as KanbanStatus,
     acceptanceCriteria: row.acceptanceCriteria ?? [],
-    definitionOfDone: row.definitionOfDone ?? [],
+    tasks: row.tasks ?? [],
     testCases: row.testCases ?? [],
   };
 }
@@ -95,7 +96,9 @@ export async function createCard(
     .values({
       id: nanoid(),
       userId,
-      title: input.title?.trim() || "Untitled card",
+      // Leave the title null so the agent's auto-title names it on the first
+      // turn (a non-empty default would suppress that). The UI shows a fallback.
+      title: input.title?.trim() || null,
       kanbanStatus: "todo",
       projectId: input.projectId ?? null,
       // Only cards draw a number from the sequence; ordinary chats never do.
@@ -131,7 +134,7 @@ export async function removeFromBoard(
 ): Promise<void> {
   await db
     .update(chat)
-    .set({ kanbanStatus: null, superviseEnabled: false })
+    .set({ kanbanStatus: null, supervisorEnabled: false })
     .where(and(eq(chat.id, id), eq(chat.userId, userId)));
 }
 
@@ -154,7 +157,7 @@ export async function setSupervise(
     .limit(1);
   if (!row) return;
   const set: Record<string, unknown> = {
-    superviseEnabled: enabled,
+    supervisorEnabled: enabled,
     updatedAt: new Date(),
   };
   if (enabled && !row.kanbanStatus) set.kanbanStatus = "todo";

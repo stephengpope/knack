@@ -68,8 +68,9 @@ export async function runSupervisorCycle(chatId: string): Promise<void> {
     title: card.title,
     iteration: card.iteration,
     userStory: card.userStory,
+    details: card.details,
     acceptanceCriteria: card.acceptanceCriteria ?? [],
-    definitionOfDone: card.definitionOfDone ?? [],
+    tasks: card.tasks ?? [],
     testCases: card.testCases ?? [],
   };
 
@@ -106,7 +107,7 @@ export async function runSupervisorCycle(chatId: string): Promise<void> {
   const cu = result.decision.criteriaUpdates;
   const updates: Record<string, unknown> = {};
   if (cu.acceptanceCriteria) updates.acceptanceCriteria = cu.acceptanceCriteria;
-  if (cu.definitionOfDone) updates.definitionOfDone = cu.definitionOfDone;
+  if (cu.tasks) updates.tasks = cu.tasks;
   if (cu.testCases) updates.testCases = cu.testCases;
   if (Object.keys(updates).length) {
     await db.update(chat).set(updates).where(eq(chat.id, chatId));

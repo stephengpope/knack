@@ -106,6 +106,27 @@
       "when": 1782067537105,
       "tag": "0014_jazzy_living_mummy",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1782118434545,
+      "tag": "0015_rename_supervise_enabled",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1782148777503,
+      "tag": "0016_zippy_junta",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1782148834007,
+      "tag": "0017_rename_dod_to_tasks",
+      "breakpoints": true
     }
   ]
 }
