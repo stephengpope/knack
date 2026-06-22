@@ -11,7 +11,7 @@ import {
   setSupervise,
   type CardPatch,
 } from "@/lib/board";
-import { getSupervisorMessages } from "@/lib/supervise/chat";
+import { getSupervisorMessages } from "@/lib/supervisor/chat";
 
 async function requireUser() {
   const session = await getSession();

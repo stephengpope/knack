@@ -4,7 +4,7 @@ import type { UIMessage } from "ai";
 import { db } from "@/lib/db";
 import { chat, type Project } from "@/lib/db/schema";
 import { createChat, loadMessages } from "@/lib/chats";
-import { supervisorInstructions } from "@/lib/supervise/prompt";
+import { supervisorInstructions } from "@/lib/supervisor/prompt";
 
 /** The supervisor chat's messages for a card, or [] if it has none yet. */
 export async function getSupervisorMessages(

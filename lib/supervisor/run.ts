@@ -10,14 +10,10 @@ import { getGithubAuth } from "@/lib/github-account";
 import { getAppSettings } from "@/lib/settings";
 import { runAgentTurn, drainStream } from "@/lib/agent/run-turn";
 import { logUsage, runTokens } from "@/lib/usage";
-import { claimCard, releaseLease } from "@/lib/supervise/select";
-import { getOrCreateSupervisorChat } from "@/lib/supervise/chat";
-import { runSupervisorTurn } from "@/lib/supervise/turn";
-import {
-  renderContract,
-  renderTranscript,
-  type CardContract,
-} from "@/lib/supervise/prompt";
+import { claimCard, releaseLease } from "@/lib/supervisor/select";
+import { getOrCreateSupervisorChat } from "@/lib/supervisor/chat";
+import { runSupervisorTurn } from "@/lib/supervisor/turn";
+import { renderRoundPrompt, type CardContract } from "@/lib/supervisor/prompt";
 
 async function block(chatId: string, reason: string) {
   await db
@@ -74,12 +70,10 @@ export async function runSupervisorCycle(chatId: string): Promise<void> {
     testCases: card.testCases ?? [],
   };
 
-  // The per-round prompt: the current contract + the FULL worker conversation as
-  // text (the supervisor can also open the real files with its read-only tools).
-  const roundPrompt =
-    `${renderContract(contract)}\n\n## Worker conversation so far\n` +
-    `${renderTranscript(history)}\n\n` +
-    `Review the work against the contract and decide (continue / review / blocked).`;
+  // The per-round prompt: the contract + the worker's recent claim (last 3 text
+  // messages). Decision rules / loop framing / nextPrompt guidance live in the
+  // system prompt; the supervisor verifies real state with its read-only tools.
+  const roundPrompt = renderRoundPrompt(contract, history);
 
   let result;
   try {

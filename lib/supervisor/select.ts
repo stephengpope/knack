@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { chat } from "@/lib/db/schema";
-import { LEASE_MS } from "@/lib/supervise/constants";
+import { LEASE_MS } from "@/lib/supervisor/constants";
 
 export type ClaimedCard = typeof chat.$inferSelect;
 

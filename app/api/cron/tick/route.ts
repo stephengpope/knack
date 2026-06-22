@@ -9,7 +9,7 @@ import {
   dueJobs,
   markFired,
 } from "@/lib/cron/state";
-import { listEligibleCardIds } from "@/lib/supervise/select";
+import { listEligibleCardIds } from "@/lib/supervisor/select";
 import type { CronState, Project } from "@/lib/db/schema";
 
 export const maxDuration = 300;
@@ -96,7 +96,7 @@ export async function GET(req: Request) {
     const cardIds = await listEligibleCardIds(now, remaining);
     for (const chatId of cardIds) {
       try {
-        const res = await fetch(`${origin}/api/cron/supervise/run`, {
+        const res = await fetch(`${origin}/api/cron/supervisor/run`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

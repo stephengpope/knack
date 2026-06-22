@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { runSupervisorCycle } from "@/lib/supervise/run";
+import { runSupervisorCycle } from "@/lib/supervisor/run";
 
 // No explicit maxDuration — rely on the platform default (the lease in
 // lib/supervise/constants.ts is sized to the cross-plan max regardless).
