@@ -89,20 +89,21 @@ function renderRecentWork(messages: UIMessage[]): string {
     .filter(Boolean);
   if (!texts.length) return "The worker hasn't started — nothing done yet.";
 
-  const last = texts.slice(-3);
-  const omitted = texts.length - last.length;
+  const recent = texts.slice(-3);
+  const omitted = texts.length - recent.length;
   const header =
-    last.length === 1
-      ? "The worker's latest message:"
-      : `The worker's last ${last.length} messages, oldest first, newest last` +
+    recent.length === 1
+      ? "The worker's newest message:"
+      : `The worker's ${recent.length} most recent messages, oldest at top, ` +
+        `newest at bottom` +
         (omitted > 0
           ? ` (${omitted} earlier message${omitted > 1 ? "s" : ""} not shown — ` +
             `inspect the repo for the full state):`
           : ":");
-  const body = last
+  const body = recent
     .map((t, i) => {
-      const tag = i === last.length - 1 && last.length > 1 ? " (newest)" : "";
-      const n = last.length > 1 ? `[${i + 1}${tag}]\n` : "";
+      const tag = i === recent.length - 1 && recent.length > 1 ? " (newest)" : "";
+      const n = recent.length > 1 ? `[${i + 1}${tag}]\n` : "";
       return `${n}${trunc(t, 2000)}`;
     })
     .join("\n\n---\n\n");
