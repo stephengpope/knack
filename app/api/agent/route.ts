@@ -13,25 +13,26 @@ export async function POST(req: Request) {
   const userId = session.user.id;
 
   const {
-    messages,
+    message,
     id: chatId,
     model: requestedModel,
     projectId: requestedProjectId,
   }: {
-    messages: UIMessage[];
+    message: UIMessage;
     id: string;
     model?: string;
     projectId?: string | null;
   } = await req.json();
 
   if (!chatId) return new Response("Missing chat id", { status: 400 });
+  if (!message) return new Response("Missing message", { status: 400 });
 
   let result;
   try {
     result = await runAgentTurn({
       userId,
       chatId,
-      messages,
+      message,
       model: requestedModel,
       projectId: requestedProjectId,
     });

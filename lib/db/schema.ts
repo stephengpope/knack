@@ -8,6 +8,7 @@ import {
   bigint,
   uniqueIndex,
   index,
+  pgSequence,
 } from "drizzle-orm/pg-core";
 
 /* ============================================================
@@ -80,6 +81,10 @@ export const verification = pgTable("verification", {
  * App tables
  * ============================================================ */
 
+// Global counter for the human-facing card ref (KNK-<n>). Assigned in
+// createCard via nextval, so only cards consume numbers (gaps are fine).
+export const cardSeqSequence = pgSequence("card_seq");
+
 export const chat = pgTable(
   "chat",
   {
@@ -112,6 +117,33 @@ export const chat = pgTable(
     gitState: text("git_state"),
     lastCommitSha: text("last_commit_sha"),
     lastSyncedAt: timestamp("last_synced_at"),
+
+    // ---- Kanban card fields ----
+    // A card IS a chat. The board is the set of chats with a non-null
+    // kanbanStatus; null = an ordinary chat, not a card.
+    kanbanStatus: text("kanban_status"), // todo|in_progress|blocked|review|done
+    superviseEnabled: boolean("supervise_enabled").default(false).notNull(),
+    cardSeq: integer("card_seq"), // KNK-<n> ref, from the card_seq sequence
+    userStory: text("user_story"),
+    acceptanceCriteria:
+      jsonb("acceptance_criteria").$type<{ text: string; done: boolean }[]>(),
+    definitionOfDone:
+      jsonb("definition_of_done").$type<{ text: string; done: boolean }[]>(),
+    testCases: jsonb("test_cases").$type<
+      { desc: string; status: "idle" | "running" | "pass" | "fail" }[]
+    >(),
+    // Which AI role last acted on the card (drives the card chip icon).
+    activeRole: text("active_role"), // worker|supervisor
+    blockedReason: text("blocked_reason"),
+
+    // ---- Supervisor loop bookkeeping (per-RUN, reset on restart) ----
+    iteration: integer("iteration").default(0).notNull(), // rounds in the current run
+    runStartedAt: timestamp("run_started_at"), // marks the current run's budget window
+    lastRunAt: timestamp("last_run_at"),
+    leaseUntil: timestamp("lease_until"), // claim lock; tick won't re-dispatch until it passes
+    maxRoundsOverride: integer("max_rounds_override"),
+    maxTokensOverride: bigint("max_tokens_override", { mode: "number" }),
+
     createdAt: timestamp("created_at")
       .$defaultFn(() => new Date())
       .notNull(),
@@ -137,6 +169,28 @@ export const message = pgTable(
       .notNull(),
   },
   (t) => [index("message_chat_idx").on(t.chatId, t.idx)],
+);
+
+// Per-call token log for supervised cards. One row per AI call (worker turn or
+// supervisor review). The budget guard sums tokens for the CURRENT run only
+// (createdAt >= chat.runStartedAt), so a blocked card can be restarted with a
+// fresh window. Indexed by (chatId, createdAt) for that sum.
+export const usageEvent = pgTable(
+  "usage_event",
+  {
+    id: text("id").primaryKey(),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chat.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // 'worker' | 'supervisor'
+    model: text("model"),
+    inputTokens: integer("input_tokens").default(0).notNull(),
+    outputTokens: integer("output_tokens").default(0).notNull(),
+    createdAt: timestamp("created_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [index("usage_event_chat_idx").on(t.chatId, t.createdAt)],
 );
 
 // SHARED provider API keys (BYOK) for the whole deployment. Admins manage these
@@ -181,6 +235,11 @@ export const appSettings = pgTable("app_settings", {
   // Lightweight model for background calls (e.g. chat titles). Null = "Same as
   // AI Agent" — fall back to defaultModel. Same connection mode as defaultModel.
   generalModel: text("general_model"),
+  // Supervisor budget ceilings (per card RUN). Cards may override per-card.
+  maxRounds: integer("max_rounds").default(25).notNull(),
+  maxTokensPerCard: bigint("max_tokens_per_card", { mode: "number" })
+    .default(2_000_000)
+    .notNull(),
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => new Date())
     .notNull(),

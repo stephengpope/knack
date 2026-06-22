@@ -16,6 +16,8 @@ export const TEMPLATE_FILES = [
   "MEMORY.md",
   "USER.md",
   "AGENT.md",
+  // Read by the supervisor each cycle (NOT injected into the worker prompt).
+  "SUPERVISOR.md",
 ] as const;
 
 export type TemplateFile = { path: string; content: string };

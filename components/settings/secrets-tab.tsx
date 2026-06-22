@@ -99,15 +99,14 @@ export function SecretsTab({
 
   return (
     <>
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
-            Secrets
-          </h1>
-          <p className="mt-1 text-[13.5px] text-ink-soft">
-            API tokens and connected accounts your agent can use on your behalf.
-          </p>
-        </div>
+      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+        Secrets
+      </h1>
+      <p className="mt-1 text-[13.5px] text-ink-soft">
+        API tokens and connected accounts your agent can use on your behalf.
+      </p>
+
+      <div className="mt-6 flex justify-end">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="knack-gradient shrink-0 font-bold text-white">
@@ -142,8 +141,10 @@ export function SecretsTab({
         </Dialog>
       </div>
 
-      <div className="mt-6 flex flex-col gap-2">
-        <SectionLabel>API tokens</SectionLabel>
+      <div className="mt-3 flex flex-col gap-2">
+        <SectionLabel icon={KeyRound} count={tokens.length}>
+          Tokens
+        </SectionLabel>
         {tokens.length === 0 ? (
           <Empty>No API tokens yet.</Empty>
         ) : (
@@ -158,9 +159,11 @@ export function SecretsTab({
       </div>
 
       <div className="mt-6 flex flex-col gap-2">
-        <SectionLabel>Connected accounts</SectionLabel>
+        <SectionLabel icon={Link2} count={conns.length}>
+          OAuth
+        </SectionLabel>
         {conns.length === 0 ? (
-          <Empty>No connected accounts yet.</Empty>
+          <Empty>No OAuth secrets yet.</Empty>
         ) : (
           conns.map((s) => (
             <OAuthRow
@@ -175,10 +178,22 @@ export function SecretsTab({
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function SectionLabel({
+  icon: Icon,
+  count,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  count: number;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="text-[12px] font-bold uppercase tracking-wide text-ink-faint">
+    <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide text-ink-faint">
+      <Icon className="size-[13px]" />
       {children}
+      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10.5px] tabular-nums">
+        {count}
+      </span>
     </div>
   );
 }

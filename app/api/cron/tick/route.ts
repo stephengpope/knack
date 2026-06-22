@@ -9,6 +9,7 @@ import {
   dueJobs,
   markFired,
 } from "@/lib/cron/state";
+import { listEligibleCardIds } from "@/lib/supervise/select";
 import type { CronState, Project } from "@/lib/db/schema";
 
 export const maxDuration = 300;
@@ -87,11 +88,38 @@ export async function GET(req: Request) {
     }
   }
 
+  // Phase 3: dispatch supervisor card cycles, sharing the per-tick sandbox
+  // budget with cron.json runs. Eligible = supervised + in_progress + lease-free.
+  let supervised = 0;
+  const remaining = MAX_RUNS_PER_TICK - dispatched;
+  if (remaining > 0) {
+    const cardIds = await listEligibleCardIds(now, remaining);
+    for (const chatId of cardIds) {
+      try {
+        const res = await fetch(`${origin}/api/cron/supervise/run`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.CRON_SECRET}`,
+          },
+          body: JSON.stringify({ chatId }),
+        });
+        if (res.ok) supervised++;
+      } catch (e) {
+        console.error(
+          `cron tick: supervise dispatch failed ${chatId}:`,
+          (e as Error).message,
+        );
+      }
+    }
+  }
+
   return Response.json({
     ok: true,
     projects: projects.length,
     due: due.length,
     dispatched,
+    supervised,
     deferred: Math.max(0, due.length - dispatched),
   });
 }

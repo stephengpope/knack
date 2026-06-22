@@ -13,6 +13,7 @@ import {
   Pencil,
   Trash2,
   MoreHorizontal,
+  SquareKanban,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -153,6 +154,13 @@ export function Sidebar({
           icon={<MessageSquare className="size-[18px]" strokeWidth={1.9} />}
           label="Chats"
           active={pathname === "/chats"}
+        />
+
+        <NavItem
+          href="/board"
+          icon={<SquareKanban className="size-[18px]" strokeWidth={1.9} />}
+          label="Board"
+          active={pathname === "/board"}
         />
 
         <NavItem

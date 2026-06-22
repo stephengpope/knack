@@ -16,7 +16,9 @@ import {
   Pencil,
   Trash2,
   FolderPlus,
+  Shield,
 } from "lucide-react";
+import { setSuperviseAction } from "@/app/(app)/board/actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -113,6 +115,7 @@ export function Chat({
   initialProjectId = null,
   initialGitState = null,
   initialGitSha = null,
+  initialSupervise = false,
 }: {
   id: string;
   initialMessages: UIMessage[];
@@ -123,6 +126,7 @@ export function Chat({
   initialProjectId?: string | null;
   initialGitState?: string | null;
   initialGitSha?: string | null;
+  initialSupervise?: boolean;
 }) {
   const router = useRouter();
   const [chatTitle, setChatTitle] = useState(title ?? "");
@@ -130,7 +134,15 @@ export function Chat({
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(title ?? "");
   const [projectId, setProjectId] = useState<string | null>(initialProjectId);
+  const [supervised, setSupervised] = useState(initialSupervise);
   const navigated = useRef(false);
+
+  function toggleSupervise() {
+    const next = !supervised;
+    setSupervised(next);
+    // Enabling promotes this chat to a board card (lands in Todo).
+    setSuperviseAction(id, next);
+  }
 
   function startRename() {
     setRenameValue(chatTitle);
@@ -153,7 +165,19 @@ export function Chat({
     deleteChatAction(id);
   }
   const transport = useMemo(
-    () => new DefaultChatTransport({ api: "/api/agent" }),
+    () =>
+      new DefaultChatTransport({
+        api: "/api/agent",
+        // Send only the new message; the server is the source of truth for
+        // history (it reloads it from the DB). Keeps the payload small and
+        // stops the client from dictating the conversation. `body` carries the
+        // extras passed to sendMessage (e.g. projectId).
+        prepareSendMessagesRequest({ id: reqId, messages: msgs, body }) {
+          return {
+            body: { id: reqId, message: msgs[msgs.length - 1], ...body },
+          };
+        },
+      }),
     [],
   );
 
@@ -335,6 +359,31 @@ export function Chat({
           </div>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {supervised && (
+            <Link
+              href={`/board?card=${id}`}
+              className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 text-[13px] font-semibold transition-colors hover:bg-accent"
+            >
+              View on board
+            </Link>
+          )}
+          <button
+            onClick={toggleSupervise}
+            title={
+              supervised
+                ? "Autonomous supervision is on — click to turn off"
+                : "Hand this chat to the autonomous supervisor (adds it to the board)"
+            }
+            className={cn(
+              "flex h-[34px] items-center gap-1.5 rounded-[10px] border px-3 text-[13px] font-semibold transition-colors",
+              supervised
+                ? "border-green-600/30 bg-green-600/10 text-green-700"
+                : "border-border bg-card hover:bg-accent",
+            )}
+          >
+            <Shield className="size-[15px]" />
+            {supervised ? "Supervising" : "Supervise"}
+          </button>
           <button
             onClick={() => toast("Sharing is coming soon")}
             className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 text-[13px] font-semibold transition-colors hover:bg-accent"

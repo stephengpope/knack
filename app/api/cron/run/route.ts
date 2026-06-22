@@ -40,16 +40,18 @@ export async function POST(req: Request) {
 
   const userId = project.userId; // trust the row, not the caller
   const chatId = nanoid();
-  const messages: UIMessage[] = [
-    { id: nanoid(), role: "user", parts: [{ type: "text", text: job.prompt }] },
-  ];
+  const message: UIMessage = {
+    id: nanoid(),
+    role: "user",
+    parts: [{ type: "text", text: job.prompt }],
+  };
 
   let result;
   try {
     result = await runAgentTurn({
       userId,
       chatId,
-      messages,
+      message,
       model: job.model ?? undefined,
       projectId,
       chat: {

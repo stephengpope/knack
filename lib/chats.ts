@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, not, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, not, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { UIMessage } from "ai";
 import { db } from "@/lib/db";
@@ -29,7 +29,17 @@ export async function listChats(userId: string): Promise<ChatListItem[]> {
       source: chat.source,
     })
     .from(chat)
-    .where(eq(chat.userId, userId))
+    // Cards live on the Board, not in the Chats list (open them via the
+    // drawer's "Open chat"). A card is any chat with a non-null kanbanStatus.
+    // Supervisor chats (source='supervisor') are internal — only reachable from
+    // their card — so they're excluded too.
+    .where(
+      and(
+        eq(chat.userId, userId),
+        isNull(chat.kanbanStatus),
+        ne(chat.source, "supervisor"),
+      ),
+    )
     .orderBy(desc(chat.updatedAt));
 }
 
@@ -138,6 +148,16 @@ export async function renameChat(userId: string, id: string, title: string) {
     .where(and(eq(chat.id, id), eq(chat.userId, userId)));
 }
 
+/**
+ * Freeze a chat's system prompt at activation. Cards are created as draft rows
+ * with a null systemPrompt; their first worker turn builds the prompt and
+ * persists it here (so it incorporates whatever the repo holds at activation).
+ * Internal (no userId scope) — called from the agent turn.
+ */
+export async function setChatSystemPrompt(id: string, systemPrompt: string) {
+  await db.update(chat).set({ systemPrompt }).where(eq(chat.id, id));
+}
+
 export async function toggleStar(userId: string, id: string) {
   await db
     .update(chat)
@@ -146,6 +166,16 @@ export async function toggleStar(userId: string, id: string) {
 }
 
 export async function deleteChat(userId: string, id: string) {
+  // Cascade the card's supervisor chat (linked by sourceRef, which isn't an FK).
+  await db
+    .delete(chat)
+    .where(
+      and(
+        eq(chat.userId, userId),
+        eq(chat.source, "supervisor"),
+        eq(chat.sourceRef, id),
+      ),
+    );
   await db.delete(chat).where(and(eq(chat.id, id), eq(chat.userId, userId)));
 }
 

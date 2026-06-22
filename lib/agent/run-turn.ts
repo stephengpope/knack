@@ -14,8 +14,10 @@ import {
   getChat,
   createChat,
   renameChat,
+  loadMessages,
   saveMessages,
   setChatGitState,
+  setChatSystemPrompt,
 } from "@/lib/chats";
 import { gitSync } from "@/lib/git/sync";
 import type { Project } from "@/lib/db/schema";
@@ -48,7 +50,8 @@ function firstUserText(messages: UIMessage[]): string {
 export type RunAgentTurnParams = {
   userId: string;
   chatId: string;
-  messages: UIMessage[];
+  /** The single new message to append. History is reloaded from the DB. */
+  message: UIMessage;
   /** Per-request model override, resolved for the active connection mode. */
   model?: string;
   /** Project for a NEW chat; ignored for existing chats (they keep their own). */
@@ -68,7 +71,7 @@ export type RunAgentTurnParams = {
  * Throws on model-resolution failure (caller maps to a 400 / logs).
  */
 export async function runAgentTurn(params: RunAgentTurnParams) {
-  const { userId, chatId, messages } = params;
+  const { userId, chatId, message } = params;
 
   // Resolve the AI Agent model for the active connection mode (gateway / BYOK /
   // compatible), honoring the per-request model override.
@@ -121,6 +124,12 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
       githubAuth?.pat ?? null,
       skills,
     );
+    // Freeze-at-activation: a draft card already has a row but a null
+    // systemPrompt. Persist the freshly built prompt so later turns reuse it
+    // (the !existing path below bakes it into createChat instead).
+    if (existing) {
+      await setChatSystemPrompt(chatId, instructions);
+    }
   }
 
   // Create the chat row on its first message, with the prompt baked in.
@@ -136,6 +145,15 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
     });
   }
 
+  // Reconstruct the conversation from the DB (the source of truth) and append
+  // the new message. The chat row exists now (created above when new), so the
+  // message FK is satisfied. Persist before running (db-first) so a crash
+  // mid-turn can't lose the message — this is what makes the supervisor loop
+  // crash-recoverable.
+  const history = await loadMessages(chatId);
+  const combined = [...history, message];
+  await saveMessages(chatId, combined);
+
   // Generate a title for brand-new untitled chats with the General AI model, in
   // parallel with the streamed response, then push it to the client.
   const titlePromise = needsTitle
@@ -148,7 +166,7 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
             system:
               "Generate a short (3-6 word) title for this chat based on the " +
               "user's first message. Return ONLY the title, nothing else.",
-            prompt: firstUserText(messages),
+            prompt: firstUserText(combined),
           }),
         )
         .then((r) => r.text.replace(/^["'#*\s]+|["'\s]+$/g, "").slice(0, 80))
@@ -458,11 +476,29 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
     }),
   };
 
+  // Capture token usage for budget tracking. The ToolLoopAgent's own onFinish
+  // exposes `totalUsage` (aggregated across all tool-loop steps) — the UI
+  // message stream's onFinish does NOT carry usage. We stash it here and resolve
+  // the `usage` promise when the stream finishes (the agent finishes first).
+  let capturedUsage = { inputTokens: 0, outputTokens: 0 };
+  let resolveUsage: (u: { inputTokens: number; outputTokens: number }) => void;
+  const usage = new Promise<{ inputTokens: number; outputTokens: number }>(
+    (r) => {
+      resolveUsage = r;
+    },
+  );
+
   const agent = new ToolLoopAgent({
     model: agentModel,
     providerOptions, // request-scoped BYOK when present (gateway custom mode)
     instructions, // base prompt, plus project repo context when the chat has one
     tools,
+    onFinish: (event) => {
+      capturedUsage = {
+        inputTokens: event.totalUsage?.inputTokens ?? 0,
+        outputTokens: event.totalUsage?.outputTokens ?? 0,
+      };
+    },
   });
 
   // Message type includes the custom "chat-title" data part used below.
@@ -473,11 +509,13 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
   >;
 
   const stream = createUIMessageStream<ChatMessage>({
-    originalMessages: messages as ChatMessage[],
+    originalMessages: combined as ChatMessage[],
     // stable, server-generated ids for assistant messages (required for persistence)
     generateId: createIdGenerator({ prefix: "msg", size: 16 }),
     onFinish: async ({ messages: final }) => {
       await saveMessages(chatId, final as unknown as UIMessage[]);
+      // Agent onFinish has already run by now, so capturedUsage is populated.
+      resolveUsage(capturedUsage);
     },
     execute: async ({ writer }) => {
       // Stream the agent's response. The agent stream never emits data parts,
@@ -485,7 +523,7 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
       writer.merge(
         (await createAgentUIStream({
           agent,
-          uiMessages: messages as ChatMessage[],
+          uiMessages: combined as ChatMessage[],
         })) as unknown as Parameters<typeof writer.merge>[0],
       );
       // Once the parallel title resolves, persist it and push it to the client
@@ -524,7 +562,7 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
         }
       : null;
 
-  return { stream, sync };
+  return { stream, sync, usage };
 }
 
 /** Drain a UI message stream server-side (no client) so its `onFinish` —

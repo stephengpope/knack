@@ -11,6 +11,9 @@ export type Settings = {
   defaultModel: string;
   // null = "Same as AI Agent" (fall back to defaultModel for background calls).
   generalModel: string | null;
+  // Supervisor budget ceilings per card RUN (cards may override).
+  maxRounds: number;
+  maxTokensPerCard: number;
 };
 
 // Singleton row id — the deployment shares one config.
@@ -20,6 +23,8 @@ const FALLBACK: Settings = {
   connectionMode: "gateway",
   defaultModel: DEFAULT_MODEL,
   generalModel: null,
+  maxRounds: 25,
+  maxTokensPerCard: 2_000_000,
 };
 
 /** Shared deployment model config (admin-managed, used by every user). */
@@ -34,6 +39,8 @@ export async function getAppSettings(): Promise<Settings> {
     connectionMode: (row.connectionMode as ConnectionMode) ?? "gateway",
     defaultModel: row.defaultModel ?? DEFAULT_MODEL,
     generalModel: row.generalModel ?? null,
+    maxRounds: row.maxRounds ?? FALLBACK.maxRounds,
+    maxTokensPerCard: row.maxTokensPerCard ?? FALLBACK.maxTokensPerCard,
   };
 }
 
