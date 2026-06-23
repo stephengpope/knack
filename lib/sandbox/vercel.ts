@@ -175,7 +175,8 @@ export class VercelSandbox implements Sandbox {
       const id = await this.buildSnapshot();
       await setReady(id);
       return id;
-    } catch {
+    } catch (e) {
+      console.error("[snapshot] build failed:", (e as Error)?.stack ?? e);
       await setFailed();
       return null;
     }

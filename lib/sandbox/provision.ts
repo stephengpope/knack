@@ -158,8 +158,10 @@ export function smokeTests(): BuildStep[] {
   ];
   for (const s of BUILTIN_SKILLS) {
     tests.push({
+      // Double-quoted so $HOME expands (single-quoting it was the bug that made
+      // every snapshot build fail). Skill names are a controlled charset.
       label: `skill-present:${s.name}`,
-      cmd: `test -s ${q(`${BUILTIN_SKILLS_HOME}/${s.name}/SKILL.md`)}`,
+      cmd: `test -s "${BUILTIN_SKILLS_HOME}/${s.name}/SKILL.md"`,
     });
   }
   return tests;
