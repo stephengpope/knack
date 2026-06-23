@@ -86,6 +86,25 @@ export type BuildStep = { label: string; cmd: string };
 // Single-quote a value for safe interpolation into a bash -c string.
 const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
 
+// System libraries headless Chrome needs on Amazon Linux 2023 (the node24 base).
+// Without these, agent-browser's bundled Chrome fails with libnspr4.so / DevTools
+// errors. Verified live.
+const CHROMIUM_DEPS = [
+  "nss", "nspr", "libxkbcommon", "atk", "at-spi2-atk", "at-spi2-core",
+  "libXcomposite", "libXdamage", "libXrandr", "libXfixes", "libXcursor",
+  "libXi", "libXtst", "libXScrnSaver", "libXext", "mesa-libgbm", "libdrm",
+  "mesa-libGL", "mesa-libEGL", "cups-libs", "alsa-lib", "pango", "cairo",
+  "gtk3", "dbus-libs",
+].join(" ");
+
+// ripgrep isn't in the AL2023 dnf repos (and EPEL doesn't resolve it), so we drop
+// in the official static musl binary. Best-effort: search_files falls back to
+// grep/find, so a failed rg install must never abort the snapshot.
+const RIPGREP_VERSION = "14.1.1";
+const RIPGREP_URL =
+  `https://github.com/BurntSushi/ripgrep/releases/download/${RIPGREP_VERSION}/` +
+  `ripgrep-${RIPGREP_VERSION}-x86_64-unknown-linux-musl.tar.gz`;
+
 /**
  * Ordered shell build: install binaries, then place agent-browser's bundled
  * skill from its installed package (no network). The firecrawl skills are
@@ -95,10 +114,18 @@ const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
  */
 export function buildSteps(): BuildStep[] {
   return [
-    { label: "ripgrep", cmd: "sudo dnf install -y ripgrep" },
+    // Chrome system libs first — agent-browser's chromium needs them.
+    { label: "chromium-deps", cmd: `sudo dnf install -y --skip-broken ${CHROMIUM_DEPS} && sudo ldconfig` },
     { label: "agent-browser", cmd: "npm i -g agent-browser" },
     { label: "agent-browser-chromium", cmd: "agent-browser install" },
     { label: "firecrawl-cli", cmd: "npm i -g firecrawl-cli" },
+    // ripgrep: official static binary, best-effort (|| true) — grep fallback exists.
+    {
+      label: "ripgrep",
+      cmd:
+        `curl -fsSL ${q(RIPGREP_URL)} -o /tmp/rg.tgz && tar xzf /tmp/rg.tgz -C /tmp && ` +
+        `sudo cp /tmp/ripgrep-*/rg /usr/local/bin/rg || true`,
+    },
     { label: "skills-home", cmd: `mkdir -p ${BUILTIN_SKILLS_HOME}` },
     {
       // agent-browser ships its SKILL.md inside the npm package (files: skills/).
@@ -123,7 +150,7 @@ export function vendoredSkills(): { name: string; content: string }[] {
  */
 export function smokeTests(): BuildStep[] {
   const tests: BuildStep[] = [
-    { label: "rg", cmd: "command -v rg" },
+    // rg is best-effort (grep fallback), so it's intentionally NOT asserted here.
     { label: "agent-browser", cmd: "command -v agent-browser" },
     { label: "firecrawl", cmd: "command -v firecrawl-cli || command -v firecrawl" },
     // proves chromium downloaded + launches headless
