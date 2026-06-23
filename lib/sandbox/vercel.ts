@@ -2,7 +2,7 @@
 import { Sandbox as VercelSDK } from "@vercel/sandbox";
 import { dirname } from "node:path";
 import type { Sandbox, SandboxBox, RunResult } from "./types";
-import { buildSteps, smokeTests } from "./provision";
+import { buildSteps, smokeTests, vendoredSkills } from "./provision";
 import {
   acquireBuild,
   clearSnapshot,
@@ -180,6 +180,14 @@ export class VercelSandbox implements Sandbox {
           const err = (await r.stderr()).slice(0, 500);
           throw new Error(`snapshot build step '${step.label}' failed: ${err}`);
         }
+      }
+      // Write the vendored firecrawl skills (our own copies — not in the npm
+      // package, never fetched at build) into $HOME/.skills.
+      const home = (await (await sb.runCommand("bash", ["-c", "echo -n $HOME"])).stdout()).trim();
+      for (const s of vendoredSkills()) {
+        const dir = `${home}/.skills/${s.name}`;
+        await sb.runCommand("bash", ["-c", `mkdir -p '${dir}'`]);
+        await sb.fs.writeFile(`${dir}/SKILL.md`, s.content);
       }
       for (const t of smokeTests()) {
         const r = await sb.runCommand("bash", ["-c", t.cmd]);
