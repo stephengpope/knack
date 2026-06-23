@@ -38,7 +38,6 @@ export default async function ChatPage({
       userName={user.name}
       projects={pickerProjects}
       initialProjectId={initialProjectId}
-      initialGitState={chat?.gitState ?? null}
       initialGitSha={chat?.lastCommitSha ?? null}
       initialSupervise={chat?.supervisorEnabled ?? false}
     />

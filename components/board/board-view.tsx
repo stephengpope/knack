@@ -32,6 +32,7 @@ import {
   type KanbanStatus,
 } from "@/lib/board-types";
 import type { ProjectSummary } from "@/lib/projects";
+import { ProjectPicker } from "@/components/chat/project-picker";
 import {
   createCardAction,
   updateCardAction,
@@ -236,6 +237,7 @@ export function BoardView({
       {open && (
         <CardDrawer
           card={open}
+          projects={projects}
           onClose={() => setOpenId(null)}
           onPatch={(p) => patchCard(open.id, p)}
           onToggleSupervise={(e) => toggleSupervise(open.id, e)}
@@ -309,12 +311,14 @@ function CardChip({
 
 function CardDrawer({
   card,
+  projects,
   onClose,
   onPatch,
   onToggleSupervise,
   onRemove,
 }: {
   card: BoardCard;
+  projects: ProjectSummary[];
   onClose: () => void;
   onPatch: (patch: CardPatch) => void;
   onToggleSupervise: (enabled: boolean) => void;
@@ -409,6 +413,21 @@ function CardDrawer({
               </div>
             </div>
           </div>
+
+          {projects.length > 0 && (
+            <div>
+              <Label>Project</Label>
+              <div className="mt-1.5 flex h-9 items-center rounded-[10px] border px-3">
+                <ProjectPicker
+                  value={card.projectId ?? ""}
+                  onChange={(id) => onPatch({ projectId: id })}
+                  projects={projects}
+                  // Locked once the card has started, like a chat's project.
+                  disabled={card.kanbanStatus !== "todo"}
+                />
+              </div>
+            </div>
+          )}
 
           {card.blockedReason && (
             <div className="rounded-[10px] border border-red-500/30 bg-red-500/5 p-3 text-[12.5px] text-red-600">

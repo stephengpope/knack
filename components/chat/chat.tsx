@@ -66,7 +66,10 @@ import {
 import { Logomark } from "@/components/brand/logo";
 import { KnackLoader } from "@/components/brand/loader";
 import { addPendingChat, setChatTitleOverride } from "@/components/app/chat-store";
-import { setChatGitStatus } from "@/components/app/git-status-store";
+import {
+  markChatGitStale,
+  setChatGitStatus,
+} from "@/components/app/git-status-store";
 import { ProjectPicker } from "@/components/chat/project-picker";
 import { GitCommitBadge } from "@/components/chat/git-commit-badge";
 import type { ProjectSummary } from "@/lib/projects";
@@ -96,7 +99,7 @@ async function pollGitStatus(id: string) {
       const s = await getChatGitStatusAction(id);
       const t = s.syncedAt ? new Date(s.syncedAt).getTime() : 0;
       if (t > baseline) {
-        setChatGitStatus(id, { state: s.state, sha: s.sha });
+        setChatGitStatus(id, { state: s.state, sha: s.sha, fresh: true });
         return;
       }
     } catch {
@@ -113,7 +116,6 @@ export function Chat({
   userName,
   projects = [],
   initialProjectId = null,
-  initialGitState = null,
   initialGitSha = null,
   initialSupervise = false,
 }: {
@@ -124,7 +126,6 @@ export function Chat({
   userName: string;
   projects?: ProjectSummary[];
   initialProjectId?: string | null;
-  initialGitState?: string | null;
   initialGitSha?: string | null;
   initialSupervise?: boolean;
 }) {
@@ -235,9 +236,9 @@ export function Chat({
         source: "user",
       });
     }
-    // Clear the success badge for this turn — it reappears once the new turn's
-    // gitSync settles (the "clears on next message" behaviour).
-    setChatGitStatus(id, { state: null, sha: null });
+    // Fade the badge to grey for this turn — it keeps the last commit visible +
+    // linkable and turns green again once the new turn's gitSync settles.
+    markChatGitStale(id, initialGitSha);
     // projectId is only honored server-side on chat creation; for existing
     // chats the stored project wins. Sending it always is harmless.
     sendMessage({ text }, { body: { projectId } });
@@ -275,7 +276,6 @@ export function Chat({
         )}
         <GitCommitBadge
           chatId={id}
-          initialState={initialGitState}
           initialSha={initialGitSha}
           repoUrl={
             projects.find((p) => p.id === (projectId ?? projects[0]?.id))

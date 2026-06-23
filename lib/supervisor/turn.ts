@@ -1,8 +1,8 @@
 import "server-only";
 import {
   streamText,
+  generateObject,
   tool,
-  Output,
   stepCountIs,
   convertToModelMessages,
   createUIMessageStream,
@@ -48,6 +48,31 @@ export type SupervisorTurnResult = {
   modelId: string;
   usage: TurnUsage;
 };
+
+/** The full decision rendered for the supervisor log — every field, readably. */
+function renderDecision(d: SupervisorDecision): string {
+  const lines = [`**Decision: ${d.verdict}**`, "", `Reason: ${d.reason || "(none)"}`];
+  if (d.verdict === "continue") {
+    lines.push(
+      "",
+      "Next prompt (sent to the worker verbatim):",
+      d.nextPrompt?.trim() || "(empty)",
+    );
+  }
+  const cu = d.criteriaUpdates;
+  const list = (items: { text: string; done: boolean }[]) =>
+    items.map((i) => `[${i.done ? "x" : " "}] ${i.text}`).join("; ") || "(empty)";
+  const cuLines: string[] = [];
+  if (cu.tasks) cuLines.push(`  Tasks → ${list(cu.tasks)}`);
+  if (cu.acceptanceCriteria)
+    cuLines.push(`  Acceptance criteria → ${list(cu.acceptanceCriteria)}`);
+  if (cu.testCases)
+    cuLines.push(
+      `  Test cases → ${cu.testCases.map((t) => `${t.desc} (${t.status})`).join("; ") || "(empty)"}`,
+    );
+  if (cuLines.length) lines.push("", "Criteria updates:", ...cuLines);
+  return lines.join("\n");
+}
 
 /**
  * One supervisor review turn. Mirrors `runAgentTurn`'s care (own copy of the
@@ -156,6 +181,11 @@ export async function runSupervisorTurn(params: {
     }),
   };
 
+  // ── Phase 1: VERIFY ──────────────────────────────────────────────────────
+  // Free-form: the supervisor inspects the worker's repo with read-only tools and
+  // writes its findings as text. No structured output here, so nothing collides
+  // with the model's reasoning stream (the cause of the old garbled JSON).
+  const genId = createIdGenerator({ prefix: "msg", size: 16 });
   const result = streamText({
     model,
     providerOptions,
@@ -163,23 +193,23 @@ export async function runSupervisorTurn(params: {
     messages: llmMessages,
     tools,
     stopWhen: stepCountIs(12),
-    experimental_output: Output.object({ schema: decisionSchema }),
   });
 
-  // Persist the REAL turn: the actual prompt the supervisor received (its full
-  // context) as the user message, then its actual streamed reply. No markers,
-  // no stripping — the supervisor chat is exactly what was sent and what came back.
+  // Persist the REAL turn: the prompt the supervisor received + its actual reply
+  // (reasoning text + tool calls). Captured here; saved once after the decision
+  // so the log holds the complete round (verification + decision).
   const userMsg: UIMessage = {
-    id: createIdGenerator({ prefix: "msg", size: 16 })(),
+    id: genId(),
     role: "user",
     parts: [{ type: "text", text: roundPrompt }],
   };
 
+  let verifyMessages: UIMessage[] = [...prior, userMsg];
   const uiStream = createUIMessageStream({
     originalMessages: [...prior, userMsg],
-    generateId: createIdGenerator({ prefix: "msg", size: 16 }),
-    onFinish: async ({ messages }) => {
-      await saveMessages(supervisorChatId, messages as UIMessage[]);
+    generateId: genId,
+    onFinish: ({ messages }) => {
+      verifyMessages = messages as UIMessage[];
     },
     execute: ({ writer }) => {
       writer.merge(
@@ -191,15 +221,44 @@ export async function runSupervisorTurn(params: {
   });
   await drainStream(uiStream as ReadableStream<unknown>);
 
-  const decision = await result.output;
-  const usage = await result.totalUsage;
+  const findings = (await result.text).trim();
+  const usage1 = await result.totalUsage;
+
+  // ── Phase 2: DECIDE ──────────────────────────────────────────────────────
+  // A separate, forced call: generateObject MUST return a valid decision (no
+  // "did it remember to call the tool?"). No tools, thinking disabled — Anthropic
+  // forbids forced tool-choice (object mode) while thinking is on, and the model
+  // already did its reasoning in phase 1.
+  const decisionRes = await generateObject({
+    model,
+    providerOptions: {
+      ...(providerOptions ?? {}),
+      anthropic: { thinking: { type: "disabled" } },
+    },
+    schema: decisionSchema,
+    system,
+    prompt:
+      `${roundPrompt}\n\n## Your verification findings\n` +
+      `${findings || "(no findings recorded)"}\n\n` +
+      `Return your decision as the structured object.`,
+  });
+  const decision = decisionRes.object;
+  const usage2 = decisionRes.usage;
+
+  // The complete decision, rendered readably, appended as the round's final entry.
+  const decisionMsg: UIMessage = {
+    id: genId(),
+    role: "assistant",
+    parts: [{ type: "text", text: renderDecision(decision) }],
+  };
+  await saveMessages(supervisorChatId, [...verifyMessages, decisionMsg]);
 
   return {
     decision,
     modelId,
     usage: {
-      inputTokens: usage.inputTokens ?? 0,
-      outputTokens: usage.outputTokens ?? 0,
+      inputTokens: (usage1.inputTokens ?? 0) + (usage2.inputTokens ?? 0),
+      outputTokens: (usage1.outputTokens ?? 0) + (usage2.outputTokens ?? 0),
     },
   };
 }

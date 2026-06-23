@@ -64,6 +64,14 @@ singleton, admin-managed). `resolveAgentModel` / `resolveGeneralModel` return a
   (`lib/gateway-byok.ts`); same gateway namespace, just different credentials.
 - `compatible` — direct OpenAI-compatible endpoint, bypasses the gateway.
 
+> **Don't blame "the gateway" by default.** Mode is one of the three above
+> (`custom`/`compatible` may not touch the hosted gateway at all). Connection mode
+> only changes credentials/endpoint — it never changes how a model emits text,
+> tokens, or structured output. Model/SDK behavior (e.g. reasoning + tools +
+> `experimental_output` interleaving) is **model-level** and identical across all
+> three modes. Check `app_settings.connection_mode` before attributing anything to
+> routing.
+
 Live model catalog fetched from the gateway in `lib/gateway-models.ts` (server-only);
 `lib/models.ts` is client-safe types/helpers only.
 

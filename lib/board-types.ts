@@ -53,4 +53,5 @@ export type CardPatch = Partial<{
   testCases: TestCase[];
   kanbanStatus: KanbanStatus;
   supervisorEnabled: boolean;
+  projectId: string | null;
 }>;
