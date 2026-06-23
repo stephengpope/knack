@@ -1,6 +1,6 @@
 import "server-only";
 import type { SandboxBox } from "@/lib/sandbox/types";
-import { REPO_DIR, SKILLS_DIR } from "@/lib/prompt/paths";
+import { PROJECT_ROOT, resolveSkillDir } from "@/lib/skills/resolve";
 import { fuzzyFindAndReplace, formatNoMatchHint } from "@/lib/files/fuzzy-match";
 import {
   MAX_FILE_BYTES,
@@ -36,11 +36,22 @@ export type ManageResult =
 const err = (error: string, preview?: string): ManageResult => ({ success: false, error, preview });
 const ok = (message: string): ManageResult => ({ success: true, message });
 
-const skillAbs = (name: string) => `${REPO_DIR}/${SKILLS_DIR}/${name}`;
+// New skills are created flat under the project root; existing ones are located
+// by the resolver (any depth, project or built-in).
+const newSkillAbs = (name: string) => `${PROJECT_ROOT}/${name}`;
 
-async function exists(box: SandboxBox, abs: string): Promise<boolean> {
-  const r = await box.run("bash", ["-c", `test -e '${abs}' && echo yes || echo no`]);
-  return r.stdout.trim() === "yes";
+/** Resolve an existing PROJECT skill's dir for mutation. Built-in skills are
+ *  vendored/read-only; refuse to edit them. Returns the dir or an error result. */
+async function resolveForWrite(
+  box: SandboxBox,
+  name: string,
+): Promise<{ dir: string } | ManageResult> {
+  const found = await resolveSkillDir(box, name);
+  if (!found) return err(`Skill '${name}' not found.`);
+  if (found.builtin) {
+    return err(`'${name}' is a built-in skill and can't be edited.`);
+  }
+  return { dir: found.dir };
 }
 
 async function readMaybe(box: SandboxBox, abs: string): Promise<string | null> {
@@ -76,16 +87,23 @@ export async function skillManage(box: SandboxBox, args: ManageArgs): Promise<Ma
       const sizeErr = validateContentSize(content);
       if (sizeErr) return err(sizeErr);
 
-      const present = await exists(box, skillAbs(name));
-      if (action === "create" && present) {
-        return err(`Skill '${name}' already exists. Use action 'edit' or 'patch' to change it.`);
-      }
-      if (action === "edit" && !present) {
-        return err(`Skill '${name}' not found. Use action 'create' to make a new skill.`);
+      if (action === "create") {
+        const dup = await resolveSkillDir(box, name);
+        if (dup) {
+          return err(
+            dup.builtin
+              ? `'${name}' is a built-in skill — choose a different name.`
+              : `Skill '${name}' already exists. Use action 'edit' or 'patch' to change it.`,
+          );
+        }
+        await writeFileAt(box, `${newSkillAbs(name)}/SKILL.md`, content);
+        return ok(`Skill '${name}' created.`);
       }
 
-      await writeFileAt(box, `${skillAbs(name)}/SKILL.md`, content);
-      return ok(`Skill '${name}' ${action === "create" ? "created" : "updated"}.`);
+      const target = await resolveForWrite(box, name);
+      if ("success" in target) return target;
+      await writeFileAt(box, `${target.dir}/SKILL.md`, content);
+      return ok(`Skill '${name}' updated.`);
     }
 
     case "patch": {
@@ -95,14 +113,15 @@ export async function skillManage(box: SandboxBox, args: ManageArgs): Promise<Ma
       if (newString === undefined || newString === null) {
         return err("'new_string' is required for 'patch' (use an empty string to delete text).");
       }
-      if (!(await exists(box, skillAbs(name)))) return err(`Skill '${name}' not found.`);
+      const patchTarget = await resolveForWrite(box, name);
+      if ("success" in patchTarget) return patchTarget;
 
-      let targetAbs = `${skillAbs(name)}/SKILL.md`;
+      let targetAbs = `${patchTarget.dir}/SKILL.md`;
       const patchingSkillMd = !args.file_path;
       if (args.file_path) {
         const pErr = validateFilePath(args.file_path);
         if (pErr) return err(pErr);
-        targetAbs = `${skillAbs(name)}/${args.file_path}`;
+        targetAbs = `${patchTarget.dir}/${args.file_path}`;
       }
 
       const current = await readMaybe(box, targetAbs);
@@ -131,8 +150,9 @@ export async function skillManage(box: SandboxBox, args: ManageArgs): Promise<Ma
     }
 
     case "delete": {
-      if (!(await exists(box, skillAbs(name)))) return err(`Skill '${name}' not found.`);
-      await box.run("bash", ["-c", `rm -rf '${skillAbs(name)}'`]);
+      const delTarget = await resolveForWrite(box, name);
+      if ("success" in delTarget) return delTarget;
+      await box.run("bash", ["-c", `rm -rf '${delTarget.dir}'`]);
       return ok(`Skill '${name}' deleted.`);
     }
 
@@ -146,19 +166,23 @@ export async function skillManage(box: SandboxBox, args: ManageArgs): Promise<Ma
       if (Buffer.byteLength(fileContent, "utf8") > MAX_FILE_BYTES) {
         return err(`file exceeds ${MAX_FILE_BYTES} bytes.`);
       }
-      if (!(await exists(box, skillAbs(name)))) {
-        return err(`Skill '${name}' not found. Create the skill before adding files.`);
-      }
-      await writeFileAt(box, `${skillAbs(name)}/${args.file_path}`, fileContent);
+      const wfTarget = await resolveForWrite(box, name);
+      if ("success" in wfTarget) return wfTarget;
+      await writeFileAt(box, `${wfTarget.dir}/${args.file_path}`, fileContent);
       return ok(`Wrote ${args.file_path} to skill '${name}'.`);
     }
 
     case "remove_file": {
       const pErr = validateFilePath(args.file_path ?? "");
       if (pErr) return err(pErr);
-      if (!(await exists(box, skillAbs(name)))) return err(`Skill '${name}' not found.`);
-      const targetAbs = `${skillAbs(name)}/${args.file_path}`;
-      if (!(await exists(box, targetAbs))) {
+      const rfTarget = await resolveForWrite(box, name);
+      if ("success" in rfTarget) return rfTarget;
+      const targetAbs = `${rfTarget.dir}/${args.file_path}`;
+      const present = await box.run("bash", [
+        "-c",
+        `test -e '${targetAbs}' && echo yes || echo no`,
+      ]);
+      if (present.stdout.trim() !== "yes") {
         return err(`File not found: ${args.file_path} in skill '${name}'.`);
       }
       await box.run("bash", ["-c", `rm -f '${targetAbs}'`]);

@@ -240,6 +240,13 @@ export const appSettings = pgTable("app_settings", {
   maxTokensPerCard: bigint("max_tokens_per_card", { mode: "number" })
     .default(2_000_000)
     .notNull(),
+  // Vercel Sandbox snapshot — the baked tools image (ripgrep + agent-browser +
+  // firecrawl-cli + built-in skills). Built lazily on first sandbox creation and
+  // self-healed if deleted; id lives here because Vercel env can't be written at
+  // runtime. `status` ('building' | 'ready' | 'failed' | null) guards concurrent
+  // builders via a compare-and-set. See lib/sandbox/snapshot-store.ts.
+  sandboxSnapshotId: text("sandbox_snapshot_id"),
+  sandboxSnapshotStatus: text("sandbox_snapshot_status"),
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => new Date())
     .notNull(),

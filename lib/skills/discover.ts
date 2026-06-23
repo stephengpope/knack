@@ -1,6 +1,6 @@
 import "server-only";
 import type { Project } from "@/lib/db/schema";
-import { getFileContents, listRepoDir } from "@/lib/github";
+import { getFileContents, getTree } from "@/lib/github";
 import { SKILLS_DIR } from "@/lib/prompt/paths";
 import { MAX_DESCRIPTION } from "@/lib/skills/validate";
 
@@ -13,41 +13,58 @@ export type Skill = {
 };
 
 /**
- * Discover a project's skills from its repo over the GitHub API. Lists `.skills/`,
- * reads each sub-folder's SKILL.md, and pulls the description (folder name is the
- * skill name, per the Agent Skills spec). Run once at chat creation — never touches
- * the sandbox. Flat `.skills/<name>/` only; nested folders are not scanned in v1.
+ * Discover a project's skills from its repo over the GitHub API. Resolves the
+ * `.skills/` tree then recurses it in one call, so organizational subfolders at
+ * any depth are found. A skill's identity is its LEAF folder name (Agent Skills
+ * spec: name = parent dir, single segment); on a leaf-name collision the first
+ * one wins (matches hermes/pi — never errors). Run once at chat creation — never
+ * touches the sandbox.
  */
 export async function scanSkills(
   pat: string,
   project: Project,
 ): Promise<Skill[]> {
-  const entries = await listRepoDir(
-    pat,
-    project.repoOwner,
-    project.repoName,
-    SKILLS_DIR,
-    project.defaultBranch,
-  );
-  const dirs = entries.filter((e) => e.type === "dir");
+  const { repoOwner: owner, repoName: repo, defaultBranch: branch } = project;
 
-  const found = await Promise.all(
-    dirs.map(async (dir) => {
+  const root = await getTree(pat, owner, repo, branch, false);
+  const skillsEntry = root.tree.find(
+    (e) => e.path === SKILLS_DIR && e.type === "tree",
+  );
+  if (!skillsEntry) return [];
+
+  const sub = await getTree(pat, owner, repo, skillsEntry.sha, true);
+  // Paths are relative to `.skills/`. A skill manifest is `<…>/SKILL.md` with at
+  // least one folder above it (a bare `.skills/SKILL.md` has no name → skip).
+  const manifests = sub.tree.filter(
+    (e) => e.type === "blob" && e.path.endsWith("/SKILL.md"),
+  );
+
+  const fetched = await Promise.all(
+    manifests.map(async (m) => {
       const body = await getFileContents(
         pat,
-        project.repoOwner,
-        project.repoName,
-        `${SKILLS_DIR}/${dir.name}/SKILL.md`,
-        project.defaultBranch,
+        owner,
+        repo,
+        `${SKILLS_DIR}/${m.path}`,
+        branch,
       ).catch(() => null);
-      if (!body) return null;
-      const description = extractDescription(body);
-      if (!description) return null;
-      return { name: dir.name, description };
+      return { path: m.path, body };
     }),
   );
 
-  return found.filter((s): s is Skill => s !== null);
+  const seen = new Set<string>();
+  const out: Skill[] = [];
+  for (const { path, body } of fetched) {
+    if (!body) continue;
+    const parts = path.split("/");
+    const name = parts[parts.length - 2]; // leaf folder = name
+    if (!name || seen.has(name)) continue;
+    const description = extractDescription(body);
+    if (!description) continue;
+    seen.add(name);
+    out.push({ name, description });
+  }
+  return out;
 }
 
 /**
@@ -59,13 +76,34 @@ export function extractDescription(md: string): string | null {
   return parseDescription(md) ?? deriveDescriptionFromBody(md);
 }
 
-/** Frontmatter `description` (single-line value). Null if absent. */
+/**
+ * Frontmatter `description`. Handles both a single-line value and a YAML block
+ * scalar (`description: |` / `>`, with optional chomp/indent indicators) — the
+ * latter is common in vendor skills (e.g. firecrawl-*). Multi-line bodies are
+ * flattened to a single line for the prompt. Null if absent.
+ */
 function parseDescription(md: string): string | null {
-  const fm = md.match(/^---\r?\n([\s\S]*?)\r?\n---/);
-  if (!fm) return null;
-  const line = fm[1].match(/^description:\s*(.+)$/m);
-  if (!line) return null;
-  const value = line[1].trim().replace(/^["']|["']$/g, "").trim();
+  const fmMatch = md.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (!fmMatch) return null;
+  const lines = fmMatch[1].split(/\r?\n/);
+  const i = lines.findIndex((l) => /^description:/.test(l));
+  if (i < 0) return null;
+  const head = lines[i].replace(/^description:\s*/, "").trim();
+
+  // Block scalar: collect the following more-indented lines until a dedent.
+  if (/^[|>][+-]?\d*$/.test(head)) {
+    const out: string[] = [];
+    for (let j = i + 1; j < lines.length; j++) {
+      const l = lines[j];
+      if (l.trim() === "") continue;
+      if (/^\s/.test(l)) out.push(l.trim());
+      else break; // dedent → next frontmatter key
+    }
+    const value = out.join(" ").replace(/\s+/g, " ").trim();
+    return value || null;
+  }
+
+  const value = head.replace(/^["']|["']$/g, "").trim();
   return value || null;
 }
 

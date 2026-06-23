@@ -4,6 +4,20 @@ import { getFileContents } from "@/lib/github";
 import { knackGuidance } from "@/lib/prompt/knack-guidance";
 import { renderSkillsSection } from "@/lib/skills/render";
 import type { Skill } from "@/lib/skills/discover";
+import { BUILTIN_SKILLS } from "@/lib/sandbox/provision";
+
+// Built-in tooling skills (agent-browser, firecrawl-*) are baked into every box's
+// $HOME/.skills by the snapshot build. Their name+description are hard-coded here
+// because the prompt is assembled server-side with no sandbox to scan. They take
+// precedence over project skills on a name clash.
+function mergeBuiltins(projectSkills: Skill[]): Skill[] {
+  const builtins: Skill[] = BUILTIN_SKILLS.map((s) => ({
+    name: s.name,
+    description: s.description,
+  }));
+  const taken = new Set(builtins.map((s) => s.name));
+  return [...builtins, ...projectSkills.filter((s) => !taken.has(s.name))];
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CANONICAL SYSTEM-PROMPT ORDER (source of truth — keep assembly below in sync)
@@ -58,7 +72,7 @@ export async function buildInstructions(
   const parts = [
     (repo.get("SOUL.md") ?? "").trim(),
     knackGuidance(project),
-    renderSkillsSection(skills),
+    renderSkillsSection(mergeBuiltins(skills)),
     (repo.get("AGENT.md") ?? "").trim(),
     (repo.get("MEMORY.md") ?? "").trim(),
     (repo.get("USER.md") ?? "").trim(),

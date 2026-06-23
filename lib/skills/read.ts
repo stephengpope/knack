@@ -1,7 +1,6 @@
 import "server-only";
 import type { SandboxBox } from "@/lib/sandbox/types";
-import { REPO_DIR, SKILLS_DIR } from "@/lib/prompt/paths";
-import { extractDescription } from "@/lib/skills/discover";
+import { enumerateSkills, resolveSkillDir } from "@/lib/skills/resolve";
 import { validateSkillName } from "@/lib/skills/validate";
 
 /** Result of skill_load: the SKILL.md body + its bundled files, or one file. */
@@ -22,7 +21,9 @@ export async function skillLoad(
 ): Promise<SkillLoadResult> {
   const nameErr = validateSkillName(name);
   if (nameErr) return { error: nameErr };
-  const dir = `${REPO_DIR}/${SKILLS_DIR}/${name}`;
+  const resolved = await resolveSkillDir(box, name);
+  if (!resolved) return { error: `Skill '${name}' not found.` };
+  const dir = resolved.dir;
   try {
     if (file) {
       if (file.includes("..") || !/^[A-Za-z0-9._/-]+$/.test(file)) {
@@ -54,24 +55,9 @@ export async function skillsList(
   box: SandboxBox,
 ): Promise<{ skills: { name: string; description: string }[] } | { error: string }> {
   try {
-    const root = `${REPO_DIR}/${SKILLS_DIR}`;
-    const ls = await box.run("bash", [
-      "-c",
-      `find '${root}' -maxdepth 2 -name SKILL.md 2>/dev/null | sort`,
-    ]);
-    const paths = ls.stdout
-      .split("\n")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const skills: { name: string; description: string }[] = [];
-    for (const p of paths) {
-      const md = await box.readFile(p).catch(() => null);
-      if (!md) continue;
-      const description = extractDescription(md);
-      const m = p.match(/\/([^/]+)\/SKILL\.md$/);
-      if (description && m) skills.push({ name: m[1], description });
-    }
-    return { skills };
+    // Both roots (built-in $HOME/.skills + project .skills), any depth, deduped.
+    const found = await enumerateSkills(box);
+    return { skills: found.map(({ name, description }) => ({ name, description })) };
   } catch (e) {
     return { error: (e as Error).message };
   }

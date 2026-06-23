@@ -183,6 +183,38 @@ export async function listRepoDir(
   }));
 }
 
+export type TreeEntry = { path: string; type: "blob" | "tree"; sha: string };
+
+/**
+ * Read a git tree via the Trees API. Pass a branch name or tree SHA as `treeish`.
+ * `recursive` returns the whole subtree in one call (any depth). `truncated` is
+ * true only for very large trees (>100k entries) — not a concern scoped to a
+ * `.skills/` subtree. Returns [] when the tree/ref doesn't exist (404).
+ */
+export async function getTree(
+  pat: string,
+  owner: string,
+  repo: string,
+  treeish: string,
+  recursive = false,
+): Promise<{ tree: TreeEntry[]; truncated: boolean }> {
+  const url = new URL(
+    `${API}/repos/${owner}/${repo}/git/trees/${encodeURIComponent(treeish)}`,
+  );
+  if (recursive) url.searchParams.set("recursive", "1");
+  const res = await fetch(url, { headers: headers(pat) });
+  if (res.status === 404) return { tree: [], truncated: false };
+  if (!res.ok) throw new Error(`Couldn't read tree ${treeish} (${res.status}).`);
+  const json = (await res.json()) as {
+    tree?: { path: string; type: string; sha: string }[];
+    truncated?: boolean;
+  };
+  const tree = (json.tree ?? [])
+    .filter((e) => e.type === "blob" || e.type === "tree")
+    .map((e) => ({ path: e.path, type: e.type as "blob" | "tree", sha: e.sha }));
+  return { tree, truncated: json.truncated ?? false };
+}
+
 /** HTTPS clone URL with the PAT embedded for git auth inside the sandbox. */
 export function cloneUrlWithToken(
   pat: string,
