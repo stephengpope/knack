@@ -26,6 +26,7 @@ import { resolveAgentModel, resolveGeneralModel } from "@/lib/llm";
 import { secretsList, secretGet } from "@/lib/user-secrets";
 import { getProject, getDefaultProject } from "@/lib/projects";
 import { getGithubAuth } from "@/lib/github-account";
+import { getUserTimezone } from "@/lib/user";
 import { buildInstructions } from "@/lib/prompt/build";
 import { REPO_DIR } from "@/lib/prompt/paths";
 import { scanSkills, type Skill } from "@/lib/skills/discover";
@@ -142,6 +143,7 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
       project,
       githubAuth?.pat ?? null,
       skills,
+      await getUserTimezone(userId),
     );
     // Freeze-at-activation: a draft card already has a row but a null
     // systemPrompt. Persist the freshly built prompt so later turns reuse it

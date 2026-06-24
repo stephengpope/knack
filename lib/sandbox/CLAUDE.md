@@ -20,8 +20,8 @@ box missing its tools mid-session corrupts the conversation.
   race before any snapshot exists they each build once (~45s) and the last id
   wins — a rare, one-time waste, simpler than a lock.
 - We set no box `timeout` (platform governs box lifetime). Per-chat resume
-  snapshots get `snapshotExpiration` (default 1 day, `SANDBOX_SNAPSHOT_EXPIRY_DAYS`
-  override) so they don't accumulate; the platform deletes them.
+  snapshots get `snapshotExpiration` (default 1 day, `SNAPSHOT_TTL` override, in
+  days) so they don't accumulate; the platform deletes them.
 - `snapshot-store.ts` — DB persistence of `{sandboxSnapshotId, sandboxSnapshotStatus}`
   on the `app_settings` singleton (can't live in Vercel env — deploy-time
   immutable). `setReady`/`setFailed`/`clearSnapshot`/`getSnapshot`.

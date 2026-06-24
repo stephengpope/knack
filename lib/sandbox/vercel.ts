@@ -9,10 +9,10 @@ type SDKSandbox = Awaited<ReturnType<typeof VercelSDK.getOrCreate>>;
 
 // Per-chat resume snapshots auto-expire after this idle window so they don't
 // accumulate (the platform deletes them). Default 1 day; override with
-// SANDBOX_SNAPSHOT_EXPIRY_DAYS. We set no box `timeout` — the platform governs
-// box lifetime. The shared tools snapshot never expires (see buildSnapshot).
+// SNAPSHOT_TTL (in days). We set no box `timeout` — the platform governs box
+// lifetime. The shared tools snapshot never expires (see buildSnapshot).
 const CHAT_SNAPSHOT_EXPIRY_MS =
-  (Number(process.env.SANDBOX_SNAPSHOT_EXPIRY_DAYS) || 1) * 24 * 60 * 60 * 1000;
+  (Number(process.env.SNAPSHOT_TTL) || 1) * 24 * 60 * 60 * 1000;
 
 /** 404 from the sandbox API (box or snapshot not found). */
 function apiStatus(e: unknown): number | undefined {

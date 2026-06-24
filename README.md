@@ -93,6 +93,7 @@ reference for self-hosting or local development.
 | `BETTER_AUTH_URL`    | —        | **Auto** on Vercel (deployment URL). Set to `http://localhost:3000` locally. |
 | `AI_GATEWAY_API_KEY` | —        | **Auto** on Vercel via OIDC. Set locally from [ai-gateway.vercel.sh](https://ai-gateway.vercel.sh). |
 | `FIRECRAWL_API_KEY`  | —        | Optional — web scrape/search tools in the sandbox ([firecrawl.dev](https://firecrawl.dev)). |
+| `SNAPSHOT_TTL`       | —        | Optional — days a chat's sandbox snapshot is kept before auto-expiry. Default `1`. |
 
 Voice dictation (AssemblyAI) is optional and configured in-app under
 **Administration** once deployed.

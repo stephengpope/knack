@@ -25,6 +25,7 @@ export default async function SettingsPage() {
     <SettingsView
       name={user.name}
       email={user.email}
+      timezone={user.timezone ?? "UTC"}
       secrets={secrets}
       redirectUri={redirectUri}
       providers={providers}

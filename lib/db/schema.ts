@@ -23,6 +23,9 @@ export const user = pgTable("user", {
     .$defaultFn(() => false)
     .notNull(),
   image: text("image"),
+  // IANA timezone (e.g. "America/New_York") for rendering dates in the agent
+  // prompt. Better Auth additionalFields-managed; defaults to UTC.
+  timezone: text("timezone").default("UTC").notNull(),
   // Better Auth admin plugin
   role: text("role"),
   banned: boolean("banned"),

@@ -51,6 +51,16 @@ export const auth = betterAuth({
     cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
   user: {
+    // IANA timezone, settable by the user from Settings (via authClient.updateUser).
+    // Used to render the date in the agent system prompt in the user's local time.
+    additionalFields: {
+      timezone: {
+        type: "string",
+        required: false,
+        defaultValue: "UTC",
+        input: true,
+      },
+    },
     // let users change their own email from Profile; if their current email is
     // verified, Better Auth emails a confirmation to the new address first.
     changeEmail: {

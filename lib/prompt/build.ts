@@ -48,6 +48,7 @@ export async function buildInstructions(
   project: Project | null,
   pat: string | null,
   skills: Skill[] = [],
+  timezone = "UTC",
 ): Promise<string> {
   if (!project || !pat) return "";
 
@@ -78,12 +79,14 @@ export async function buildInstructions(
     (repo.get("MEMORY.md") ?? "").trim(),
     (repo.get("USER.md") ?? "").trim(),
     // Dead last. Date-only (no time) so the frozen prompt is byte-stable for the
-    // whole day — keeps upstream prompt caches warm across turns.
+    // whole day — keeps upstream prompt caches warm across turns. Rendered in the
+    // user's timezone (defaults to UTC) since the server runs in UTC.
     `Conversation started: ${new Date().toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone: timezone,
     })}`,
   ];
 

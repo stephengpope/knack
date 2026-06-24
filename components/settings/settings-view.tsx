@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
-import { X, Sun, Moon, LogOut } from "lucide-react";
+import { X, Sun, Moon, LogOut, Check, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Logomark } from "@/components/brand/logo";
@@ -12,6 +12,18 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { authClient, signOut } from "@/lib/auth-client";
 import { SecretsTab } from "@/components/settings/secrets-tab";
 import type { ProviderOption } from "@/components/settings/secrets-tab";
@@ -26,6 +38,7 @@ type Tab = (typeof TABS)[number];
 export function SettingsView({
   name,
   email,
+  timezone,
   secrets,
   redirectUri,
   providers,
@@ -34,6 +47,7 @@ export function SettingsView({
 }: {
   name: string;
   email: string;
+  timezone: string;
   secrets: SecretSummary[];
   redirectUri: string;
   providers: ProviderOption[];
@@ -80,7 +94,9 @@ export function SettingsView({
 
         <div className="flex-1 overflow-y-auto px-9 pb-14 pt-8">
           <div className="max-w-[620px]">
-            {tab === "Account" && <AccountTab name={name} email={email} />}
+            {tab === "Account" && (
+              <AccountTab name={name} email={email} timezone={timezone} />
+            )}
             {tab === "Projects" && (
               <ProjectsTab account={githubAccount} projects={projects} />
             )}
@@ -99,7 +115,15 @@ export function SettingsView({
   );
 }
 
-function AccountTab({ name, email }: { name: string; email: string }) {
+function AccountTab({
+  name,
+  email,
+  timezone,
+}: {
+  name: string;
+  email: string;
+  timezone: string;
+}) {
   const router = useRouter();
   return (
     <>
@@ -107,12 +131,13 @@ function AccountTab({ name, email }: { name: string; email: string }) {
         Account
       </h1>
       <p className="mt-1 text-[13.5px] text-ink-soft">
-        Update your name, email, and password.
+        Update your name, email, timezone, and password.
       </p>
 
       <div className="mt-7 flex flex-col gap-4">
         <NameCard initial={name} />
         <EmailCard initial={email} />
+        <TimezoneCard initial={timezone} />
         <PasswordCard />
 
         <Button
@@ -183,6 +208,113 @@ function NameCard({ initial }: { initial: string }) {
         <Button
           onClick={save}
           disabled={busy || !name.trim() || name.trim() === initial}
+          className="knack-gradient h-9 px-4 font-bold text-white"
+        >
+          {busy ? <Spinner /> : "Save"}
+        </Button>
+      </div>
+    </FormCard>
+  );
+}
+
+// Full IANA list where supported; a small fallback for older runtimes. The
+// browser's own zone is always merged in so "Detect" can't land on a value
+// that's missing from the list.
+function timezoneList(detected: string): string[] {
+  let zones: string[];
+  try {
+    zones = (
+      Intl as unknown as { supportedValuesOf?: (k: string) => string[] }
+    ).supportedValuesOf?.("timeZone") ?? [];
+  } catch {
+    zones = [];
+  }
+  if (zones.length === 0) zones = ["UTC", detected];
+  return Array.from(new Set(["UTC", detected, ...zones])).sort();
+}
+
+function TimezoneCard({ initial }: { initial: string }) {
+  const router = useRouter();
+  const detected =
+    typeof Intl !== "undefined"
+      ? Intl.DateTimeFormat().resolvedOptions().timeZone
+      : "UTC";
+  const zones = useMemo(() => timezoneList(detected), [detected]);
+  const [value, setValue] = useState(initial);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  async function save(next: string) {
+    if (!next || next === initial) return;
+    setBusy(true);
+    try {
+      const res = await authClient.updateUser({ timezone: next });
+      if (res.error) throw new Error(res.error.message);
+      toast.success("Timezone updated");
+      router.refresh();
+    } catch (e) {
+      toast.error((e as Error).message || "Couldn't update timezone");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <FormCard
+      title="Timezone"
+      desc="Used to show the current date to the agent in your local time. New chats only."
+    >
+      <div className="flex flex-wrap items-center gap-2.5">
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-[320px] justify-between font-normal"
+            >
+              {value}
+              <ChevronsUpDown className="size-4 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[320px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Search timezone…" />
+              <CommandList>
+                <CommandEmpty>No timezone found.</CommandEmpty>
+                {zones.map((tz) => (
+                  <CommandItem
+                    key={tz}
+                    value={tz}
+                    onSelect={(v) => {
+                      setValue(v);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "size-4",
+                        value === tz ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    {tz}
+                  </CommandItem>
+                ))}
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        <Button
+          variant="outline"
+          onClick={() => setValue(detected)}
+          disabled={value === detected}
+          title="Use your browser's timezone"
+        >
+          Detect
+        </Button>
+        <Button
+          onClick={() => save(value)}
+          disabled={busy || !value || value === initial}
           className="knack-gradient h-9 px-4 font-bold text-white"
         >
           {busy ? <Spinner /> : "Save"}
