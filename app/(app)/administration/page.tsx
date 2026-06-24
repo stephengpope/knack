@@ -1,19 +1,20 @@
 import { requireAdmin } from "@/lib/session";
 import { listKeys } from "@/lib/api-keys";
 import { getAppSettings } from "@/lib/settings";
-import { fetchGatewayModels } from "@/lib/gateway-models";
+import { getAvailableModels } from "@/lib/available-models";
 import { listEndpoints } from "@/lib/endpoints";
 import { AdministrationView } from "@/components/administration/administration-view";
 
 export default async function AdministrationPage() {
   // Admin-only: regular users are redirected to "/".
   const admin = await requireAdmin();
-  const [keys, settings, catalog, endpoints] = await Promise.all([
+  const [keys, settings, available, endpoints] = await Promise.all([
     listKeys(),
     getAppSettings(),
-    fetchGatewayModels(),
+    getAvailableModels(), // mode-aware: gateway catalog, provider lists, or endpoints
     listEndpoints(),
   ]);
+  const catalog = available.models;
   const last4 = Object.fromEntries(keys.map((k) => [k.provider, k.last4]));
 
   return (

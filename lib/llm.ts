@@ -1,11 +1,23 @@
 import "server-only";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-import type { LanguageModel } from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createXai } from "@ai-sdk/xai";
+import { createMistral } from "@ai-sdk/mistral";
+import { createDeepSeek } from "@ai-sdk/deepseek";
+import {
+  wrapLanguageModel,
+  type LanguageModel,
+  type LanguageModelMiddleware,
+} from "ai";
 import { getAppSettings, type Settings } from "@/lib/settings";
 import { isModelSlug } from "@/lib/models";
 import { isCatalogModel } from "@/lib/gateway-models";
 import { gatewayByokOptions } from "@/lib/gateway-byok";
 import { getEndpointWithKey } from "@/lib/endpoints";
+import { getKeyMap } from "@/lib/api-keys";
+import { providerOf, type ProviderId } from "@/lib/providers";
 
 /**
  * A ready-to-use language model plus the request-scoped provider options it
@@ -33,9 +45,64 @@ async function pickModelId(
   return ok ? requested : fallback;
 }
 
+// Replicate the AI Gateway's automatic Anthropic prompt caching on the direct
+// path: stamp ephemeral cache breakpoints on the system prefix (system + tools)
+// and on the latest message, so each tool-loop step reuses the cached prefix
+// instead of re-reading the whole conversation. Without this, going direct
+// re-processes the full prompt every step — the slowdown vs the gateway.
+const anthropicCacheMiddleware: LanguageModelMiddleware = {
+  specificationVersion: "v3",
+  transformParams: async ({ params }) => {
+    const prompt = params.prompt;
+    const stamp = (m: (typeof prompt)[number]) => {
+      m.providerOptions = {
+        ...(m.providerOptions ?? {}),
+        anthropic: { cacheControl: { type: "ephemeral" } },
+      };
+    };
+    const lastSystem = [...prompt].reverse().find((m) => m.role === "system");
+    if (lastSystem) stamp(lastSystem); // caches tools + system (stable prefix)
+    if (prompt.length) stamp(prompt[prompt.length - 1]); // rolling history cache
+    return params;
+  },
+};
+
+// Build a direct provider client for "custom" (provide-your-own-keys) mode.
+// `id` is the provider's NATIVE model id (the gateway is not involved), so no
+// slug translation happens — it's passed straight to the provider package.
+function directModel(
+  provider: string,
+  id: string,
+  apiKey: string,
+): LanguageModel {
+  switch (provider) {
+    case "openai":
+      return createOpenAI({ apiKey })(id);
+    case "anthropic":
+      return wrapLanguageModel({
+        model: createAnthropic({ apiKey })(id),
+        middleware: anthropicCacheMiddleware,
+      });
+    case "google":
+      return createGoogleGenerativeAI({ apiKey })(id);
+    case "xai":
+      return createXai({ apiKey })(id);
+    case "mistral":
+      return createMistral({ apiKey })(id);
+    case "deepseek":
+      return createDeepSeek({ apiKey })(id);
+    default:
+      throw new Error(
+        `Provider "${provider}" is not supported with your own keys — ` +
+          `use an OpenAI-compatible endpoint instead.`,
+      );
+  }
+}
+
 // Turn a resolved model id into a usable model object for the active mode:
 // - gateway:    deployment's hosted gateway key (plain slug)
-// - custom:     shared provider keys via gateway BYOK
+// - custom:     your own provider key, called directly (no gateway); ids are
+//               stored `provider/<native-id>` — strip the prefix to call.
 // - compatible: direct OpenAI-compatible endpoint (no gateway)
 async function build(
   settings: Settings,
@@ -52,7 +119,13 @@ async function build(
     return { modelId, model };
   }
   if (settings.connectionMode === "custom") {
-    return { modelId, model: modelId, providerOptions: await gatewayByokOptions() };
+    const provider = providerOf(modelId);
+    const nativeId = modelId.slice(provider.length + 1); // drop "provider/"
+    const apiKey = (await getKeyMap())[provider as ProviderId];
+    if (!apiKey) {
+      throw new Error(`No API key configured for provider "${provider}".`);
+    }
+    return { modelId, model: directModel(provider, nativeId, apiKey) };
   }
   return { modelId, model: modelId };
 }

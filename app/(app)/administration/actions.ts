@@ -8,8 +8,9 @@ import {
   setDefaultModel,
   setGeneralModel,
 } from "@/lib/settings";
-import { isProviderId } from "@/lib/providers";
+import { isProviderId, PROVIDER_IDS } from "@/lib/providers";
 import { MODELS_CACHE_TAG } from "@/lib/gateway-models";
+import { providerModelsTag } from "@/lib/provider-models";
 import { addEndpoint, deleteEndpoint } from "@/lib/endpoints";
 
 export async function setKeyAction(provider: string, key: string) {
@@ -18,6 +19,7 @@ export async function setKeyAction(provider: string, key: string) {
   const value = key.trim();
   if (!value) throw new Error("Empty key");
   await setKey(provider, value);
+  revalidateTag(providerModelsTag(provider), "seconds"); // refetch this provider's models
   revalidatePath("/administration");
 }
 
@@ -25,6 +27,7 @@ export async function deleteKeyAction(provider: string) {
   await requireAdmin();
   if (!isProviderId(provider)) throw new Error("Unknown provider");
   await deleteKey(provider);
+  revalidateTag(providerModelsTag(provider), "seconds");
   revalidatePath("/administration");
 }
 
@@ -75,6 +78,9 @@ export async function setGeneralModelAction(model: string | null) {
 
 export async function refreshModelsAction() {
   await requireAdmin();
-  revalidateTag(MODELS_CACHE_TAG, "seconds");
+  revalidateTag(MODELS_CACHE_TAG, "seconds"); // gateway catalog
+  for (const p of PROVIDER_IDS) {
+    revalidateTag(providerModelsTag(p), "seconds"); // direct-mode provider lists
+  }
   revalidatePath("/administration");
 }

@@ -59,18 +59,23 @@ Models are **gateway `"provider/model"` strings** (dots, e.g. `anthropic/claude-
 singleton, admin-managed). `resolveAgentModel` / `resolveGeneralModel` return a
 `{ model, providerOptions }` usable directly with `generateText`/agent. Three
 `connectionMode`s:
-- `gateway` — deployment's hosted gateway key, plain slug.
-- `custom` — shared provider keys (BYOK) injected as `providerOptions.gateway.byok`
-  (`lib/gateway-byok.ts`); same gateway namespace, just different credentials.
+- `gateway` — deployment's hosted gateway key, plain gateway slug.
+- `custom` — your own provider keys, called **directly** via the per-provider AI
+  SDK packages (`@ai-sdk/openai|anthropic|google|xai|mistral|deepseek`), no
+  gateway. `build()` in `lib/llm.ts` maps the model's provider prefix to the
+  right client; model ids are stored `provider/<native-id>` and the prefix is
+  stripped before the call. Catalog comes from each provider's own `/models`
+  (`lib/provider-models.ts`), not the gateway. Only providers with an SDK package
+  are offered (Moonshot → use `compatible`). `lib/gateway-byok.ts` is now unused
+  by this mode (kept for reference).
 - `compatible` — direct OpenAI-compatible endpoint, bypasses the gateway.
 
-> **Don't blame "the gateway" by default.** Mode is one of the three above
-> (`custom`/`compatible` may not touch the hosted gateway at all). Connection mode
-> only changes credentials/endpoint — it never changes how a model emits text,
-> tokens, or structured output. Model/SDK behavior (e.g. reasoning + tools +
-> `experimental_output` interleaving) is **model-level** and identical across all
-> three modes. Check `app_settings.connection_mode` before attributing anything to
-> routing.
+> **Don't blame "the gateway" by default.** Only `gateway` mode touches the hosted
+> gateway; `custom` and `compatible` are direct provider clients. Mode changes the
+> credentials/endpoint/SDK-client — for the same model the call shape is normalized
+> by the AI SDK, but `custom`/`compatible` are a genuinely different code path than
+> the gateway, so don't assume gateway behavior carries over verbatim. Check
+> `app_settings.connection_mode` before attributing anything to routing.
 
 Live model catalog fetched from the gateway in `lib/gateway-models.ts` (server-only);
 `lib/models.ts` is client-safe types/helpers only.

@@ -493,7 +493,7 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
 
   const agent = new ToolLoopAgent({
     model: agentModel,
-    providerOptions, // request-scoped BYOK when present (gateway custom mode)
+    providerOptions, // request-scoped provider options, when the mode sets any
     instructions, // base prompt, plus project repo context when the chat has one
     tools,
     onFinish: (event) => {

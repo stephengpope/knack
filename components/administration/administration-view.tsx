@@ -181,7 +181,7 @@ function ModelsTab({
           icon={<KeyRound className="size-4 text-ink-soft" />}
           iconClass="border border-input bg-muted"
           title="Your provider keys"
-          desc="Your own keys, your billing — via the gateway."
+          desc="Your own keys, called directly — no gateway."
           badge={<Pill tone="green">Recommended</Pill>}
         />
         <ConnCard
