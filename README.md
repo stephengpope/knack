@@ -104,6 +104,64 @@ value overrides it).
 
 ---
 
+## Local development
+
+Knack is built for the cloud, but you can run the Next.js app on your laptop
+against your **deployed** Vercel project — same database, same secrets, same
+sandbox. **Deploy first** (above), then pull that project's environment down.
+
+Don't hand-write `.env.local`. The app encrypts stored credentials with
+`ENCRYPTION_KEY` and signs sessions with `BETTER_AUTH_SECRET`, so local must use
+the **exact** values your deployment uses or it can't read its own data. Pulling
+guarantees that; freshly generated local secrets would fail to decrypt rows
+written by production.
+
+Prerequisites: the [Vercel CLI](https://vercel.com/docs/cli)
+(`pnpm add -g vercel`) and `pnpm`.
+
+```bash
+# 1. Link this checkout to your Vercel project (once).
+vercel link
+
+# 2. Pull the deployment's env into .env.local — DATABASE_URL, the secrets,
+#    Resend, and a short-lived VERCEL_OIDC_TOKEN.
+vercel env pull .env.local
+
+# 3. The only value that differs locally is the base URL. `vercel env pull`
+#    overwrites .env.local, so keep this in .env.development.local — Next loads
+#    it in dev at higher precedence and the pull never touches it.
+echo 'BETTER_AUTH_URL=http://localhost:3000' >> .env.development.local
+
+# 4. Install and run.
+pnpm install
+pnpm dev            # http://localhost:3000
+```
+
+What the pulled env gives you:
+
+- `DATABASE_URL` → your Neon database. Migrations already ran on deploy; after you
+  edit `lib/db/schema.ts`, run `pnpm db:generate && pnpm db:migrate`.
+- `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, `CRON_SECRET` → identical to production,
+  so sessions and stored secrets decrypt.
+- `VERCEL_OIDC_TOKEN` → authenticates the **Vercel Sandbox** (and the AI Gateway)
+  from your laptop. It **expires in ~12 hours** — re-run `vercel env pull`, or use
+  `vercel dev` instead of `pnpm dev`, to refresh it. Without a valid token, chats
+  can't start a sandbox.
+
+Notes:
+
+- **You share one database with production by default.** Simplest, but local
+  changes (new users, chats, migrations) hit live data. To isolate, create a
+  [Neon branch](https://neon.com/docs/guides/branching) and point `DATABASE_URL`
+  at it in `.env.development.local`.
+- You don't need `AI_GATEWAY_API_KEY` locally — the OIDC token covers the gateway,
+  and custom/compatible provider keys live in the database (set under
+  **Administration**).
+- Created your admin via the deployment's **"Set up Knack"** screen? It's in the
+  shared DB, so log in locally with it. Otherwise run `pnpm seed:admin`.
+
+---
+
 ## What you get
 
 - **AI chat agent** with a sandboxed toolchain (bash, file read/write/edit,
