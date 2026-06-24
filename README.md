@@ -97,10 +97,10 @@ reference for self-hosting or local development.
 Voice dictation (AssemblyAI) is optional and configured in-app under
 **Administration** once deployed.
 
-Built-in tokens like `FIRECRAWL_API_KEY` (web scrape/search tools in the sandbox)
-are set in-app, not via env: per user under **Settings → Secrets**, or once for
-everyone by an admin under **Administration → Secrets** (cascades to all users; a
-user's own value overrides it).
+Built-in tokens (e.g. the web scrape/search tools in the sandbox) are set in-app,
+not via env: per user under **Settings → Secrets**, or once for everyone by an
+admin under **Administration → Secrets** (cascades to all users; a user's own
+value overrides it).
 
 ---
 
