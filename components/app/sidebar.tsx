@@ -1,6 +1,12 @@
 "use client";
 
-import { useOptimistic, startTransition, useState, useMemo } from "react";
+import {
+  useOptimistic,
+  startTransition,
+  useState,
+  useMemo,
+  useEffect,
+} from "react";
 import Link from "next/link";
 import { nanoid } from "nanoid";
 import { useRouter, usePathname } from "next/navigation";
@@ -66,6 +72,18 @@ export function Sidebar({
   const router = useRouter();
   const pathname = usePathname();
   const activeId = pathname.startsWith("/chat/") ? pathname.split("/")[2] : null;
+
+  // Give "New chat" a real href so it's right-clickable / open-in-new-tab like
+  // the other nav links. Generating the id in an effect (not during render)
+  // avoids an SSR/hydration mismatch; re-keying on pathname rotates to a fresh
+  // id after each navigation so a used id isn't reused.
+  const [newChatId, setNewChatId] = useState("");
+  useEffect(() => {
+    // Client-only id (intentionally not generated during render, to avoid an
+    // SSR/hydration mismatch on the href).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setNewChatId(nanoid());
+  }, [pathname]);
 
   // Optimistic list: applied instantly inside a transition; the server action's
   // revalidation reconciles the real data back in. If the action throws, the
@@ -139,15 +157,16 @@ export function Sidebar({
       </div>
 
       <nav className="flex flex-col gap-0.5 px-3 pb-1 pt-1.5">
-        <button
-          onClick={() => router.push(`/chat/${nanoid()}`)}
+        <Link
+          href={newChatId ? `/chat/${newChatId}` : "/"}
+          prefetch={false}
           className="flex items-center gap-3 rounded-[11px] px-[11px] py-[9px] text-[14px] font-bold text-accent-text transition-colors hover:bg-sidebar-accent"
         >
           <span className="knack-gradient knack-glow flex size-[24px] shrink-0 items-center justify-center rounded-[6px]">
             <Plus className="size-[18px] text-white" strokeWidth={2.2} />
           </span>
           New chat
-        </button>
+        </Link>
 
         <NavItem
           href="/chats"

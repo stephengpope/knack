@@ -12,7 +12,6 @@ import {
   LifeBuoy,
   LogOut,
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/lib/auth-client";
 import {
@@ -110,8 +109,14 @@ export function AccountMenu({
               <ShieldCheck className="size-[15px]" /> Administration
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => toast("Help — coming soon")}>
-            <LifeBuoy className="size-[15px]" /> Help & support
+          <DropdownMenuItem asChild>
+            <a
+              href="https://www.skool.com/ai-architects"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <LifeBuoy className="size-[15px]" /> Help & support
+            </a>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout}>
