@@ -482,14 +482,6 @@ function CardDrawer({
             {ref(card)}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
-            <Button
-              size="sm"
-              className="gap-1.5"
-              onClick={() => setHelperOpen(true)}
-            >
-              <Sparkles className="size-3.5" />
-              Task Helper
-            </Button>
             <Button asChild variant="outline" size="sm" className="gap-1.5">
               <Link href={`/chat/${card.id}`}>
                 <MessageSquare className="size-3.5" />
@@ -594,6 +586,14 @@ function CardDrawer({
               }
               className="mt-1.5"
             />
+            <Button
+              size="sm"
+              className="mt-2 gap-1.5"
+              onClick={() => setHelperOpen(true)}
+            >
+              <Sparkles className="size-3.5" />
+              Task Helper
+            </Button>
           </div>
 
           <div>

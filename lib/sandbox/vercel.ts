@@ -3,27 +3,16 @@ import { Sandbox as VercelSDK } from "@vercel/sandbox";
 import { dirname } from "node:path";
 import type { Sandbox, SandboxBox, RunResult } from "./types";
 import { buildSteps, smokeTests, vendoredSkills } from "./provision";
-import {
-  acquireBuild,
-  clearSnapshot,
-  getSnapshot,
-  setFailed,
-  setReady,
-} from "./snapshot-store";
+import { clearSnapshot, getSnapshot, setFailed, setReady } from "./snapshot-store";
 
 type SDKSandbox = Awaited<ReturnType<typeof VercelSDK.getOrCreate>>;
 
-const TTL_MS = 5 * 60 * 1000;
-// When another request is already building the snapshot, wait for it rather than
-// hand back a half-equipped box. Poll the shared status until it resolves.
-const BUILD_POLL_MS = 2000;
-const BUILD_WAIT_MS = 4 * 60 * 1000;
-// A snapshot build (chromium download + npm installs) runs minutes; give the
-// build box room. NOTE: lazy builds run inside the agent request (maxDuration
-// 300s) — a cold first build can exceed that. A stale 'building' lock is
-// reclaimed by snapshot-store so a killed build doesn't wedge the deployment;
-// the next request retries. Moving the build to after()/cron is a future option.
-const BUILD_TTL_MS = 10 * 60 * 1000;
+// Per-chat resume snapshots auto-expire after this idle window so they don't
+// accumulate (the platform deletes them). Default 1 day; override with
+// SANDBOX_SNAPSHOT_EXPIRY_DAYS. We set no box `timeout` — the platform governs
+// box lifetime. The shared tools snapshot never expires (see buildSnapshot).
+const CHAT_SNAPSHOT_EXPIRY_MS =
+  (Number(process.env.SANDBOX_SNAPSHOT_EXPIRY_DAYS) || 1) * 24 * 60 * 60 * 1000;
 
 /** 404 from the sandbox API (box or snapshot not found). */
 function apiStatus(e: unknown): number | undefined {
@@ -116,7 +105,7 @@ export class VercelSandbox implements Sandbox {
         await VercelSDK.create({
           name,
           source: { type: "snapshot", snapshotId },
-          timeout: TTL_MS,
+          snapshotExpiration: CHAT_SNAPSHOT_EXPIRY_MS,
         }),
       );
     } catch (e) {
@@ -128,15 +117,14 @@ export class VercelSandbox implements Sandbox {
         await VercelSDK.create({
           name,
           source: { type: "snapshot", snapshotId: rebuilt },
-          timeout: TTL_MS,
+          snapshotExpiration: CHAT_SNAPSHOT_EXPIRY_MS,
         }),
       );
     }
   }
 
   /** Write the vendored firecrawl skills (our own committed copies — not in the
-   *  npm package) into $HOME/.skills. Shared by the snapshot build and the
-   *  plain-box fallback so both paths get the full built-in set. */
+   *  npm package) into $HOME/.skills during the snapshot build. */
   private async writeVendoredSkills(sb: SDKSandbox): Promise<void> {
     const home = (
       await (await sb.runCommand("bash", ["-c", "echo -n $HOME"])).stdout()
@@ -148,50 +136,25 @@ export class VercelSandbox implements Sandbox {
     }
   }
 
-  /** Build the shared snapshot under a compare-and-set lock. Returns the id, or
-   *  null if another builder holds the lock (caller falls back to a plain box)
-   *  or the build failed. */
+  /** Build the shared tools snapshot and persist its id. Returns the id, or
+   *  throws on failure. No lock: if two requests race before any snapshot exists
+   *  they each build once (~45s) and the last id wins — a rare, one-time waste. */
   private async ensureSnapshot(): Promise<string> {
-    if (await acquireBuild()) {
-      try {
-        const id = await this.buildSnapshot();
-        await setReady(id);
-        return id;
-      } catch (e) {
-        console.error("[snapshot] build failed:", (e as Error)?.stack ?? e);
-        await setFailed();
-        throw new Error(`Sandbox image build failed: ${(e as Error)?.message ?? e}`);
-      }
+    try {
+      const id = await this.buildSnapshot();
+      await setReady(id);
+      return id;
+    } catch (e) {
+      console.error("[snapshot] build failed:", (e as Error)?.stack ?? e);
+      await setFailed();
+      throw new Error(`Sandbox image build failed: ${(e as Error)?.message ?? e}`);
     }
-    // Another request holds the build lock — wait for it rather than degrade.
-    return this.waitForReady();
-  }
-
-  /** Poll the shared status until a concurrent build resolves (or take over the
-   *  lock if it was cleared/reset). Throws on failure or timeout. */
-  private async waitForReady(): Promise<string> {
-    const deadline = Date.now() + BUILD_WAIT_MS;
-    while (Date.now() < deadline) {
-      await new Promise((r) => setTimeout(r, BUILD_POLL_MS));
-      const { id, status } = await getSnapshot();
-      if (status === "ready" && id) return id;
-      if (status === "failed") {
-        throw new Error("Sandbox image build failed (in another request).");
-      }
-      if (status !== "building") {
-        return this.ensureSnapshot(); // lock cleared — take it over
-      }
-    }
-    throw new Error("Timed out waiting for the sandbox image to build.");
   }
 
   /** Provision a throwaway box, run the install steps + smoke tests, snapshot
    *  it. `snapshot()` stops the session, so this box is consumed here. */
   private async buildSnapshot(): Promise<string> {
-    const sb = await VercelSDK.create({
-      runtime: "node24",
-      timeout: BUILD_TTL_MS,
-    });
+    const sb = await VercelSDK.create({ runtime: "node24" });
     try {
       for (const step of buildSteps()) {
         const r = await sb.runCommand("bash", ["-c", step.cmd]);

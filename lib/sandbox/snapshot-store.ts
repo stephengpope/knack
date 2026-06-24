@@ -1,11 +1,11 @@
 import "server-only";
-import { and, eq, isNull, lt, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { appSettings } from "@/lib/db/schema";
 
-// Persistence for the sandbox snapshot id + build lock. The id can't live in a
-// Vercel env var (those are baked at deploy, unwritable at runtime), so it rides
-// on the app_settings singleton. Pure DB — no @vercel/sandbox import here.
+// Persistence for the sandbox tools-snapshot id. The id can't live in a Vercel
+// env var (those are baked at deploy, unwritable at runtime), so it rides on the
+// app_settings singleton. Pure DB — no @vercel/sandbox import here.
 
 const APP_ID = "app";
 export type SnapshotStatus = "building" | "ready" | "failed";
@@ -32,41 +32,6 @@ export async function getSnapshot(): Promise<SnapshotState> {
     id: row?.id ?? null,
     status: (row?.status as SnapshotStatus | null) ?? null,
   };
-}
-
-// A 'building' lock older than this is treated as a crashed builder (the request
-// died before setReady/setFailed) and may be reclaimed. Must exceed a real
-// build's wall time.
-const STALE_BUILD_MS = 15 * 60 * 1000;
-
-/**
- * Compare-and-set the build lock. Claims the slot (status → 'building') only
- * when it's unbuilt (NULL), previously 'failed', or a 'building' lock has gone
- * stale (crashed builder). Never steals a 'ready' snapshot or an in-progress
- * build. Returns true if THIS caller won the slot — concurrent first boxes:
- * exactly one wins, the rest fall back to a plain box.
- */
-export async function acquireBuild(): Promise<boolean> {
-  await ensureRow();
-  const staleBefore = new Date(Date.now() - STALE_BUILD_MS);
-  const won = await db
-    .update(appSettings)
-    .set({ sandboxSnapshotStatus: "building", updatedAt: new Date() })
-    .where(
-      and(
-        eq(appSettings.id, APP_ID),
-        or(
-          isNull(appSettings.sandboxSnapshotStatus),
-          eq(appSettings.sandboxSnapshotStatus, "failed"),
-          and(
-            eq(appSettings.sandboxSnapshotStatus, "building"),
-            lt(appSettings.updatedAt, staleBefore),
-          ),
-        ),
-      ),
-    )
-    .returning({ id: appSettings.id });
-  return won.length > 0;
 }
 
 export async function setReady(id: string): Promise<void> {
