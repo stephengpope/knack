@@ -22,7 +22,23 @@ The finalized ticket:
 - **details** — the context, constraints, preferences, and edge cases the assistant must know. Fact-based, complete, concise. No filler, no inner monologue, no restating the goal.
 - **acceptanceCriteria** — the conditions that must hold for the task to be done. Observable and checkable, not implementation steps.
 
-Base everything only on what the person told you and their answers. Don't invent requirements.`;
+Base everything only on what the person told you and their answers. Don't invent requirements.
+
+Reply in plain prose, in exactly one of two shapes:
+- **Still need to clarify** — write a short line, then your numbered clarifying questions.
+- **Ready** — write the finalized ticket under clear headings: Title, Goal, Details, and Acceptance criteria (a list).
+
+Choose one shape per reply. Don't mix questions with a ticket.`;
+
+/**
+ * Pass 2 instructions: convert the helper's prose reply into the schema. A
+ * separate call so the content is already decided — it transcribes, it doesn't
+ * generate (forcing a schema during generation degrades on this model).
+ */
+export const TASK_HELPER_STRUCTURE_PROMPT = `You are given the Task Helper's reply to someone defining a task. Convert it faithfully into the structured object. Do not add, invent, drop, or rewrite content — only restructure what is already written.
+
+- If the reply is asking clarifying questions: set done=false, put each question in "questions" (one item each, verbatim), and ticketDraft=null.
+- If the reply is the finalized ticket: set done=true, questions=[], and fill ticketDraft — title, userStory (the Goal line), details, and acceptanceCriteria (one item per condition).`;
 
 /** The per-call user prompt: the brief + the clarification so far. */
 export function renderTaskHelperPrompt({ brief, rounds }: TaskHelperInput): string {
@@ -38,7 +54,7 @@ export function renderTaskHelperPrompt({ brief, rounds }: TaskHelperInput): stri
   }
   parts.push(
     "",
-    "If anything material is still unclear, return more questions (done=false, ticketDraft=null). Otherwise return done=true, an empty questions array, and the finalized ticket.",
+    "If anything material is still unclear, ask your clarifying questions. Otherwise, write the finalized ticket.",
   );
   return parts.join("\n");
 }

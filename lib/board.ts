@@ -115,9 +115,10 @@ export async function updateCard(
   patch: CardPatch,
 ): Promise<void> {
   const set: Record<string, unknown> = { ...patch, updatedAt: new Date() };
-  // Moving a card INTO in_progress (re)starts a supervisor run: reset the
-  // per-run budget window so a previously-blocked card can proceed again.
-  if (patch.kanbanStatus === "in_progress") {
+  // Moving a card INTO an active status (plan or in_progress) (re)starts a
+  // supervisor run: reset the per-run budget window so a previously-blocked card
+  // can proceed again. Plan and execution each get their own fresh budget.
+  if (patch.kanbanStatus === "in_progress" || patch.kanbanStatus === "plan") {
     set.iteration = 0;
     set.runStartedAt = new Date();
     set.blockedReason = null;

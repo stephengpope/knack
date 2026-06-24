@@ -28,6 +28,7 @@ function mergeBuiltins(projectSkills: Skill[]): Skill[] {
 //   4. AGENT.md         project working playbook / rules    (from repo)
 //   5. MEMORY.md        durable learned facts               (from repo)
 //   6. USER.md          who the user is                     (from repo)
+//   7. Conversation started: <date>  (date-only, dead last)  (built-in code)
 //
 // Built once at chat creation and cached on the chat row; later turns reuse it.
 // The whole prompt builds without a running sandbox — repo files come over the
@@ -76,6 +77,14 @@ export async function buildInstructions(
     (repo.get("AGENT.md") ?? "").trim(),
     (repo.get("MEMORY.md") ?? "").trim(),
     (repo.get("USER.md") ?? "").trim(),
+    // Dead last. Date-only (no time) so the frozen prompt is byte-stable for the
+    // whole day — keeps upstream prompt caches warm across turns.
+    `Conversation started: ${new Date().toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })}`,
   ];
 
   return parts.filter(Boolean).join("\n\n");

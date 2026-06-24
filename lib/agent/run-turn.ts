@@ -520,11 +520,19 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
     },
   );
 
+  // In plan mode, hand the agent only the read-only tools so it can inspect the
+  // repo and produce a plan without modifying anything.
+  const activeTools = (
+    params.mode === "plan"
+      ? Object.fromEntries(READONLY_TOOLS.map((k) => [k, tools[k]]))
+      : tools
+  ) as typeof tools;
+
   const agent = new ToolLoopAgent({
     model: agentModel,
     providerOptions, // request-scoped provider options, when the mode sets any
     instructions, // base prompt, plus project repo context when the chat has one
-    tools,
+    tools: activeTools,
     onFinish: (event) => {
       capturedUsage = {
         inputTokens: event.totalUsage?.inputTokens ?? 0,

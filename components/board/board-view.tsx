@@ -168,7 +168,7 @@ export function BoardView({
     // Mirror the server's run-window reset so the chip's iteration is right now.
     applyPatch(
       id,
-      p.kanbanStatus === "in_progress"
+      p.kanbanStatus === "in_progress" || p.kanbanStatus === "plan"
         ? { ...p, iteration: 0, blockedReason: null }
         : p,
     );

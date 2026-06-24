@@ -30,7 +30,11 @@ const testCase = z.object({
 });
 
 const decisionSchema = z.object({
-  verdict: z.enum(["continue", "review", "blocked"]),
+  // continue: more work/planning needed → nextPrompt drives the worker.
+  // review: execution done to standard → hand to a human (in_progress only).
+  // approve: the PLAN is sound → start execution (plan status only).
+  // blocked: genuinely stuck → needs a human.
+  verdict: z.enum(["continue", "review", "approve", "blocked"]),
   reason: z.string(),
   nextPrompt: z.string().nullable(),
   criteriaUpdates: z.object({

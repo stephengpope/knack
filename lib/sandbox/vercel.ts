@@ -14,6 +14,10 @@ import {
 type SDKSandbox = Awaited<ReturnType<typeof VercelSDK.getOrCreate>>;
 
 const TTL_MS = 5 * 60 * 1000;
+// When another request is already building the snapshot, wait for it rather than
+// hand back a half-equipped box. Poll the shared status until it resolves.
+const BUILD_POLL_MS = 2000;
+const BUILD_WAIT_MS = 4 * 60 * 1000;
 // A snapshot build (chromium download + npm installs) runs minutes; give the
 // build box room. NOTE: lazy builds run inside the agent request (maxDuration
 // 300s) — a cold first build can exceed that. A stale 'building' lock is
@@ -72,32 +76,34 @@ class VercelBox implements SandboxBox {
 /**
  * One sandbox per chat, addressed by name. Fresh boxes boot from the shared
  * tools snapshot (ripgrep + agent-browser + firecrawl-cli + built-in skills);
- * the snapshot is built lazily on first use and self-heals if deleted. When no
- * snapshot is available the box still works — it falls back to installing the
- * tools inline on creation (slower, but never blocks).
+ * the snapshot is built lazily on first use (the first turn blocks ~45s once) and
+ * self-heals if deleted. Concurrent callers wait for an in-flight build. There is
+ * no degraded fallback: every box is fully provisioned, or the turn throws — a box
+ * missing its tools mid-session would corrupt the conversation.
  */
 export class VercelSandbox implements Sandbox {
   async getOrCreate(chatId: string): Promise<SandboxBox> {
     const name = `chat-${chatId}`;
-
-    let { id } = await getSnapshot();
-    if (!id) id = await this.ensureSnapshot();
-
-    if (id) {
-      const box = await this.boxFromSnapshot(name, id);
-      if (box) return box;
-      // snapshot turned out to be gone and rebuild failed — fall through.
-    }
-
-    return this.plainBox(name);
+    const snapshotId = await this.readySnapshotId();
+    return this.boxFromSnapshot(name, snapshotId);
   }
 
-  /** Reconnect an existing box, else create one from the snapshot. Returns null
-   *  only when the snapshot is gone and a rebuild also fails. */
+  /** The id of a ready snapshot — reuse one if present, else build it (or wait
+   *  for an in-flight build). Throws if the build fails: a box must be fully
+   *  provisioned or the turn fails loudly. There is no degraded fallback — a box
+   *  missing its tools mid-session corrupts the conversation. */
+  private async readySnapshotId(): Promise<string> {
+    const { id, status } = await getSnapshot();
+    if (id && status === "ready") return id;
+    return this.ensureSnapshot();
+  }
+
+  /** Reconnect an existing box, else create one from the snapshot. Self-heals a
+   *  deleted snapshot by rebuilding. Throws (never degrades) on failure. */
   private async boxFromSnapshot(
     name: string,
     snapshotId: string,
-  ): Promise<SandboxBox | null> {
+  ): Promise<SandboxBox> {
     // Reconnect a warm/existing box first — it's already provisioned.
     try {
       return new VercelBox(await VercelSDK.get({ name, resume: true }));
@@ -115,10 +121,9 @@ export class VercelSandbox implements Sandbox {
       );
     } catch (e) {
       if (!isSnapshotGone(e)) throw e;
-      // Snapshot deleted/expired — forget it, rebuild once, retry.
+      // Snapshot deleted/expired — forget it, rebuild, retry once.
       await clearSnapshot();
       const rebuilt = await this.ensureSnapshot();
-      if (!rebuilt) return null;
       return new VercelBox(
         await VercelSDK.create({
           name,
@@ -127,25 +132,6 @@ export class VercelSandbox implements Sandbox {
         }),
       );
     }
-  }
-
-  /** Plain node24 box; installs the tools inline on first creation (fallback
-   *  path when no snapshot exists yet). Best-effort — a failed tool install
-   *  must not break the box. */
-  private async plainBox(name: string): Promise<SandboxBox> {
-    const sb = await VercelSDK.getOrCreate({
-      name,
-      resume: true,
-      runtime: "node24",
-      timeout: TTL_MS,
-      onCreate: async (s) => {
-        for (const step of buildSteps()) {
-          await s.runCommand("bash", ["-c", step.cmd]).catch(() => {});
-        }
-        await this.writeVendoredSkills(s).catch(() => {});
-      },
-    });
-    return new VercelBox(sb);
   }
 
   /** Write the vendored firecrawl skills (our own committed copies — not in the
@@ -165,21 +151,38 @@ export class VercelSandbox implements Sandbox {
   /** Build the shared snapshot under a compare-and-set lock. Returns the id, or
    *  null if another builder holds the lock (caller falls back to a plain box)
    *  or the build failed. */
-  private async ensureSnapshot(): Promise<string | null> {
-    if (!(await acquireBuild())) {
-      // Someone else is building (or just finished). Use theirs if ready.
+  private async ensureSnapshot(): Promise<string> {
+    if (await acquireBuild()) {
+      try {
+        const id = await this.buildSnapshot();
+        await setReady(id);
+        return id;
+      } catch (e) {
+        console.error("[snapshot] build failed:", (e as Error)?.stack ?? e);
+        await setFailed();
+        throw new Error(`Sandbox image build failed: ${(e as Error)?.message ?? e}`);
+      }
+    }
+    // Another request holds the build lock — wait for it rather than degrade.
+    return this.waitForReady();
+  }
+
+  /** Poll the shared status until a concurrent build resolves (or take over the
+   *  lock if it was cleared/reset). Throws on failure or timeout. */
+  private async waitForReady(): Promise<string> {
+    const deadline = Date.now() + BUILD_WAIT_MS;
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, BUILD_POLL_MS));
       const { id, status } = await getSnapshot();
-      return status === "ready" && id ? id : null;
+      if (status === "ready" && id) return id;
+      if (status === "failed") {
+        throw new Error("Sandbox image build failed (in another request).");
+      }
+      if (status !== "building") {
+        return this.ensureSnapshot(); // lock cleared — take it over
+      }
     }
-    try {
-      const id = await this.buildSnapshot();
-      await setReady(id);
-      return id;
-    } catch (e) {
-      console.error("[snapshot] build failed:", (e as Error)?.stack ?? e);
-      await setFailed();
-      return null;
-    }
+    throw new Error("Timed out waiting for the sandbox image to build.");
   }
 
   /** Provision a throwaway box, run the install steps + smoke tests, snapshot

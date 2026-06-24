@@ -1,15 +1,20 @@
 import "server-only";
-import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { chat } from "@/lib/db/schema";
 import { LEASE_MS } from "@/lib/supervisor/constants";
 
 export type ClaimedCard = typeof chat.$inferSelect;
 
+// Statuses the supervisor loop drives: `plan` (worker plans, read-only) and
+// `in_progress` (worker executes). Same machinery; the cycle branches on which.
+const ACTIVE_STATUSES = ["in_progress", "plan"] as const;
+
 /**
- * Card ids eligible for a supervisor cycle right now: supervised, in_progress,
- * and not currently leased. The tick dispatches these; the run worker then
- * claims atomically (so a double-dispatch resolves to one real run).
+ * Card ids eligible for a supervisor cycle right now: supervised, in an active
+ * status (plan or in_progress), and not currently leased. The tick dispatches
+ * these; the run worker then claims atomically (so a double-dispatch resolves to
+ * one real run).
  */
 export async function listEligibleCardIds(
   now: Date,
@@ -22,7 +27,7 @@ export async function listEligibleCardIds(
     .where(
       and(
         eq(chat.supervisorEnabled, true),
-        eq(chat.kanbanStatus, "in_progress"),
+        inArray(chat.kanbanStatus, ACTIVE_STATUSES as unknown as string[]),
         or(isNull(chat.leaseUntil), lt(chat.leaseUntil, now)),
       ),
     )
@@ -49,7 +54,7 @@ export async function claimCard(chatId: string): Promise<ClaimedCard | null> {
       and(
         eq(chat.id, chatId),
         eq(chat.supervisorEnabled, true),
-        eq(chat.kanbanStatus, "in_progress"),
+        inArray(chat.kanbanStatus, ACTIVE_STATUSES as unknown as string[]),
         or(isNull(chat.leaseUntil), lt(chat.leaseUntil, now)),
       ),
     )

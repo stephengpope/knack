@@ -107,23 +107,51 @@ export async function runSupervisorCycle(chatId: string): Promise<void> {
     await db.update(chat).set(updates).where(eq(chat.id, chatId));
   }
 
-  if (result.decision.verdict === "review") {
+  const planning = card.kanbanStatus === "plan";
+  const verdict = result.decision.verdict;
+
+  // Plan approved → start execution with a fresh budget (no worker turn this
+  // cycle; the in_progress loop picks it up next). "review" in plan status means
+  // the same thing — the plan is done to standard.
+  if (planning && (verdict === "approve" || verdict === "review")) {
+    await db
+      .update(chat)
+      .set({
+        kanbanStatus: "in_progress",
+        activeRole: "supervisor",
+        iteration: 0,
+        runStartedAt: new Date(),
+        blockedReason: null,
+        leaseUntil: null,
+      })
+      .where(eq(chat.id, chatId));
+    return;
+  }
+
+  // Execution done to standard → hand the card to a human. ("approve" only
+  // applies while planning; treat it as review if it surfaces here.)
+  if (!planning && (verdict === "review" || verdict === "approve")) {
     await db
       .update(chat)
       .set({ kanbanStatus: "review", activeRole: "supervisor", leaseUntil: null })
       .where(eq(chat.id, chatId));
     return;
   }
-  if (result.decision.verdict === "blocked") {
+
+  if (verdict === "blocked") {
     await block(chatId, result.decision.reason || "Supervisor blocked the card.");
     return;
   }
 
   // continue → post the supervisor's prompt to the WORKER chat and run a worker
-  // turn. runAgentTurn does the db-first save itself (Phase 0).
+  // turn (read-only in plan mode). runAgentTurn does the db-first save (Phase 0).
   const next =
     result.decision.nextPrompt?.trim() ||
-    "Continue with the next step toward the acceptance criteria.";
+    (planning
+      ? "Produce the complete implementation plan for this card now. Output the " +
+        "full plan as your final message — concise and fact-based, no preamble. " +
+        "Do not modify any files."
+      : "Continue with the next step toward the acceptance criteria.");
   const message: UIMessage = {
     id: nanoid(),
     role: "user",
@@ -135,7 +163,12 @@ export async function runSupervisorCycle(chatId: string): Promise<void> {
     .where(eq(chat.id, chatId));
 
   try {
-    const turn = await runAgentTurn({ userId, chatId, message });
+    const turn = await runAgentTurn({
+      userId,
+      chatId,
+      message,
+      mode: planning ? "plan" : "execute",
+    });
     await drainStream(turn.stream as ReadableStream<unknown>);
     if (turn.sync) await turn.sync();
     const usage = await turn.usage;

@@ -50,6 +50,25 @@ Rules of thumb:
   define them in `criteriaUpdates` based on the user story/details, then **continue**.
   Never `review` an unspecified card.
 
+## Two phases: Plan and Execute
+
+A card runs in one of two phases, and your job differs in each:
+
+- **Plan phase** (the card is in the *Plan* column). The worker has **read-only** access —
+  it cannot modify the repo. Its job is to produce a **plan**, delivered as its final
+  message: a full, complete, concise, fact-based description of how the work will be done —
+  the approach, the files/areas it will touch, and the order. It is **not** a summary and
+  **not** inner dialogue. Verify the plan against the goal and the repo: is it sound,
+  complete, and grounded in how this codebase actually works?
+  - **continue** — the plan is missing, vague, or wrong. In `nextPrompt`, point at exactly
+    what's underspecified and tell the worker to produce the full plan (read-only; no edits).
+  - **approve** — the plan is sound and complete. This starts execution (the card moves to
+    In Progress). `nextPrompt` is null. Use **approve**, not review, to greenlight a plan.
+  - **blocked** — the goal can't be planned without a human decision or missing access.
+
+- **Execute phase** (In Progress) — the loop you already know: the worker does the work and
+  you verify against the contract, choosing **continue** / **review** / **blocked**.
+
 ## Writing nextPrompt (the worker's next instruction)
 
 On `continue`, `nextPrompt` is delivered to the worker **verbatim** as its next message.
