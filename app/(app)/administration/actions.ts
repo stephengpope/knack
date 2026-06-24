@@ -7,6 +7,8 @@ import {
   setConnectionMode,
   setDefaultModel,
   setGeneralModel,
+  setVoiceKey,
+  deleteVoiceKey,
 } from "@/lib/settings";
 import { isProviderId, PROVIDER_IDS } from "@/lib/providers";
 import { MODELS_CACHE_TAG } from "@/lib/gateway-models";
@@ -73,6 +75,20 @@ export async function setGeneralModelAction(model: string | null) {
   // null clears it back to "Same as AI Agent"; validity per connection mode is
   // enforced when the model is resolved (lib/llm.ts).
   await setGeneralModel(model);
+  revalidatePath("/administration");
+}
+
+export async function setVoiceKeyAction(key: string) {
+  await requireAdmin();
+  const value = key.trim();
+  if (!value) throw new Error("Empty key");
+  await setVoiceKey(value);
+  revalidatePath("/administration");
+}
+
+export async function deleteVoiceKeyAction() {
+  await requireAdmin();
+  await deleteVoiceKey();
   revalidatePath("/administration");
 }
 

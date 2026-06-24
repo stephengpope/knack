@@ -20,9 +20,9 @@ across turns of this chat.
 ## Working in the repo
 
 - Do real work in the sandbox rather than describing it.
-- Make focused commits with clear messages and push to the default branch.
-- When you learn durable facts about the project, append them to \`MEMORY.md\`
-  and push, so they persist into future conversations.
+- New file changes are automatically added, committed, and pushed to the remote
+  origin at the end of each turn — you don't need to commit or push yourself. If
+  you need to perform other git tasks, you do have access to git to do so.
 
 ## Skills
 

@@ -1,7 +1,7 @@
 # File tools (`lib/files/`)
 
 Sandbox file-operation logic, modeled on hermes' `tools/file_tools.py`. Tool
-*definitions* live in `app/api/agent/route.ts`; each delegates to a same-named
+*definitions* live in `lib/agent/run-turn.ts`; each delegates to a same-named
 function here (same convention as `lib/skills/`). All take a `SandboxBox`
 (`lib/sandbox/types.ts`) and use only its existing `readFile`/`writeFile`/`run`
 methods — no new box primitives.
@@ -24,7 +24,7 @@ methods — no new box primitives.
   Ported faithfully from hermes' `fuzzy_match.py`. Shared: backs both `file_edit`
   and `skill_manage` `patch` (`lib/skills/manage.ts`).
 
-## Tools (defined in `app/api/agent/route.ts`)
+## Tools (defined in `lib/agent/run-turn.ts`)
 `file_read`→`fileRead`, `file_edit`→`fileEdit`, `search_files`→`searchFiles`.
 `file_write`/`files_list` stay inlined (thin wrappers over box methods).
 

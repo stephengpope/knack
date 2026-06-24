@@ -14,7 +14,10 @@ source of truth):
 ```
 
 Repo files (SOUL/AGENT/MEMORY/USER) are fetched **raw** from GitHub and joined
-with blank lines — **no wrapper tags** (each file has its own `#` header).
+with blank lines — **no wrapper tags** (each file has its own `#` header). Step 3
+`<available_skills>` merges the discovered project skills with the **built-in
+skill** metadata (`mergeBuiltins` in `build.ts`; built-ins from
+`lib/sandbox/provision.ts`).
 
 ## Frozen per chat
 The whole prompt is built **once at chat creation** and stored on
@@ -34,7 +37,9 @@ own MEMORY writes, only take effect in the **next** chat (intended).
   `outputFileTracingIncludes`).
 - `defaults/DEFAULT_*.md` — seed sources written into a new project repo as
   `SOUL/MEMORY/USER/AGENT.md`. `DEFAULT_SOUL` = identity/voice only (tool rules
-  live in KNACK_GUIDANCE); `DEFAULT_AGENT` = plain playbook.
+  live in KNACK_GUIDANCE); `DEFAULT_AGENT` = plain playbook. `DEFAULT_SUPERVISOR`
+  seeds the repo's `SUPERVISOR.md` (kanban supervisor instructions — **not** part
+  of the main agent prompt; see `lib/supervisor/CLAUDE.md`).
 
 ## Generating a sample
 `sample_system.md` (repo root) is a rendered sample of the assembled prompt with

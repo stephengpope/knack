@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -11,6 +11,8 @@ import {
   SquareMinus,
   Check,
   Loader2,
+  ListFilter,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   KANBAN_STATUSES,
   type BoardCard,
@@ -48,9 +59,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ChatConversationUI } from "@/components/chat/chat-conversation-ui";
+import { TaskHelperDialog } from "@/components/board/task-helper-dialog";
+import type { TicketDraft } from "@/lib/task-helper/types";
 
 const STATUS_META: Record<KanbanStatus, { label: string; dot: string }> = {
   todo: { label: "Todo", dot: "bg-blue-500" },
+  plan: { label: "Plan", dot: "bg-violet-500" },
   in_progress: { label: "In Progress", dot: "bg-primary" },
   blocked: { label: "Blocked", dot: "bg-red-500" },
   review: { label: "Review", dot: "bg-amber-500" },
@@ -59,6 +73,10 @@ const STATUS_META: Record<KanbanStatus, { label: string; dot: string }> = {
 
 const ref = (c: BoardCard) =>
   c.cardSeq != null ? `KNK-${c.cardSeq}` : "KNK-—";
+
+// Status filter defaults to every column except Done.
+const DEFAULT_VISIBLE = KANBAN_STATUSES.filter((s) => s !== "done");
+const STATUS_FILTER_KEY = "knack-board-status-filter";
 
 export function BoardView({
   cards: initialCards,
@@ -75,6 +93,47 @@ export function BoardView({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<KanbanStatus | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  // Which status columns are shown. Default hides Done; persisted to localStorage.
+  // SSR renders the default; the saved value is read on mount (an external store),
+  // which is why this stays an effect rather than a lazy initializer.
+  const [visible, setVisible] = useState<KanbanStatus[]>(DEFAULT_VISIBLE);
+  const didMount = useRef(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STATUS_FILTER_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw) as string[];
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration from localStorage
+        setVisible(KANBAN_STATUSES.filter((s) => saved.includes(s)));
+      }
+    } catch {
+      // ignore malformed storage
+    }
+  }, []);
+
+  useEffect(() => {
+    // Skip the initial mount so we don't clobber storage before the read above.
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    try {
+      localStorage.setItem(STATUS_FILTER_KEY, JSON.stringify(visible));
+    } catch {
+      // ignore quota/availability errors
+    }
+  }, [visible]);
+
+  function toggleStatus(status: KanbanStatus) {
+    setVisible((v) =>
+      v.includes(status) ? v.filter((s) => s !== status) : [...v, status],
+    );
+  }
+  const isDefaultFilter =
+    visible.length === DEFAULT_VISIBLE.length &&
+    DEFAULT_VISIBLE.every((s) => visible.includes(s));
+  const hiddenCount = KANBAN_STATUSES.length - visible.length;
 
   function handleDrop(status: KanbanStatus) {
     setDragOver(null);
@@ -166,6 +225,47 @@ export function BoardView({
               </SelectContent>
             </Select>
           )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-9 gap-1.5">
+                <ListFilter className="size-4" />
+                Status
+                {hiddenCount > 0 && (
+                  <span className="rounded-full bg-muted px-1.5 text-[11px] font-bold text-ink-faint">
+                    {visible.length}/{KANBAN_STATUSES.length}
+                  </span>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuLabel>Show statuses</DropdownMenuLabel>
+              {KANBAN_STATUSES.map((status) => (
+                <DropdownMenuCheckboxItem
+                  key={status}
+                  checked={visible.includes(status)}
+                  onCheckedChange={() => toggleStatus(status)}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "size-2.5 rounded-full",
+                        STATUS_META[status].dot,
+                      )}
+                    />
+                    {STATUS_META[status].label}
+                  </span>
+                </DropdownMenuCheckboxItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                disabled={isDefaultFilter}
+                onSelect={() => setVisible(DEFAULT_VISIBLE)}
+              >
+                Reset to default
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={newCard} disabled={isCreating} className="gap-1.5">
             {isCreating ? (
               <Loader2 className="size-4 animate-spin" />
@@ -179,8 +279,9 @@ export function BoardView({
 
       {/* columns */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-3.5">
-        <div className="flex h-full min-w-max items-start gap-3.5">
-          {KANBAN_STATUSES.map((status) => {
+        <div className="flex h-full min-w-max items-stretch gap-3.5">
+          {KANBAN_STATUSES.filter((status) => visible.includes(status)).map(
+            (status) => {
             const col = filtered.filter((c) => c.kanbanStatus === status);
             return (
               <div
@@ -211,6 +312,21 @@ export function BoardView({
                   <span className="rounded-full bg-muted px-2 py-0.5 text-[11.5px] font-bold text-ink-faint">
                     {col.length}
                   </span>
+                  {status === "todo" && (
+                    <Button
+                      size="icon"
+                      onClick={newCard}
+                      disabled={isCreating}
+                      title="New card"
+                      className="ml-auto size-7 bg-violet-500 text-white hover:bg-violet-600"
+                    >
+                      {isCreating ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Plus className="size-4" />
+                      )}
+                    </Button>
+                  )}
                 </div>
                 <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-2.5 pb-3 pt-0.5">
                   {col.map((c) => (
@@ -223,14 +339,15 @@ export function BoardView({
                     />
                   ))}
                   {col.length === 0 && (
-                    <div className="rounded-[10px] border border-dashed px-2.5 py-4 text-center text-[12px] text-ink-faint">
+                    <div className="flex flex-1 items-center justify-center rounded-[10px] border border-dashed px-2.5 py-4 text-center text-[12px] text-ink-faint">
                       Nothing here
                     </div>
                   )}
                 </div>
               </div>
             );
-          })}
+            },
+          )}
         </div>
       </div>
 
@@ -327,6 +444,24 @@ function CardDrawer({
   const [supOpen, setSupOpen] = useState(false);
   const [supMsgs, setSupMsgs] = useState<UIMessage[] | null>(null);
   const [supLoading, setSupLoading] = useState(false);
+  const [helperOpen, setHelperOpen] = useState(false);
+  // Bump to remount the uncontrolled title/Goal/Details fields after an apply,
+  // so they show the helper's new values (defaultValue is read once on mount).
+  const [applyVersion, setApplyVersion] = useState(0);
+
+  function applyTicket(draft: TicketDraft, alsoPlan: boolean) {
+    onPatch({
+      title: draft.title,
+      userStory: draft.userStory,
+      details: draft.details,
+      acceptanceCriteria: draft.acceptanceCriteria.map((text) => ({
+        text,
+        done: false,
+      })),
+      ...(alsoPlan ? { kanbanStatus: "plan" as KanbanStatus } : {}),
+    });
+    setApplyVersion((v) => v + 1);
+  }
 
   async function openSupervisor() {
     setSupOpen(true);
@@ -347,6 +482,14 @@ function CardDrawer({
             {ref(card)}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
+            <Button
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setHelperOpen(true)}
+            >
+              <Sparkles className="size-3.5" />
+              Task Helper
+            </Button>
             <Button asChild variant="outline" size="sm" className="gap-1.5">
               <Link href={`/chat/${card.id}`}>
                 <MessageSquare className="size-3.5" />
@@ -370,6 +513,7 @@ function CardDrawer({
 
         <div className="flex-1 space-y-5 overflow-y-auto p-5">
           <Input
+            key={`title-${applyVersion}`}
             defaultValue={card.title ?? ""}
             placeholder="Untitled"
             onBlur={(e) => {
@@ -378,6 +522,21 @@ function CardDrawer({
             }}
             className="h-auto border-0 px-0 text-2xl font-extrabold tracking-tight shadow-none placeholder:font-extrabold placeholder:text-ink-faint focus-visible:ring-0 md:text-2xl"
           />
+
+          {projects.length > 0 && (
+            <div>
+              <Label>Project</Label>
+              <div className="mt-1.5 flex h-9 items-center rounded-[10px] border px-3">
+                <ProjectPicker
+                  value={card.projectId ?? ""}
+                  onChange={(id) => onPatch({ projectId: id })}
+                  projects={projects}
+                  // Locked once the card has started, like a chat's project.
+                  disabled={card.kanbanStatus !== "todo"}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-2.5">
             <div className="flex-1">
@@ -414,21 +573,6 @@ function CardDrawer({
             </div>
           </div>
 
-          {projects.length > 0 && (
-            <div>
-              <Label>Project</Label>
-              <div className="mt-1.5 flex h-9 items-center rounded-[10px] border px-3">
-                <ProjectPicker
-                  value={card.projectId ?? ""}
-                  onChange={(id) => onPatch({ projectId: id })}
-                  projects={projects}
-                  // Locked once the card has started, like a chat's project.
-                  disabled={card.kanbanStatus !== "todo"}
-                />
-              </div>
-            </div>
-          )}
-
           {card.blockedReason && (
             <div className="rounded-[10px] border border-red-500/30 bg-red-500/5 p-3 text-[12.5px] text-red-600">
               <span className="font-bold">Blocked:</span> {card.blockedReason}
@@ -436,15 +580,18 @@ function CardDrawer({
           )}
 
           <div>
-            <Label>User story</Label>
+            <Label>Goal</Label>
             <Textarea
+              key={`goal-${applyVersion}`}
               defaultValue={card.userStory ?? ""}
               onBlur={(e) => {
                 if (e.target.value !== (card.userStory ?? ""))
                   onPatch({ userStory: e.target.value });
               }}
               rows={2}
-              placeholder="As a [user], I want [goal], so that [benefit]."
+              placeholder={
+                'I want ___ so that ___ — e.g. "I want a 3-day Lisbon trip planned and booked so it’s all set before Friday."'
+              }
               className="mt-1.5"
             />
           </div>
@@ -452,13 +599,14 @@ function CardDrawer({
           <div>
             <Label>Details</Label>
             <Textarea
+              key={`details-${applyVersion}`}
               defaultValue={card.details ?? ""}
               onBlur={(e) => {
                 if (e.target.value !== (card.details ?? ""))
                   onPatch({ details: e.target.value });
               }}
               rows={5}
-              placeholder="Detailed brief — context, constraints, specifics the agent should know."
+              placeholder="Context, constraints, and specifics the assistant should know."
               className="mt-1.5"
             />
           </div>
@@ -537,6 +685,14 @@ function CardDrawer({
           </div>
         </DialogContent>
       </Dialog>
+
+      <TaskHelperDialog
+        cardId={card.id}
+        cardRef={ref(card)}
+        open={helperOpen}
+        onOpenChange={setHelperOpen}
+        onApply={applyTicket}
+      />
     </>
   );
 }

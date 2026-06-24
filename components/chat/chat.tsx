@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useChat } from "@ai-sdk/react";
@@ -17,8 +17,14 @@ import {
   Trash2,
   FolderPlus,
   Shield,
+  Mic,
+  Loader2,
 } from "lucide-react";
-import { setSuperviseAction } from "@/app/(app)/board/actions";
+import {
+  setSuperviseAction,
+  updateCardAction,
+} from "@/app/(app)/board/actions";
+import { KANBAN_STATUSES, type KanbanStatus } from "@/lib/board-types";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -27,6 +33,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   renameChatAction,
   deleteChatAction,
@@ -61,8 +74,13 @@ import {
   PromptInputTextarea,
   PromptInputFooter,
   PromptInputSubmit,
+  PromptInputProvider,
+  usePromptInputController,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
+import { useVoiceInput } from "@/lib/voice/use-voice-input";
+import { getVoiceTokenAction } from "@/lib/voice/actions";
+import { VoiceBars } from "@/components/board/voice-bars";
 import { Logomark } from "@/components/brand/logo";
 import { KnackLoader } from "@/components/brand/loader";
 import { addPendingChat, setChatTitleOverride } from "@/components/app/chat-store";
@@ -108,6 +126,77 @@ async function pollGitStatus(id: string) {
   }
 }
 
+const STATUS_LABELS: Record<KanbanStatus, string> = {
+  todo: "Todo",
+  plan: "Plan",
+  in_progress: "In Progress",
+  blocked: "Blocked",
+  review: "Review",
+  done: "Done",
+};
+
+const joinText = (base: string, add: string) =>
+  base + (base && !base.endsWith(" ") ? " " : "") + add;
+
+// Voice dictation for the composer. Appends finalized transcripts into the
+// PromptInput controller's text. Hidden when no AssemblyAI key is configured.
+function DictateButton({ className }: { className?: string }) {
+  const { textInput } = usePromptInputController();
+  const valueRef = useRef(textInput.value);
+  useEffect(() => {
+    valueRef.current = textInput.value;
+  }, [textInput.value]);
+  const volumeRef = useRef(0);
+
+  const append = useCallback(
+    (text: string) => textInput.setInput(joinText(valueRef.current, text)),
+    [textInput],
+  );
+
+  const {
+    voiceAvailable,
+    isConnecting,
+    isRecording,
+    startRecording,
+    stopRecording,
+  } = useVoiceInput({
+    getToken: getVoiceTokenAction,
+    onTranscript: append,
+    onVolumeChange: (rms) => {
+      volumeRef.current = rms;
+    },
+    onError: (e) => toast.error(e),
+  });
+
+  if (!voiceAvailable) return null;
+
+  return (
+    <button
+      type="button"
+      // Don't steal focus from the textarea when toggling the mic.
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => (isRecording ? stopRecording() : startRecording())}
+      aria-label={isRecording ? "Stop dictation" : "Dictate"}
+      title={isRecording ? "Stop dictation" : "Dictate"}
+      className={cn(
+        "flex size-9 items-center justify-center rounded-[11px] border transition-colors",
+        isRecording
+          ? "border-black bg-black text-white"
+          : "border-input text-ink-soft hover:bg-accent",
+        className,
+      )}
+    >
+      {isConnecting ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : isRecording ? (
+        <VoiceBars volumeRef={volumeRef} isRecording={isRecording} />
+      ) : (
+        <Mic className="size-4" />
+      )}
+    </button>
+  );
+}
+
 export function Chat({
   id,
   initialMessages,
@@ -118,6 +207,7 @@ export function Chat({
   initialProjectId = null,
   initialGitSha = null,
   initialSupervise = false,
+  initialKanbanStatus = null,
 }: {
   id: string;
   initialMessages: UIMessage[];
@@ -128,6 +218,7 @@ export function Chat({
   initialProjectId?: string | null;
   initialGitSha?: string | null;
   initialSupervise?: boolean;
+  initialKanbanStatus?: string | null;
 }) {
   const router = useRouter();
   const [chatTitle, setChatTitle] = useState(title ?? "");
@@ -136,6 +227,9 @@ export function Chat({
   const [renameValue, setRenameValue] = useState(title ?? "");
   const [projectId, setProjectId] = useState<string | null>(initialProjectId);
   const [supervised, setSupervised] = useState(initialSupervise);
+  const [kanbanStatus, setKanbanStatus] = useState<KanbanStatus>(
+    (initialKanbanStatus as KanbanStatus) ?? "todo",
+  );
   const navigated = useRef(false);
 
   function toggleSupervise() {
@@ -143,6 +237,11 @@ export function Chat({
     setSupervised(next);
     // Enabling promotes this chat to a board card (lands in Todo).
     setSuperviseAction(id, next);
+  }
+
+  function changeStatus(next: KanbanStatus) {
+    setKanbanStatus(next);
+    updateCardAction(id, { kanbanStatus: next });
   }
 
   function startRename() {
@@ -245,6 +344,7 @@ export function Chat({
   }
 
   const composer = (
+    <PromptInputProvider>
     <PromptInput
       onSubmit={submit}
       className="rounded-2xl border-input bg-card shadow-[0_14px_40px_-34px_var(--shadow)]"
@@ -282,13 +382,15 @@ export function Chat({
               ?.htmlUrl ?? null
           }
         />
+        <DictateButton className="ml-auto" />
         <PromptInputSubmit
           status={status}
           onStop={stop}
-          className="knack-gradient knack-glow ml-auto size-9 rounded-[11px] text-white"
+          className="knack-gradient knack-glow size-9 rounded-[11px] text-white"
         />
       </PromptInputFooter>
     </PromptInput>
+    </PromptInputProvider>
   );
 
   if (isWelcome) {
@@ -359,14 +461,6 @@ export function Chat({
           </div>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {supervised && (
-            <Link
-              href={`/board?card=${id}`}
-              className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 text-[13px] font-semibold transition-colors hover:bg-accent"
-            >
-              View on board
-            </Link>
-          )}
           <button
             onClick={toggleSupervise}
             title={
@@ -384,6 +478,28 @@ export function Chat({
             <Shield className="size-[15px]" />
             {supervised ? "Supervising" : "Supervisor"}
           </button>
+          {supervised && (
+            <Select value={kanbanStatus} onValueChange={changeStatus}>
+              <SelectTrigger className="h-[34px] w-[140px] rounded-[10px] text-[13px] font-semibold">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {KANBAN_STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {supervised && (
+            <Link
+              href={`/board?card=${id}`}
+              className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 text-[13px] font-semibold transition-colors hover:bg-accent"
+            >
+              View on board
+            </Link>
+          )}
           <button
             onClick={() => toast("Sharing is coming soon")}
             className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 text-[13px] font-semibold transition-colors hover:bg-accent"

@@ -38,7 +38,9 @@ lives in `lib/agent/run-turn.ts`** (`runAgentTurn`): resolve model → resolve
 project + GitHub auth → build (or reuse) the system prompt → build sandbox tools →
 run `ToolLoopAgent` → return the UI stream (persists on finish) + a `sync`
 closure. It takes `userId` as a param (no session coupling) so **cron calls the
-same function** — see `### Scheduled runs`.
+same function** — see `### Scheduled runs`. The `sync` closure runs in `after()`:
+`lib/git/sync.ts` commits/merges/pushes the box; on conflict `lib/git/fix.ts`
+spawns a bounded LLM tool-loop to recover, then verifies clean+pushed independently.
 - `maxDuration = 300`. New chats get a title generated in parallel via the
   "General AI" model, pushed as a transient `data-chat-title` part.
 - **System prompt is built once at chat creation and frozen on `chat.systemPrompt`**
@@ -80,12 +82,14 @@ singleton, admin-managed). `resolveAgentModel` / `resolveGeneralModel` return a
 Live model catalog fetched from the gateway in `lib/gateway-models.ts` (server-only);
 `lib/models.ts` is client-safe types/helpers only.
 
-### Sandbox (`lib/sandbox/`)
-Provider-agnostic adapter. `lib/sandbox/vercel.ts` is the **only file allowed to
-import `@vercel/sandbox`**. One sandbox per chat (`name: chat-${chatId}`,
-`resume: true`) — SDK reconnects to a live session or creates fresh, no local
-cache, works across function instances. Swap providers = add one adapter, nothing
-else changes.
+### Sandbox (`lib/sandbox/` — details in `lib/sandbox/CLAUDE.md`)
+Provider-agnostic adapter; `vercel.ts` is the **only file allowed to import
+`@vercel/sandbox`**. One box per chat (`name: chat-${chatId}`, `resume: true`).
+New boxes boot from a lazily-built, self-healing **snapshot** (chromium +
+agent-browser, ripgrep, firecrawl-cli, 11 built-in skills) instead of installing
+inline. Snapshot id/status persist on `app_settings`; CAS build-lock so one builder
+wins. Built-in skills (`$HOME/.skills/`) are read-only and merge with project
+skills at runtime.
 
 ### Projects & GitHub (`lib/projects.ts`, `lib/github/`, `lib/github-account.ts`)
 A chat works in a GitHub-backed **project** (chosen at creation). On the first
@@ -109,6 +113,15 @@ re-derives `userId` from `project.userId` (never the body), creates a fresh chat
 `cron_state` is a cache only — GitHub is truth. `lib/cron/file.ts` parses/validates;
 `lib/cron/state.ts` is the cache layer (uses `cron-parser`, UTC).
 
+### Kanban supervisor (`lib/supervisor/` — details in `lib/supervisor/CLAUDE.md`)
+Autonomous agent loops. A **card** is a `chat` row with non-null `kanbanStatus`;
+when it's `in_progress` + `supervisorEnabled`, the cron tick dispatches supervisor
+cycles (`/api/cron/supervisor/run` → `runSupervisorCycle`). Each cycle claims the
+card via a `leaseUntil` CAS, checks the per-run budget (`usageEvent` token sum vs
+`app_settings.maxRounds`/`maxTokensPerCard`), runs a read-only **verify→decide**
+supervisor turn, and on `continue` posts the next prompt to the worker chat via the
+same `runAgentTurn`. Board UI: `app/(app)/board/`, `components/board/`.
+
 ### System prompt & skills (`lib/prompt/`, `lib/skills/`)
 The system prompt is assembled server-side and **frozen per chat** on
 `chat.systemPrompt`. Composition + sources: `lib/prompt/CLAUDE.md`. Skills
@@ -131,10 +144,15 @@ Drizzle + Neon HTTP driver. `db` is a lazy Proxy so importing never throws at
 build time — the connection (and the missing-`DATABASE_URL` error) only resolves
 on first query. Schema in `lib/db/schema.ts`: Better Auth tables (`user`/`session`/
 `account`/`verification`/`rate_limit`) + app tables (`chat` [carries `projectId`,
-the frozen `systemPrompt`, and `source`/`sourceRef` for cron runs], `message`,
-`project` [GitHub-backed workspace; `active` gates cron + the chat selector],
-`cron_state` [per-project schedule cache, keyed by `(projectId, jobName)`],
-`github_account` [per-user PAT], `api_key` shared BYOK, `app_settings` singleton,
+the frozen `systemPrompt`, `source`/`sourceRef` for cron/supervisor runs, **and
+the kanban+supervisor columns** — `kanbanStatus`, `supervisorEnabled`, `cardSeq`
+(from the `card_seq` sequence), `userStory`/`details`, `acceptanceCriteria`/`tasks`/
+`testCases` jsonb, `iteration`/`runStartedAt`/`leaseUntil`/`max*Override` loop
+state], `message`, `usage_event` [per-call token log for supervisor budgets, indexed
+`(chatId, createdAt)`], `project` [GitHub-backed workspace; `active` gates cron +
+the chat selector], `cron_state` [per-project schedule cache], `github_account`
+[per-user PAT], `api_key` shared BYOK, `app_settings` singleton [+ supervisor
+budgets `maxRounds`/`maxTokensPerCard` and `sandbox_snapshot_id`/`_status`],
 `custom_endpoint`, `user_secret` per-user vault). `user_settings` is **deprecated**
 — kept only so migrations stay additive; superseded by `app_settings`. Schema
 changes: edit `schema.ts` → `db:generate` → `db:migrate`.
@@ -142,11 +160,11 @@ changes: edit `schema.ts` → `db:generate` → `db:migrate`.
 ### Routes
 - `(auth)/` — login, forgot/reset password, accept-invite.
 - `(app)/` — protected shell: `page.tsx` (new chat), `chat/[chatId]`, `chats`,
-  `settings` (projects + per-user secrets), `administration` (admin: users, AI
-  models, secrets).
+  `board` (kanban supervisor), `cron` (schedule UI), `settings` (projects +
+  per-user secrets), `administration` (admin: users, AI models, secrets).
 - `api/` — `agent` (main loop), `cron/tick` (heartbeat dispatcher) + `cron/run`
-  (scheduled-run worker), `auth/[...all]` (Better Auth), `oauth/callback`
-  (user-secret OAuth connections).
+  (scheduled-run worker) + `cron/supervisor/run` (supervisor cycle worker),
+  `auth/[...all]` (Better Auth), `oauth/callback` (user-secret OAuth connections).
 
 Server Actions live next to their pages (`*-actions.ts` / `actions.ts`).
 

@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "node:crypto";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createAnthropic } from "@ai-sdk/anthropic";
@@ -67,6 +68,32 @@ const anthropicCacheMiddleware: LanguageModelMiddleware = {
   },
 };
 
+// Mistral chat-completions caching is NOT automatic — it only caches when the
+// request carries a `prompt_cache_key`, and the AI SDK strips unknown provider
+// options, so we inject it at the HTTP layer. The key must be stable across a
+// conversation; the system prompt is frozen per chat, so its hash is a stable
+// per-chat identifier (and chats sharing a prompt share the cache, which is fine).
+const mistralCacheFetch: typeof fetch = async (input, init) => {
+  if (init && typeof init.body === "string") {
+    try {
+      const body = JSON.parse(init.body);
+      if (Array.isArray(body.messages) && !body.prompt_cache_key) {
+        const sys = body.messages.find((m: { role: string }) => m.role === "system");
+        const seed = typeof sys?.content === "string" ? sys.content : init.body;
+        body.prompt_cache_key = crypto
+          .createHash("sha256")
+          .update(seed)
+          .digest("hex")
+          .slice(0, 32);
+        init = { ...init, body: JSON.stringify(body) };
+      }
+    } catch {
+      // non-JSON body — leave the request untouched
+    }
+  }
+  return fetch(input, init);
+};
+
 // Build a direct provider client for "custom" (provide-your-own-keys) mode.
 // `id` is the provider's NATIVE model id (the gateway is not involved), so no
 // slug translation happens — it's passed straight to the provider package.
@@ -88,7 +115,7 @@ function directModel(
     case "xai":
       return createXai({ apiKey })(id);
     case "mistral":
-      return createMistral({ apiKey })(id);
+      return createMistral({ apiKey, fetch: mistralCacheFetch })(id);
     case "deepseek":
       return createDeepSeek({ apiKey })(id);
     default:

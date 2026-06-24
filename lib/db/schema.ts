@@ -247,6 +247,11 @@ export const appSettings = pgTable("app_settings", {
   // builders via a compare-and-set. See lib/sandbox/snapshot-store.ts.
   sandboxSnapshotId: text("sandbox_snapshot_id"),
   sandboxSnapshotStatus: text("sandbox_snapshot_status"),
+  // AssemblyAI streaming key for voice dictation (AES-256-GCM, iv:tag:ct). last4
+  // kept for the admin display; decrypted only to mint a temp token. Unset → the
+  // mic is hidden everywhere (voiceConfigured=false).
+  assemblyaiKey: text("assemblyai_key"),
+  assemblyaiKeyLast4: text("assemblyai_key_last4"),
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => new Date())
     .notNull(),

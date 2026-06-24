@@ -13,8 +13,9 @@ Stack: Next 16 App Router · React 19 · Tailwind v4 · **Radix UI** (the unifie
   `data-slot="<name>"` attribute, and styles via `cn()`. Variants via **CVA**
   (`buttonVariants` etc.). Named exports.
 - Feature folders: `app/` (shell: sidebar, account-menu, chat-store), `chat/`,
-  `settings/`, `administration/`, `auth/`, `ai-elements/` (message/tool/reasoning
-  renderers), `brand/` (logo, `KnackLoader`).
+  `chats/`, `board/` (kanban supervisor), `cron/` (schedule UI), `settings/`,
+  `administration/`, `auth/`, `ai-elements/` (message/tool/reasoning renderers),
+  `brand/` (logo, `KnackLoader`).
 - Files are **kebab-case**. `"@/..."` path alias throughout.
 
 ## Server vs client

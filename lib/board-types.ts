@@ -4,6 +4,7 @@
 
 export type KanbanStatus =
   | "todo"
+  | "plan"
   | "in_progress"
   | "blocked"
   | "review"
@@ -11,6 +12,7 @@ export type KanbanStatus =
 
 export const KANBAN_STATUSES: KanbanStatus[] = [
   "todo",
+  "plan",
   "in_progress",
   "blocked",
   "review",

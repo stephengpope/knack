@@ -12,6 +12,7 @@ import {
   Plus,
   Server,
   ExternalLink,
+  Mic,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,8 @@ import {
   refreshModelsAction,
   addEndpointAction,
   deleteEndpointAction,
+  setVoiceKeyAction,
+  deleteVoiceKeyAction,
 } from "@/app/(app)/administration/actions";
 
 type Last4 = Record<string, string | undefined>;
@@ -286,7 +289,122 @@ function ModelsTab({
           />
         </>
       )}
+
+      <VoiceSection last4={settings.voiceLast4} />
     </>
+  );
+}
+
+// AssemblyAI streaming key — powers voice dictation in the board's Task Helper.
+// Unset → the mic is hidden everywhere.
+function VoiceSection({ last4 }: { last4: string | null }) {
+  return (
+    <div className="mt-9 border-t border-border pt-7">
+      <div className="mb-3 flex items-center gap-2">
+        <Mic className="size-4 text-ink-soft" />
+        <SectionLabel className="mb-0">Voice dictation</SectionLabel>
+      </div>
+      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+        An AssemblyAI streaming key enables dictating cards by voice. Without it,
+        the microphone is hidden.
+      </p>
+      <VoiceKeyEditor last4={last4} />
+    </div>
+  );
+}
+
+function VoiceKeyEditor({ last4 }: { last4: string | null }) {
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    if (!value.trim()) return;
+    setBusy(true);
+    try {
+      await setVoiceKeyAction(value);
+      setValue("");
+      toast.success("Voice key saved");
+    } catch {
+      toast.error("Could not save key");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    setBusy(true);
+    try {
+      await deleteVoiceKeyAction();
+      toast.success("Voice key removed");
+    } catch {
+      toast.error("Could not remove key");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <div
+        className={cn(
+          "flex items-center gap-2 rounded-xl border bg-muted/50 py-1.5 pl-3.5 pr-1.5",
+          last4 ? "border-[#1B9C5D]/40" : "border-input",
+        )}
+      >
+        <KeyRound
+          className={cn(
+            "size-4 shrink-0",
+            last4 ? "text-[#1B9C5D]" : "text-ink-faint",
+          )}
+        />
+        <input
+          type="password"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={
+            last4
+              ? `Saved ••••${last4} — paste a new key to replace`
+              : "Paste your AssemblyAI API key"
+          }
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          autoComplete="off"
+          className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-ink-faint"
+        />
+        {last4 && !value && (
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(27,156,93,.13)] px-2 py-1 text-[11px] font-bold text-[#1B9C5D]">
+            <Check className="size-3" strokeWidth={3} /> Saved
+          </span>
+        )}
+        {last4 && (
+          <button
+            onClick={remove}
+            disabled={busy}
+            title="Remove key"
+            className="flex size-8 shrink-0 items-center justify-center rounded-[9px] text-ink-faint transition-colors hover:bg-background hover:text-foreground"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        )}
+        <Button
+          onClick={save}
+          disabled={busy || !value.trim()}
+          className="knack-gradient h-8 shrink-0 rounded-[9px] px-4 text-[13px] font-semibold text-white"
+        >
+          {busy ? <Spinner /> : "Save"}
+        </Button>
+      </div>
+      <div className="mt-1.5 px-1 text-[12px]">
+        <a
+          href="https://www.assemblyai.com/dashboard/api-keys"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 font-semibold text-accent-text hover:underline"
+        >
+          Get an AssemblyAI key
+          <ExternalLink className="size-3" />
+        </a>
+      </div>
+    </div>
   );
 }
 
