@@ -24,13 +24,14 @@ recurring jobs.
 
 ## Deploy
 
-<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&integration-ids=oac_KfIFnjXqCl4YJCHnt1bDTBI1&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack+%3Conboarding%40resend.dev%3E%22%7D&envDescription=BETTER_AUTH_SECRET+and+ENCRYPTION_KEY%3A+run+%60openssl+rand+-base64+32%60+%28once+each%29.+CRON_SECRET%3A+run+%60openssl+rand+-hex+32%60.+RESEND_FROM+is+prefilled." target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
+<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&integration-ids=oac_KfIFnjXqCl4YJCHnt1bDTBI1&skippable-integrations=1&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack+%3Conboarding%40resend.dev%3E%22%7D&envDescription=BETTER_AUTH_SECRET+and+ENCRYPTION_KEY%3A+run+%60openssl+rand+-base64+32%60+%28once+each%29.+CRON_SECRET%3A+run+%60openssl+rand+-hex+32%60.+RESEND_FROM+is+prefilled." target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
 
 Clicking it will:
 
 1. **Clone** this repo into your GitHub account.
-2. **Add two integrations** — **Neon** (Postgres → `DATABASE_URL`) and **Resend**
-   (email → `RESEND_API_KEY`). One click each; both inject their keys for you.
+2. **Add integrations** — **Neon** (required: Postgres → `DATABASE_URL`) and
+   **Resend** (optional: email → `RESEND_API_KEY`). One click each; both inject
+   their keys for you.
 3. **Ask for four values** (below) — generated secrets, no website visits.
 4. **Build and deploy**, running database migrations automatically.
 
@@ -41,9 +42,10 @@ configured for you by the Vercel platform.
 
 During the flow Vercel shows **Neon** and **Resend** — click to add each:
 
-- **Neon** provisions a free Postgres database and wires `DATABASE_URL`.
-- **Resend** connects an email account and injects `RESEND_API_KEY` — no key to
-  copy from anywhere. Powers invites and password-reset emails.
+- **Neon** (required) provisions a free Postgres database and wires `DATABASE_URL`.
+- **Resend** (optional) connects an email account and injects `RESEND_API_KEY` —
+  no key to copy from anywhere. Powers invites and password-reset emails. Skip it
+  and the app falls back to copyable invite links (no emails sent).
 
 ### 2. Paste four values
 
