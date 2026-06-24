@@ -215,6 +215,27 @@ export const apiKey = pgTable(
   (t) => [uniqueIndex("api_key_provider_idx").on(t.provider)],
 );
 
+// SHARED global tokens (deployment-wide). Admins set these once and they cascade
+// to every user via `secretGet` — a per-user `user_secret` of the same name wins.
+// Tokens only (no OAuth). Value AES-256-GCM encrypted; `last4` for masked display.
+export const globalSecret = pgTable(
+  "global_secret",
+  {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(), // agent-facing identifier; unique deployment-wide
+    description: text("description"),
+    encrypted: text("encrypted").notNull(), // iv:tag:ciphertext (base64)
+    last4: text("last4").notNull(), // for masked display
+    createdAt: timestamp("created_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [uniqueIndex("global_secret_name_idx").on(t.name)],
+);
+
 // DEPRECATED — superseded by the shared `appSettings`. Kept defined so the
 // migration stays additive (avoids a destructive table rename). Not read/written.
 export const userSettings = pgTable("user_settings", {
@@ -416,6 +437,7 @@ export const rateLimit = pgTable("rate_limit", {
 export type Chat = typeof chat.$inferSelect;
 export type Message = typeof message.$inferSelect;
 export type ApiKey = typeof apiKey.$inferSelect;
+export type GlobalSecret = typeof globalSecret.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
 export type CustomEndpoint = typeof customEndpoint.$inferSelect;
 export type UserSecret = typeof userSecret.$inferSelect;

@@ -14,6 +14,9 @@ import { isProviderId, PROVIDER_IDS } from "@/lib/providers";
 import { MODELS_CACHE_TAG } from "@/lib/gateway-models";
 import { providerModelsTag } from "@/lib/provider-models";
 import { addEndpoint, deleteEndpoint } from "@/lib/endpoints";
+import { setGlobalSecret, deleteGlobalSecret } from "@/lib/global-secrets";
+
+const TOKEN_NAME_RE = /^[\w.-]{1,64}$/;
 
 export async function setKeyAction(provider: string, key: string) {
   await requireAdmin();
@@ -89,6 +92,29 @@ export async function setVoiceKeyAction(key: string) {
 export async function deleteVoiceKeyAction() {
   await requireAdmin();
   await deleteVoiceKey();
+  revalidatePath("/administration");
+}
+
+export async function setGlobalTokenAction(
+  name: string,
+  value: string,
+  description?: string,
+) {
+  await requireAdmin();
+  const trimmed = name.trim();
+  if (!TOKEN_NAME_RE.test(trimmed)) {
+    throw new Error(
+      "Name must be 1–64 chars: letters, numbers, dot, dash, underscore",
+    );
+  }
+  if (!value.trim()) throw new Error("Empty value");
+  await setGlobalSecret(trimmed, value, description);
+  revalidatePath("/administration");
+}
+
+export async function deleteGlobalTokenAction(name: string) {
+  await requireAdmin();
+  await deleteGlobalSecret(name);
   revalidatePath("/administration");
 }
 

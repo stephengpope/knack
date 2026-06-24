@@ -24,6 +24,7 @@ import type { Project } from "@/lib/db/schema";
 import { VercelSandbox } from "@/lib/sandbox/vercel";
 import { resolveAgentModel, resolveGeneralModel } from "@/lib/llm";
 import { secretsList, secretGet } from "@/lib/user-secrets";
+import { globalSecretsList } from "@/lib/global-secrets";
 import { getProject, getDefaultProject } from "@/lib/projects";
 import { getGithubAuth } from "@/lib/github-account";
 import { getUserTimezone } from "@/lib/user";
@@ -480,17 +481,43 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
         "what credentials are available before using secret_get.",
       inputSchema: z.object({}),
       execute: async () => {
-        const items = await secretsList(userId);
-        return {
-          secrets: items.map((t) => ({
-            name: t.name,
-            description: t.description,
-            kind: t.kind,
-            provider: t.provider,
-            scopes: t.scopes,
-            status: t.status,
-          })),
-        };
+        const [items, globals] = await Promise.all([
+          secretsList(userId),
+          globalSecretsList(),
+        ]);
+        const userNames = new Set(items.map((t) => t.name));
+        const secrets: Array<{
+          name: string;
+          description: string | null;
+          kind: string;
+          provider: string | null;
+          scopes: string[] | null;
+          status: string | null;
+          source: "user" | "global";
+        }> = items.map((t) => ({
+          name: t.name,
+          description: t.description,
+          kind: t.kind,
+          provider: t.provider,
+          scopes: t.scopes,
+          status: t.status,
+          source: "user",
+        }));
+        // Admin-set global tokens the user hasn't overridden; resolvable via
+        // secret_get (cascade). User secrets of the same name take precedence.
+        for (const g of globals) {
+          if (userNames.has(g.name)) continue;
+          secrets.push({
+            name: g.name,
+            description: g.description,
+            kind: "static",
+            provider: null,
+            scopes: null,
+            status: null,
+            source: "global",
+          });
+        }
+        return { secrets };
       },
     }),
     secret_get: tool({

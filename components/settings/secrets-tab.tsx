@@ -13,6 +13,9 @@ import {
   Unplug,
   KeyRound,
   Link2,
+  Sparkles,
+  Globe,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -35,8 +38,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { SecretSummary } from "@/lib/user-secrets";
+import type { GlobalSecretSummary } from "@/lib/global-secrets";
+import { BUILTIN_TOKENS, isBuiltinToken } from "@/lib/secrets/builtins";
 import {
   addStaticSecretAction,
+  setStaticSecretAction,
   addOAuthConnectionAction,
   startConnectAction,
   disconnectAction,
@@ -70,10 +76,12 @@ function oauthErrorMessage(code: string): string {
 
 export function SecretsTab({
   secrets,
+  globals,
   redirectUri,
   providers,
 }: {
   secrets: SecretSummary[];
+  globals: GlobalSecretSummary[];
   redirectUri: string;
   providers: ProviderOption[];
 }) {
@@ -94,8 +102,20 @@ export function SecretsTab({
     if (connected || error) router.replace("/settings?tab=Secrets");
   }, [connected, error, router]);
 
-  const tokens = secrets.filter((s) => s.kind === "static");
+  const statics = secrets.filter((s) => s.kind === "static");
   const conns = secrets.filter((s) => s.kind === "oauth");
+
+  const userStatics = new Map(statics.map((s) => [s.name, s]));
+  const globalByName = new Map(globals.map((g) => [g.name, g]));
+
+  // Built-in tokens always shown (curated). Free-form user tokens exclude the
+  // built-in names (those render in the Built-in section instead).
+  const tokens = statics.filter((s) => !isBuiltinToken(s.name));
+  // Admin globals beyond the built-ins that the user hasn't overridden — shown so
+  // the user knows they're available (and can override).
+  const sharedGlobals = globals.filter(
+    (g) => !isBuiltinToken(g.name) && !userStatics.has(g.name),
+  );
 
   return (
     <>
@@ -142,6 +162,51 @@ export function SecretsTab({
       </div>
 
       <div className="mt-3 flex flex-col gap-2">
+        <SectionLabel icon={Sparkles} count={BUILTIN_TOKENS.length}>
+          Built-in
+        </SectionLabel>
+        <p className="-mt-0.5 text-[12px] text-ink-soft">
+          Token names the system and built-in skills look for. Set your own, or use
+          a shared value provided by an admin.
+        </p>
+        {BUILTIN_TOKENS.map((b) => (
+          <ManagedTokenRow
+            key={b.name}
+            name={b.name}
+            label={b.label}
+            hint={b.hint}
+            url={b.url}
+            override={userStatics.get(b.name)}
+            globalLast4={globalByName.get(b.name)?.last4}
+            onChanged={() => router.refresh()}
+          />
+        ))}
+      </div>
+
+      {sharedGlobals.length > 0 && (
+        <div className="mt-6 flex flex-col gap-2">
+          <SectionLabel icon={Globe} count={sharedGlobals.length}>
+            Shared by admin
+          </SectionLabel>
+          <p className="-mt-0.5 text-[12px] text-ink-soft">
+            Provided for everyone. Set your own value to override it just for you.
+          </p>
+          {sharedGlobals.map((g) => (
+            <ManagedTokenRow
+              key={g.name}
+              name={g.name}
+              label={null}
+              hint={g.description}
+              url={null}
+              override={undefined}
+              globalLast4={g.last4}
+              onChanged={() => router.refresh()}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 flex flex-col gap-2">
         <SectionLabel icon={KeyRound} count={tokens.length}>
           Tokens
         </SectionLabel>
@@ -247,6 +312,171 @@ function Empty({ children }: { children: React.ReactNode }) {
     <div className="rounded-[12px] border border-dashed border-border px-4 py-6 text-center text-[13px] text-ink-faint">
       {children}
     </div>
+  );
+}
+
+/**
+ * A token row for a managed name (a built-in, or an admin-shared global). Shows
+ * where the resolved value comes from — the user's own override, a shared admin
+ * value, or unset — and lets the user set/override or clear their value.
+ */
+function ManagedTokenRow({
+  name,
+  label,
+  hint,
+  url,
+  override,
+  globalLast4,
+  onChanged,
+}: {
+  name: string;
+  label: string | null;
+  hint: string | null;
+  url: string | null;
+  override: SecretSummary | undefined;
+  globalLast4: string | undefined;
+  onChanged: () => void;
+}) {
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const hasUser = !!override;
+  const hasGlobal = !!globalLast4;
+  const isSet = hasUser || hasGlobal;
+
+  async function save() {
+    if (!value.trim()) return;
+    setBusy(true);
+    try {
+      await setStaticSecretAction({ name, value });
+      setValue("");
+      toast.success(
+        hasGlobal && !hasUser ? `Overrode ${name} with your value` : `${name} saved`,
+      );
+      onChanged();
+    } catch (e) {
+      toast.error((e as Error).message || "Couldn't save");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function clear() {
+    if (!override) return;
+    setBusy(true);
+    try {
+      await deleteSecretAction(override.id);
+      toast.success(hasGlobal ? "Reverted to the shared value" : "Removed");
+      onChanged();
+    } catch (e) {
+      toast.error((e as Error).message || "Couldn't remove");
+      setBusy(false);
+    }
+  }
+
+  const placeholder = hasUser
+    ? "Saved — paste a new value to replace"
+    : hasGlobal
+      ? `Using shared ••••${globalLast4} — paste to override`
+      : "Not set — paste a value";
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center gap-2 px-1">
+        <span className="font-mono text-[12.5px] font-bold">{name}</span>
+        {label && <span className="text-[12px] text-ink-soft">{label}</span>}
+        <span className="ml-auto">
+          {hasUser ? (
+            <Pill tone="green">
+              {hasGlobal ? "Your override" : "Your value"}
+            </Pill>
+          ) : hasGlobal ? (
+            <Pill tone="blue">Shared · set by admin</Pill>
+          ) : (
+            <Pill tone="muted">Not set</Pill>
+          )}
+        </span>
+      </div>
+      <div
+        className={cn(
+          "flex items-center gap-2 rounded-xl border bg-muted/50 py-1.5 pl-3.5 pr-1.5",
+          isSet ? "border-[#1B9C5D]/40" : "border-input",
+        )}
+      >
+        <KeyRound
+          className={cn(
+            "size-4 shrink-0",
+            isSet ? "text-[#1B9C5D]" : "text-ink-faint",
+          )}
+        />
+        <input
+          type="password"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={placeholder}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          autoComplete="off"
+          className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-ink-faint"
+        />
+        {hasUser && (
+          <button
+            onClick={clear}
+            disabled={busy}
+            title={hasGlobal ? "Clear your value (use the shared one)" : "Remove"}
+            className="flex size-8 shrink-0 items-center justify-center rounded-[9px] text-ink-faint transition-colors hover:bg-background hover:text-foreground"
+          >
+            <Trash2 className="size-4" />
+          </button>
+        )}
+        <Button
+          onClick={save}
+          disabled={busy || !value.trim()}
+          className="knack-gradient h-8 shrink-0 rounded-[9px] px-4 text-[13px] font-semibold text-white"
+        >
+          {busy ? <Spinner /> : hasGlobal && !hasUser ? "Override" : "Save"}
+        </Button>
+      </div>
+      {(hint || url) && (
+        <div className="mt-1.5 px-1 text-[12px] text-ink-soft">
+          {hint}{" "}
+          {url && (
+            <a
+              href={url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 font-semibold text-accent-text hover:underline"
+            >
+              Get a key
+              <ExternalLink className="size-3" />
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Pill({
+  tone,
+  children,
+}: {
+  tone: "green" | "blue" | "muted";
+  children: React.ReactNode;
+}) {
+  const cls = {
+    green: "bg-[rgba(27,156,93,.13)] text-[#1B9C5D]",
+    blue: "bg-blue-500/12 text-blue-600 dark:text-blue-400",
+    muted: "bg-muted text-ink-soft",
+  }[tone];
+  return (
+    <span
+      className={cn(
+        "rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide",
+        cls,
+      )}
+    >
+      {children}
+    </span>
   );
 }
 

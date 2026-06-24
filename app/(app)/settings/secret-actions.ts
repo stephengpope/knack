@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
 import {
   createStaticSecret,
+  upsertStaticSecret,
   createOAuthConnection,
   getConnectionSecret,
   disconnectOAuth,
@@ -59,6 +60,31 @@ export async function addStaticSecretAction(input: {
       name,
       description: input.description,
       value: input.value,
+    });
+  } catch (e) {
+    throw friendlyDbError(e);
+  }
+  revalidatePath("/settings");
+}
+
+/**
+ * Create or replace a static token by name (upsert). Used to set or override a
+ * built-in / global token from the Secrets tab.
+ */
+export async function setStaticSecretAction(input: {
+  name: string;
+  value: string;
+  description?: string;
+}): Promise<void> {
+  const user = await requireUser();
+  const name = input.name.trim();
+  assertName(name);
+  if (!input.value.trim()) throw new Error("Value is required.");
+  try {
+    await upsertStaticSecret(user.id, {
+      name,
+      value: input.value,
+      description: input.description,
     });
   } catch (e) {
     throw friendlyDbError(e);

@@ -29,6 +29,7 @@ import { SecretsTab } from "@/components/settings/secrets-tab";
 import type { ProviderOption } from "@/components/settings/secrets-tab";
 import { ProjectsTab } from "@/components/settings/projects-tab";
 import type { SecretSummary } from "@/lib/user-secrets";
+import type { GlobalSecretSummary } from "@/lib/global-secrets";
 import type { GithubAccountSummary } from "@/lib/github-account";
 import type { ProjectSummary } from "@/lib/projects";
 
@@ -40,6 +41,7 @@ export function SettingsView({
   email,
   timezone,
   secrets,
+  globals,
   redirectUri,
   providers,
   githubAccount,
@@ -49,6 +51,7 @@ export function SettingsView({
   email: string;
   timezone: string;
   secrets: SecretSummary[];
+  globals: GlobalSecretSummary[];
   redirectUri: string;
   providers: ProviderOption[];
   githubAccount: GithubAccountSummary | null;
@@ -103,6 +106,7 @@ export function SettingsView({
             {tab === "Secrets" && (
               <SecretsTab
                 secrets={secrets}
+                globals={globals}
                 redirectUri={redirectUri}
                 providers={providers}
               />

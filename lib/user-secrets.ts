@@ -5,6 +5,7 @@ import type { OAuth2Tokens } from "arctic";
 import { db } from "@/lib/db";
 import { userSecret, type UserSecret } from "@/lib/db/schema";
 import { encrypt, decrypt } from "@/lib/crypto";
+import { getGlobalSecretValue } from "@/lib/global-secrets";
 import {
   buildClient,
   resolveProviderConfig,
@@ -95,6 +96,38 @@ export async function updateStaticValue(
         eq(userSecret.kind, "static"),
       ),
     );
+}
+
+/**
+ * Create or replace a static secret by name (upsert on the (userId,name) unique
+ * index). Used to set/override a token by name — e.g. a user overriding a global
+ * built-in token. `description` only changes when explicitly passed.
+ */
+export async function upsertStaticSecret(
+  userId: string,
+  input: { name: string; value: string; description?: string },
+): Promise<void> {
+  await db
+    .insert(userSecret)
+    .values({
+      id: nanoid(),
+      userId,
+      name: input.name.trim(),
+      description: input.description?.trim() || null,
+      kind: "static",
+      encryptedValue: encrypt(input.value),
+    })
+    .onConflictDoUpdate({
+      target: [userSecret.userId, userSecret.name],
+      set: {
+        kind: "static",
+        encryptedValue: encrypt(input.value),
+        ...(input.description !== undefined
+          ? { description: input.description.trim() || null }
+          : {}),
+        updatedAt: new Date(),
+      },
+    });
 }
 
 /* ---------------------------------- oauth ---------------------------------- */
@@ -244,7 +277,12 @@ export async function secretGet(userId: string, name: string): Promise<string> {
     .from(userSecret)
     .where(and(eq(userSecret.userId, userId), eq(userSecret.name, name)))
     .limit(1);
-  if (!row) throw new Error(`No secret named "${name}"`);
+  if (!row) {
+    // No per-user secret — fall back to an admin-set global token (cascade).
+    const global = await getGlobalSecretValue(name);
+    if (global !== null) return global;
+    throw new Error(`No secret named "${name}"`);
+  }
 
   if (row.kind === "static") {
     if (!row.encryptedValue) throw new Error(`Secret "${name}" has no value`);
