@@ -1,6 +1,6 @@
 # Knack
 
-**A self-improving AI agent that requires no local computer for virtual machine, billed only when you use it (with a free tier) that installs in 1 click.**
+**A self-improving AI agent that requires no local computer or virtual machine, billed only when you use it (with a free tier) that installs in 1 click.**
 
 Knack is a single-surface AI chat agent that lives in the cloud. Every message
 runs a real tool-using agent inside an isolated [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox)
