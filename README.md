@@ -1,6 +1,6 @@
 # Knack
 
-**A self-improving AI agent you deploy in one click — no computer, no VM, no server to babysit.**
+**A self-improving AI agent. No local computer or VM, billed only when you use it (free tier included), installs in one click.**
 
 Knack is a single-surface AI chat agent that lives in the cloud. Every message
 runs a real tool-using agent inside an isolated [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox)
@@ -24,7 +24,7 @@ recurring jobs.
 
 ## Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_API_KEY%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack%20%3Conboarding%40resend.dev%3E%22%7D&envDescription=Generate%20three%20secrets%20%28see%20the%20linked%20guide%29%20plus%20a%20free%20Resend%20API%20key.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%23environment-variables)
+<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_API_KEY%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack%20%3Conboarding%40resend.dev%3E%22%7D&envDescription=Generate%20three%20secrets%20%28see%20the%20linked%20guide%29%20plus%20a%20free%20Resend%20API%20key.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%23environment-variables" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
 
 Clicking it will:
 
