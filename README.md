@@ -24,20 +24,28 @@ recurring jobs.
 
 ## Deploy
 
-<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_API_KEY%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack%20%3Conboarding%40resend.dev%3E%22%7D&envDescription=Generate%20three%20secrets%20%28see%20the%20linked%20guide%29%20plus%20a%20free%20Resend%20API%20key.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%23environment-variables" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
+<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&integration-ids=oac_KfIFnjXqCl4YJCHnt1bDTBI1&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack+%3Conboarding%40resend.dev%3E%22%7D&envDescription=BETTER_AUTH_SECRET+and+ENCRYPTION_KEY%3A+run+%60openssl+rand+-base64+32%60+%28once+each%29.+CRON_SECRET%3A+run+%60openssl+rand+-hex+32%60.+RESEND_FROM+is+prefilled." target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
 
 Clicking it will:
 
 1. **Clone** this repo into your GitHub account.
-2. **Provision a Neon Postgres database** (free tier) and wire `DATABASE_URL` in
-   automatically.
-3. **Ask you for five values** (below) — most are one-line generated secrets.
+2. **Add two integrations** — **Neon** (Postgres → `DATABASE_URL`) and **Resend**
+   (email → `RESEND_API_KEY`). One click each; both inject their keys for you.
+3. **Ask for four values** (below) — generated secrets, no website visits.
 4. **Build and deploy**, running database migrations automatically.
 
 Everything else — the cloud sandbox, the AI Gateway, and the deployment URL — is
-configured for you by the Vercel platform. No keys to manage.
+configured for you by the Vercel platform.
 
-### 1. Paste five values
+### 1. Add the integrations
+
+During the flow Vercel shows **Neon** and **Resend** — click to add each:
+
+- **Neon** provisions a free Postgres database and wires `DATABASE_URL`.
+- **Resend** connects an email account and injects `RESEND_API_KEY` — no key to
+  copy from anywhere. Powers invites and password-reset emails.
+
+### 2. Paste four values
 
 When the deploy form asks for environment variables, generate the three secrets
 with one command:
@@ -52,7 +60,6 @@ printf 'BETTER_AUTH_SECRET=%s\nENCRYPTION_KEY=%s\nCRON_SECRET=%s\n' \
 | `BETTER_AUTH_SECRET` | First line from the command above. Signs auth sessions.                       |
 | `ENCRYPTION_KEY`     | Second line. Encrypts stored provider keys (AES-256-GCM).                     |
 | `CRON_SECRET`        | Third line. Guards the scheduled-run endpoints.                               |
-| `RESEND_API_KEY`     | A free key from [resend.com](https://resend.com) → **API Keys**. Sends invites and password resets. |
 | `RESEND_FROM`        | Pre-filled with `Knack <onboarding@resend.dev>`. Leave it, or use a verified sender. |
 
 > **Email note:** `onboarding@resend.dev` only delivers to the email on your
@@ -60,14 +67,14 @@ printf 'BETTER_AUTH_SECRET=%s\nENCRYPTION_KEY=%s\nCRON_SECRET=%s\n' \
 > domain](https://resend.com/domains) in Resend and set `RESEND_FROM` to an
 > address on it.
 
-### 2. Create the first admin
+### 3. Create the first admin
 
 Open your new deployment and go to **`/login`**. On a fresh install it shows a
 **"Set up Knack"** form — create your admin account there. After that, `/login`
 becomes a normal sign-in page (sign-up is invite-only; admins invite everyone
 else from **Administration**).
 
-### 3. Connect a GitHub repo
+### 4. Connect a GitHub repo
 
 In **Settings**, connect a GitHub Personal Access Token (`repo` scope) and create
 a **project**. Knack seeds the repo with starter prompt/memory/skills files and
@@ -88,8 +95,8 @@ reference for self-hosting or local development.
 | `BETTER_AUTH_SECRET` | ✅        | `openssl rand -base64 32`                                              |
 | `ENCRYPTION_KEY`     | ✅        | `openssl rand -base64 32`                                              |
 | `CRON_SECRET`        | ✅        | `openssl rand -hex 32` — guards scheduled-run endpoints.              |
-| `RESEND_API_KEY`     | ✅        | Free key from [resend.com](https://resend.com).                       |
-| `RESEND_FROM`        | ✅        | Verified sender, e.g. `Knack <noreply@yourdomain.com>`.               |
+| `RESEND_API_KEY`     | —        | **Auto** — Resend integration added by the Deploy Button (or your own key). Email (invites + password resets); without it, the app falls back to copyable links. |
+| `RESEND_FROM`        | —        | Sender address. Prefilled `Knack <onboarding@resend.dev>`; use a [verified domain](https://resend.com/domains) to email anyone but yourself. |
 | `BETTER_AUTH_URL`    | —        | **Auto** on Vercel (deployment URL). Set to `http://localhost:3000` locally. |
 | `AI_GATEWAY_API_KEY` | —        | **Auto** on Vercel via OIDC. Set locally from [ai-gateway.vercel.sh](https://ai-gateway.vercel.sh). |
 | `SNAPSHOT_TTL`       | —        | Optional — days a chat's sandbox snapshot is kept before auto-expiry. Default `1`. |
