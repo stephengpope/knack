@@ -104,6 +104,37 @@ value overrides it).
 
 ---
 
+## What you get
+
+- **AI chat agent** with a sandboxed toolchain (bash, file read/write/edit,
+  search, web tools) — one isolated cloud box per chat.
+- **Projects** backed by your GitHub repos; the agent commits its work and syncs.
+- **Skills** the agent can load and author (`.skills/` in the project repo).
+- **Scheduled runs** via a root `cron.json` the agent can edit (`vercel.json`
+  drives a single Vercel cron heartbeat).
+- **Kanban supervisor** — autonomous agent loops that drive cards to completion.
+- **Admin console** — users, AI model/provider config, and secrets.
+
+Stack: Next.js 16 (App Router) · React 19 · Tailwind v4 · shadcn on Radix UI ·
+AI SDK 6 via Vercel AI Gateway · Better Auth · Drizzle · Neon Postgres ·
+Vercel Sandbox.
+
+---
+
+## Cost & free tier
+
+| Service           | Free tier                              | Billed when                          |
+| ----------------- | -------------------------------------- | ------------------------------------ |
+| Vercel (Hobby)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
+| Neon Postgres     | Yes — free serverless Postgres         | You outgrow the free database        |
+| Resend            | Yes — free email tier                  | You exceed the free send volume      |
+| AI (AI Gateway)   | —                                      | Per token, **only when the agent runs** |
+
+Scheduled runs and the supervisor depend on cron frequency: Vercel **Hobby** runs
+cron **once a day**; **Pro** allows finer schedules (e.g. every 30 minutes).
+
+---
+
 ## Local development
 
 Knack is built for the cloud, but you can run the Next.js app on your laptop
@@ -162,38 +193,11 @@ Notes:
 
 ---
 
-## What you get
+## Local development (bring your own database)
 
-- **AI chat agent** with a sandboxed toolchain (bash, file read/write/edit,
-  search, web tools) — one isolated cloud box per chat.
-- **Projects** backed by your GitHub repos; the agent commits its work and syncs.
-- **Skills** the agent can load and author (`.skills/` in the project repo).
-- **Scheduled runs** via a root `cron.json` the agent can edit (`vercel.json`
-  drives a single Vercel cron heartbeat).
-- **Kanban supervisor** — autonomous agent loops that drive cards to completion.
-- **Admin console** — users, AI model/provider config, and secrets.
-
-Stack: Next.js 16 (App Router) · React 19 · Tailwind v4 · shadcn on Radix UI ·
-AI SDK 6 via Vercel AI Gateway · Better Auth · Drizzle · Neon Postgres ·
-Vercel Sandbox.
-
----
-
-## Cost & free tier
-
-| Service           | Free tier                              | Billed when                          |
-| ----------------- | -------------------------------------- | ------------------------------------ |
-| Vercel (Hobby)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
-| Neon Postgres     | Yes — free serverless Postgres         | You outgrow the free database        |
-| Resend            | Yes — free email tier                  | You exceed the free send volume      |
-| AI (AI Gateway)   | —                                      | Per token, **only when the agent runs** |
-
-Scheduled runs and the supervisor depend on cron frequency: Vercel **Hobby** runs
-cron **once a day**; **Pro** allows finer schedules (e.g. every 30 minutes).
-
----
-
-## Local development
+If you'd rather not link a Vercel project, run fully standalone against your own
+Postgres. Note the agent's sandbox still needs Vercel credentials
+(`VERCEL_OIDC_TOKEN` or `vercel dev`) to boot.
 
 ```bash
 pnpm install
