@@ -135,7 +135,7 @@ cron **once a day**; **Pro** allows finer schedules (e.g. every 30 minutes).
 
 ---
 
-## Local development
+## Local development (using Vercel database)
 
 Knack is built for the cloud, but you can run the Next.js app on your laptop
 against your **deployed** Vercel project — same database, same secrets, same
