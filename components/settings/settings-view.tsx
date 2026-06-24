@@ -67,7 +67,7 @@ export function SettingsView({
     <div className="flex h-dvh flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-6">
         <Logomark size={22} />
-        <span className="text-[14.5px] font-bold">Settings</span>
+        <span className="text-[14.5px] font-bold">User Settings</span>
         <Link
           href="/"
           className="ml-auto flex size-8 items-center justify-center rounded-[9px] border border-border bg-card text-ink-soft transition-colors hover:bg-accent hover:text-foreground"

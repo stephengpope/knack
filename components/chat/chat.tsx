@@ -298,9 +298,21 @@ export function Chat({
       // result on the indicators once it settles.
       void pollGitStatus(id);
     },
+    onError: (e) => {
+      // Surface the real server error (forwarded via the stream's onError)
+      // instead of silently dropping it — otherwise the loader just stops.
+      toast.error(e.message || "The turn failed.");
+    },
   });
 
   const isWelcome = messages.length === 0;
+
+  // The project the turn will run in (the picker defaults to the first project
+  // when untouched). A chat can't run without one — block send until there is
+  // one. Drive the guard + button styling off this, NOT the native `disabled`
+  // attribute: the InputGroup dims on `has-disabled`, which would grey out the
+  // whole composer (textarea + the "Add a project" link) too.
+  const selectedProjectId = projectId ?? projects[0]?.id ?? null;
 
   // Show the loader until the assistant produces real content. The stream flips
   // status to "streaming" on its opening chunk (before any token) and seeds an
@@ -322,6 +334,7 @@ export function Chat({
   function submit(message: PromptInputMessage) {
     const text = message.text?.trim();
     if (!text) return;
+    if (!selectedProjectId) return; // no project selected → no turn to run
     if (isWelcome && !navigated.current) {
       navigated.current = true;
       // We're already at /chat/<id>; just surface it in the sidebar as "Untitled".
@@ -386,7 +399,8 @@ export function Chat({
         <PromptInputSubmit
           status={status}
           onStop={stop}
-          className="knack-gradient knack-glow size-9 rounded-[11px] text-white"
+          aria-disabled={!selectedProjectId}
+          className="knack-gradient knack-glow size-9 rounded-[11px] text-white aria-disabled:pointer-events-none aria-disabled:opacity-40"
         />
       </PromptInputFooter>
     </PromptInput>
@@ -396,7 +410,7 @@ export function Chat({
   if (isWelcome) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
-        <div className="mb-8 flex items-center gap-4">
+        <div className="mb-8 flex items-center gap-2.5">
           <Logomark size={38} strokeWidth={1.6} />
           <h1 className="font-heading text-[34px] font-semibold tracking-[-0.02em]">
             Hey there, {userName.split(" ")[0]}

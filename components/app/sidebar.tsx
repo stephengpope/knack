@@ -144,9 +144,13 @@ export function Sidebar({
   return (
     <aside className="flex w-[272px] shrink-0 flex-col border-r border-border bg-sidebar">
       <div className="flex items-center gap-2 px-4 pb-3 pt-[18px]">
-        <span className="ml-[7px] text-[19px] font-extrabold tracking-[-0.03em]">
+        <Link
+          href={newChatId ? `/chat/${newChatId}` : "/"}
+          prefetch={false}
+          className="ml-[7px] text-[19px] font-extrabold tracking-[-0.03em] transition-opacity hover:opacity-70"
+        >
           Knack
-        </span>
+        </Link>
         <button
           className="ml-auto flex size-[30px] items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-accent hover:text-foreground"
           title="Search"

@@ -102,7 +102,7 @@ export function AccountMenu({
           <DropdownMenuSeparator />
 
           <DropdownMenuItem onClick={() => router.push("/settings")}>
-            <Settings className="size-[15px]" /> Settings
+            <Settings className="size-[15px]" /> User Settings
           </DropdownMenuItem>
           {isAdmin && (
             <DropdownMenuItem onClick={() => router.push("/administration")}>

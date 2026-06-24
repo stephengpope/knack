@@ -581,6 +581,10 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
     originalMessages: combined as ChatMessage[],
     // stable, server-generated ids for assistant messages (required for persistence)
     generateId: createIdGenerator({ prefix: "msg", size: 16 }),
+    // Forward the real failure to the client instead of the AI SDK's masked
+    // default ("An error occurred."). A failed turn should tell the user why
+    // (bad model slug, provider 400, missing key) — they ran it.
+    onError: (e) => (e instanceof Error ? e.message : String(e)),
     onFinish: async ({ messages: final }) => {
       await saveMessages(chatId, final as unknown as UIMessage[]);
       // Agent onFinish has already run by now, so capturedUsage is populated.
