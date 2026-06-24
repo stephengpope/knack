@@ -1,93 +1,147 @@
 # Knack
 
-Your AI agent. A clean, single-surface chat app where every message runs through
-a server-side agent loop with an isolated [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox)
-for executing code and shell commands.
+**A self-improving AI agent you deploy in one click — no computer, no VM, no server to babysit.**
 
-Built with **Next.js (App Router)** · **Tailwind v4** · **shadcn/ui** ·
-**AI SDK 6** (via **Vercel AI Gateway**) · **Better Auth** · **Drizzle** ·
-**Neon Postgres** · **Vercel Sandbox**.
+Knack is a single-surface AI chat agent that lives in the cloud. Every message
+runs a real tool-using agent inside an isolated [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox)
+microVM — it can run shell commands, read and write files, search the web, and
+commit code to a GitHub repo it owns. Because that repo holds the agent's own
+prompt, memory, skills, and schedule, **Knack edits itself**: give it feedback and
+it rewrites its `SOUL/AGENT/MEMORY` files, adds new skills, and schedules its own
+recurring jobs.
 
-## Features
+- 🧠 **Self-improving** — the agent owns a GitHub repo with its prompt, memory,
+  skills, and cron schedule, and rewrites them as it learns.
+- ☁️ **No local machine or VM** — each chat gets a fresh cloud sandbox. Nothing
+  runs on your laptop.
+- 💸 **Pay only for what you use, with a free tier** — Vercel Hobby, Neon free
+  Postgres, and Resend's free email tier cost nothing at rest. AI runs through the
+  Vercel AI Gateway, billed per token only when the agent actually works.
+- 🚀 **One-click install** — the button below clones the repo, provisions the
+  database, and deploys. You paste a few secrets and you're live.
 
-- 🤖 Server-side agent loop (`ToolLoopAgent`) streamed to the client with AI Elements–style rendering + Streamdown
-- 🧰 Sandbox tools: `runBash`, `readFile`, `writeFile`, `listFiles` — one warm microVM per chat
-- 🔀 Multi-provider model selector through the AI Gateway (Anthropic, OpenAI, DeepSeek, Moonshot/Kimi) — no per-provider keys
-- 💬 Persisted multi-chat history (Postgres) with star / rename / delete
-- 🔐 Email + password auth (Better Auth) with branded shadcn screens
-- 🌗 Light / dark theme matching the Knack brand
-- 🕘 Scheduled agent runs — per-project `cron.json`, driven by a Vercel cron heartbeat
+---
 
-## One-click deploy
+## Deploy
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-org/knack&project-name=knack&repository-name=knack&env=BETTER_AUTH_SECRET,BETTER_AUTH_URL&envDescription=Auth%20secret%20and%20app%20URL%20%E2%80%94%20see%20.env.example)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_API_KEY%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack%20%3Conboarding%40resend.dev%3E%22%7D&envDescription=Generate%20three%20secrets%20%28see%20the%20linked%20guide%29%20plus%20a%20free%20Resend%20API%20key.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%23environment-variables)
 
-After the project is created:
+Clicking it will:
 
-1. **Add a database** — in the project's **Storage** tab, add **Neon Postgres**
-   from the Marketplace. This auto-injects `DATABASE_URL`.
-2. **Set `BETTER_AUTH_SECRET`** — `openssl rand -base64 32`.
-3. **Set `BETTER_AUTH_URL`** — your deployment URL (e.g. `https://knack.vercel.app`).
-4. **AI Gateway** — `AI_GATEWAY_API_KEY` is provided automatically on Vercel via OIDC.
-5. **Run migrations** — `vercel env pull .env.local` then `pnpm db:migrate`
-   (or `pnpm db:push` for the first deploy).
+1. **Clone** this repo into your GitHub account.
+2. **Provision a Neon Postgres database** (free tier) and wire `DATABASE_URL` in
+   automatically.
+3. **Ask you for five values** (below) — most are one-line generated secrets.
+4. **Build and deploy**, running database migrations automatically.
+
+Everything else — the cloud sandbox, the AI Gateway, and the deployment URL — is
+configured for you by the Vercel platform. No keys to manage.
+
+### 1. Paste five values
+
+When the deploy form asks for environment variables, generate the three secrets
+with one command:
+
+```bash
+printf 'BETTER_AUTH_SECRET=%s\nENCRYPTION_KEY=%s\nCRON_SECRET=%s\n' \
+  "$(openssl rand -base64 32)" "$(openssl rand -base64 32)" "$(openssl rand -hex 32)"
+```
+
+| Variable             | What to enter                                                                 |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET` | First line from the command above. Signs auth sessions.                       |
+| `ENCRYPTION_KEY`     | Second line. Encrypts stored provider keys (AES-256-GCM).                     |
+| `CRON_SECRET`        | Third line. Guards the scheduled-run endpoints.                               |
+| `RESEND_API_KEY`     | A free key from [resend.com](https://resend.com) → **API Keys**. Sends invites and password resets. |
+| `RESEND_FROM`        | Pre-filled with `Knack <onboarding@resend.dev>`. Leave it, or use a verified sender. |
+
+> **Email note:** `onboarding@resend.dev` only delivers to the email on your
+> Resend account — fine for the first admin. To invite teammates, [verify a
+> domain](https://resend.com/domains) in Resend and set `RESEND_FROM` to an
+> address on it.
+
+### 2. Create the first admin
+
+Open your new deployment and go to **`/login`**. On a fresh install it shows a
+**"Set up Knack"** form — create your admin account there. After that, `/login`
+becomes a normal sign-in page (sign-up is invite-only; admins invite everyone
+else from **Administration**).
+
+### 3. Connect a GitHub repo
+
+In **Settings**, connect a GitHub Personal Access Token (`repo` scope) and create
+a **project**. Knack seeds the repo with starter prompt/memory/skills files and
+works inside it — this is the repo the agent improves over time.
+
+You're done. Start a chat.
+
+---
+
+## Environment variables
+
+The Deploy Button handles the rest of these for you; this table is the full
+reference for self-hosting or local development.
+
+| Variable             | Required | Source                                                                 |
+| -------------------- | -------- | ---------------------------------------------------------------------- |
+| `DATABASE_URL`       | ✅        | **Auto** — Neon store created by the Deploy Button. Or your own Neon connection string. |
+| `BETTER_AUTH_SECRET` | ✅        | `openssl rand -base64 32`                                              |
+| `ENCRYPTION_KEY`     | ✅        | `openssl rand -base64 32`                                              |
+| `CRON_SECRET`        | ✅        | `openssl rand -hex 32` — guards scheduled-run endpoints.              |
+| `RESEND_API_KEY`     | ✅        | Free key from [resend.com](https://resend.com).                       |
+| `RESEND_FROM`        | ✅        | Verified sender, e.g. `Knack <noreply@yourdomain.com>`.               |
+| `BETTER_AUTH_URL`    | —        | **Auto** on Vercel (deployment URL). Set to `http://localhost:3000` locally. |
+| `AI_GATEWAY_API_KEY` | —        | **Auto** on Vercel via OIDC. Set locally from [ai-gateway.vercel.sh](https://ai-gateway.vercel.sh). |
+| `FIRECRAWL_API_KEY`  | —        | Optional — web scrape/search tools in the sandbox ([firecrawl.dev](https://firecrawl.dev)). |
+
+Voice dictation (AssemblyAI) is optional and configured in-app under
+**Administration** once deployed.
+
+---
+
+## What you get
+
+- **AI chat agent** with a sandboxed toolchain (bash, file read/write/edit,
+  search, web tools) — one isolated cloud box per chat.
+- **Projects** backed by your GitHub repos; the agent commits its work and syncs.
+- **Skills** the agent can load and author (`.skills/` in the project repo).
+- **Scheduled runs** via a root `cron.json` the agent can edit (`vercel.json`
+  drives a single Vercel cron heartbeat).
+- **Kanban supervisor** — autonomous agent loops that drive cards to completion.
+- **Admin console** — users, AI model/provider config, and secrets.
+
+Stack: Next.js 16 (App Router) · React 19 · Tailwind v4 · shadcn on Radix UI ·
+AI SDK 6 via Vercel AI Gateway · Better Auth · Drizzle · Neon Postgres ·
+Vercel Sandbox.
+
+---
+
+## Cost & free tier
+
+| Service           | Free tier                              | Billed when                          |
+| ----------------- | -------------------------------------- | ------------------------------------ |
+| Vercel (Hobby)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
+| Neon Postgres     | Yes — free serverless Postgres         | You outgrow the free database        |
+| Resend            | Yes — free email tier                  | You exceed the free send volume      |
+| AI (AI Gateway)   | —                                      | Per token, **only when the agent runs** |
+
+Scheduled runs and the supervisor depend on cron frequency: Vercel **Hobby** runs
+cron **once a day**; **Pro** allows finer schedules (e.g. every 30 minutes).
+
+---
 
 ## Local development
 
 ```bash
 pnpm install
-cp .env.example .env.local        # fill in DATABASE_URL + BETTER_AUTH_SECRET
-pnpm db:migrate                   # apply schema to your Neon database
-pnpm dev
+cp .env.example .env.local      # fill in DATABASE_URL + the secrets
+pnpm db:migrate                 # apply migrations
+pnpm dev                        # http://localhost:3000
 ```
 
-Open http://localhost:3000.
+Then open `/login` to create the first admin (same flow as production). See
+[`CLAUDE.md`](./CLAUDE.md) for architecture and the per-directory `CLAUDE.md`
+guides for subsystem details.
 
-### Environment variables
-
-| Variable              | Required | Notes                                                        |
-| --------------------- | -------- | ------------------------------------------------------------ |
-| `DATABASE_URL`        | ✅       | Neon Postgres connection string (added via Vercel Storage)   |
-| `BETTER_AUTH_SECRET`  | ✅       | `openssl rand -base64 32`                                    |
-| `BETTER_AUTH_URL`     | ✅       | App base URL, no trailing slash                              |
-| `AI_GATEWAY_API_KEY`  | local    | Auto-provided on Vercel via OIDC; set locally for dev        |
-
-## Architecture
-
-```
-app/
-  (auth)/            login · signup · forgot/reset password   (Better Auth)
-  (app)/             protected shell
-    layout.tsx       sidebar + session guard
-    page.tsx         new-chat welcome state
-    c/[chatId]/      conversation (loads persisted messages)
-  api/
-    agent/route.ts   ToolLoopAgent loop -> sandbox tools -> persist
-    auth/[...all]/   Better Auth handler
-lib/
-  db/                Drizzle schema + Neon client + migrations
-  sandbox/           provider-agnostic Sandbox adapter (Vercel impl)
-  models.ts          Gateway model registry (selector source of truth)
-  auth.ts            Better Auth server
-  chats.ts           chat/message persistence (user-scoped)
-components/
-  chat/              Chat, Composer, MessageList
-  app/               Sidebar, AccountMenu
-  brand/             logo / mark
-  ui/                shadcn primitives
-```
-
-The agent runs entirely on the server; sandbox code is isolated in a Firecracker
-microVM with no access to your env, database, or cloud resources. Swapping sandbox
-providers means adding one adapter under `lib/sandbox/` — nothing else changes.
-
-## Notes / phase 2
-
-- **Password reset email** transport is not configured — wire a `sendResetPassword`
-  handler in `lib/auth.ts` to send real links.
-- **Scheduled runs** are live: a daily Vercel cron heartbeat (`vercel.json` →
-  `/api/cron/tick`) polls each active project's `cron.json` and fires due jobs as
-  agent turns. Set `CRON_SECRET`; raise the heartbeat to `*/30 * * * *` (Pro) for
-  finer timing.
-- Confirm the model slugs in `lib/models.ts` against the live
-  [AI Gateway model list](https://vercel.com/ai-gateway/models).
+> **Note:** This repo runs **Next.js 16** with breaking changes from older
+> versions. See [`AGENTS.md`](./AGENTS.md).
