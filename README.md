@@ -14,9 +14,9 @@ recurring jobs.
   skills, and cron schedule, and rewrites them as it learns.
 - ☁️ **No local machine or VM** — each chat gets a fresh cloud sandbox. Nothing
   runs on your laptop.
-- 💸 **Pay only for what you use, with a free tier** — Vercel Hobby, Neon free
-  Postgres, and Resend's free email tier cost nothing at rest. AI runs through the
-  Vercel AI Gateway, billed per token only when the agent actually works.
+- 💸 **Pay only for what you use, with a free tier** — Vercel Hobby and Neon free
+  Postgres cost nothing at rest. AI runs through the Vercel AI Gateway, billed per
+  token only when the agent actually works.
 - 🚀 **One-click install** — the button below clones the repo, provisions the
   database, and deploys. You paste a few secrets and you're live.
 
@@ -24,33 +24,25 @@ recurring jobs.
 
 ## Deploy
 
-<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&integration-ids=oac_KfIFnjXqCl4YJCHnt1bDTBI1&skippable-integrations=1&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack+%3Conboarding%40resend.dev%3E%22%7D&envDescription=Generate+the+three+secrets+with+one+copy-paste+command+%28Mac%2FLinux+or+Windows%29+%E2%80%94+click+%27Learn+more%27.+RESEND_FROM+is+prefilled.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%232-paste-four-values" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
+<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET&envDescription=Generate+all+three+secrets+with+one+copy-paste+command+%28Mac%2FLinux+or+Windows%29+%E2%80%94+click+%27Learn+more%27.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%232-generate-the-secrets" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
 
-Clicking it will:
+Click the button. Vercel opens a form that clones the repo into your GitHub
+account. Fill it out as below, then click **Deploy** — Vercel builds the app and
+runs the database migrations for you.
 
-1. **Clone** this repo into your GitHub account.
-2. **Add integrations** — **Neon** (required: Postgres → `DATABASE_URL`) and
-   **Resend** (optional: email → `RESEND_API_KEY`). One click each; both inject
-   their keys for you.
-3. **Ask for four values** (below) — generated secrets, no website visits.
-4. **Build and deploy**, running database migrations automatically.
+### 1. Click "Add" on Neon
 
-Everything else — the cloud sandbox, the AI Gateway, and the deployment URL — is
-configured for you by the Vercel platform.
+Neon is already selected on the form — click **Add**. It creates a free Postgres
+database and wires up the connection for you. Nothing to copy.
 
-### 1. Add the integrations
+### 2. Generate the secrets
 
-During the flow Vercel shows **Neon** and **Resend** — click to add each:
+The form has three fields, all empty: `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, and
+`CRON_SECRET`.
 
-- **Neon** (required) provisions a free Postgres database and wires `DATABASE_URL`.
-- **Resend** (optional) connects an email account and injects `RESEND_API_KEY` —
-  no key to copy from anywhere. Powers invites and password-reset emails. Skip it
-  and the app falls back to copyable invite links (no emails sent).
-
-### 2. Paste four values
-
-When the deploy form asks for environment variables, generate all three secrets
-with one command — it prints them labelled and spaced, ready to paste.
+Open a terminal and run the command for your computer. It prints the three
+secrets, each labelled. For each one, copy the value **after the `=`** into the
+form field with the same name:
 
 **Mac / Linux** (Terminal):
 
@@ -64,17 +56,11 @@ printf '\n\nBETTER_AUTH_SECRET = %s\n\nENCRYPTION_KEY     = %s\n\nCRON_SECRET   
 "`n`nBETTER_AUTH_SECRET = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))`n`nENCRYPTION_KEY     = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))`n`nCRON_SECRET        = $(-join((1..32|%{'{0:x2}' -f (Get-Random -Maximum 256)})))`n"
 ```
 
-| Variable             | What to enter                                                                 |
-| -------------------- | ----------------------------------------------------------------------------- |
-| `BETTER_AUTH_SECRET` | First line from the command above. Signs auth sessions.                       |
-| `ENCRYPTION_KEY`     | Second line. Encrypts stored provider keys (AES-256-GCM).                     |
-| `CRON_SECRET`        | Third line. Guards the scheduled-run endpoints.                               |
-| `RESEND_FROM`        | Pre-filled with `Knack <onboarding@resend.dev>`. Leave it, or use a verified sender. |
-
-> **Email note:** `onboarding@resend.dev` only delivers to the email on your
-> Resend account — fine for the first admin. To invite teammates, [verify a
-> domain](https://resend.com/domains) in Resend and set `RESEND_FROM` to an
-> address on it.
+| Form field           | What to paste                                  |
+| -------------------- | ---------------------------------------------- |
+| `BETTER_AUTH_SECRET` | the value after `BETTER_AUTH_SECRET =`         |
+| `ENCRYPTION_KEY`     | the value after `ENCRYPTION_KEY =`             |
+| `CRON_SECRET`        | the value after `CRON_SECRET =`                |
 
 ### 3. Create the first admin
 
@@ -104,8 +90,6 @@ reference for self-hosting or local development.
 | `BETTER_AUTH_SECRET` | ✅        | `openssl rand -base64 32`                                              |
 | `ENCRYPTION_KEY`     | ✅        | `openssl rand -base64 32`                                              |
 | `CRON_SECRET`        | ✅        | `openssl rand -hex 32` — guards scheduled-run endpoints.              |
-| `RESEND_API_KEY`     | —        | **Auto** — Resend integration added by the Deploy Button (or your own key). Email (invites + password resets); without it, the app falls back to copyable links. |
-| `RESEND_FROM`        | —        | Sender address. Prefilled `Knack <onboarding@resend.dev>`; use a [verified domain](https://resend.com/domains) to email anyone but yourself. |
 | `BETTER_AUTH_URL`    | —        | **Auto** on Vercel (deployment URL). Set to `http://localhost:3000` locally. |
 | `AI_GATEWAY_API_KEY` | —        | **Auto** on Vercel via OIDC. Set locally from [ai-gateway.vercel.sh](https://ai-gateway.vercel.sh). |
 | `SNAPSHOT_TTL`       | —        | Optional — days a chat's sandbox snapshot is kept before auto-expiry. Default `1`. |
@@ -143,7 +127,6 @@ Vercel Sandbox.
 | ----------------- | -------------------------------------- | ------------------------------------ |
 | Vercel (Hobby)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
 | Neon Postgres     | Yes — free serverless Postgres         | You outgrow the free database        |
-| Resend            | Yes — free email tier                  | You exceed the free send volume      |
 | AI (AI Gateway)   | —                                      | Per token, **only when the agent runs** |
 
 Scheduled runs and the supervisor depend on cron frequency: Vercel **Hobby** runs
@@ -171,7 +154,7 @@ Prerequisites: the [Vercel CLI](https://vercel.com/docs/cli)
 vercel link
 
 # 2. Pull the deployment's env into .env.local — DATABASE_URL, the secrets,
-#    Resend, and a short-lived VERCEL_OIDC_TOKEN.
+#    and a short-lived VERCEL_OIDC_TOKEN.
 vercel env pull .env.local
 
 # 3. The only value that differs locally is the base URL. `vercel env pull`
