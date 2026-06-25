@@ -15,8 +15,9 @@ recurring jobs.
 - ☁️ **No local machine or VM** — each chat gets a fresh cloud sandbox. Nothing
   runs on your laptop.
 - 💸 **Pay only for what you use, with a free tier** — Vercel Hobby and Neon free
-  Postgres cost nothing at rest. AI runs through the Vercel AI Gateway, billed per
-  token only when the agent actually works.
+  Postgres cost nothing at rest. AI runs through the Vercel AI Gateway — new
+  accounts get $5 in credits each month; past that it's per token, only when the
+  agent actually works.
 - 🚀 **One-click install** — the button below clones the repo, provisions the
   database, and deploys. You paste a few secrets and you're live.
 
@@ -24,25 +25,24 @@ recurring jobs.
 
 ## Deploy
 
-<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET&envDescription=Generate+all+three+secrets+with+one+copy-paste+command+%28Mac%2FLinux+or+Windows%29+%E2%80%94+click+%27Learn+more%27.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%232-generate-the-secrets" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
+<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET&envDescription=Generate+all+three+secrets+with+one+copy-paste+command+%28Mac%2FLinux+or+Windows%29+%E2%80%94+click+%27Learn+more%27.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%233-generate-the-secrets" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
 
-Click the button. Vercel opens a form that clones the repo into your GitHub
-account. Fill it out as below, then click **Deploy** — Vercel builds the app and
-runs the database migrations for you.
+### 1. Click the button
 
-### 1. Click "Add" on Neon
+Sign in to Vercel if prompted, then **name the GitHub repo** (or keep `knack`)
+and click **Create** — Vercel clones it into your account and opens the setup
+form. Do steps 2–3 on that form, then click **Deploy** (it builds the app and
+runs the database migrations).
 
-Neon is already selected on the form — click **Add**. It creates a free Postgres
-database and wires up the connection for you. Nothing to copy.
+### 2. Add Neon
 
-### 2. Generate the secrets
+Neon is preselected — click **Add**. It creates a free Postgres database and
+wires up `DATABASE_URL`. Nothing to copy.
 
-The form has three fields, all empty: `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, and
-`CRON_SECRET`.
+### 3. Generate the secrets
 
-Open a terminal and run the command for your computer. It prints the three
-secrets, each labelled. For each one, copy the value **after the `=`** into the
-form field with the same name:
+Run the command for your OS. It prints three labelled values — copy each (the
+part **after the `=`**) into the form field of the same name.
 
 **Mac / Linux** (Terminal):
 
@@ -56,26 +56,17 @@ printf '\n\nBETTER_AUTH_SECRET = %s\n\nENCRYPTION_KEY     = %s\n\nCRON_SECRET   
 "`n`nBETTER_AUTH_SECRET = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))`n`nENCRYPTION_KEY     = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))`n`nCRON_SECRET        = $(-join((1..32|%{'{0:x2}' -f (Get-Random -Maximum 256)})))`n"
 ```
 
-| Form field           | What to paste                                  |
-| -------------------- | ---------------------------------------------- |
-| `BETTER_AUTH_SECRET` | the value after `BETTER_AUTH_SECRET =`         |
-| `ENCRYPTION_KEY`     | the value after `ENCRYPTION_KEY =`             |
-| `CRON_SECRET`        | the value after `CRON_SECRET =`                |
+### 4. Create the first admin
 
-### 3. Create the first admin
+Once it's live, open `/login` — a fresh install shows a **"Set up Knack"** form.
+Create your admin there. After that `/login` is a normal sign-in (sign-up is
+invite-only; admins invite others from **Administration**).
 
-Open your new deployment and go to **`/login`**. On a fresh install it shows a
-**"Set up Knack"** form — create your admin account there. After that, `/login`
-becomes a normal sign-in page (sign-up is invite-only; admins invite everyone
-else from **Administration**).
+### 5. Connect a GitHub repo
 
-### 4. Connect a GitHub repo
-
-In **Settings**, connect a GitHub Personal Access Token (`repo` scope) and create
-a **project**. Knack seeds the repo with starter prompt/memory/skills files and
-works inside it — this is the repo the agent improves over time.
-
-You're done. Start a chat.
+In **Settings**, add a GitHub Personal Access Token (`repo` scope) and create a
+**project** — Knack seeds it with starter prompt/memory/skills files and works
+inside it. Start a chat.
 
 ---
 
@@ -127,7 +118,7 @@ Vercel Sandbox.
 | ----------------- | -------------------------------------- | ------------------------------------ |
 | Vercel (Hobby)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
 | Neon Postgres     | Yes — free serverless Postgres         | You outgrow the free database        |
-| AI (AI Gateway)   | —                                      | Per token, **only when the agent runs** |
+| AI (AI Gateway)   | $5 credits/mo on new accounts          | Per token once the free credits run out |
 
 Scheduled runs and the supervisor depend on cron frequency: Vercel **Hobby** runs
 cron **once a day**; **Pro** allows finer schedules (e.g. every 30 minutes).
