@@ -172,8 +172,11 @@ export async function putFile(
   content: string,
   message: string,
 ): Promise<void> {
+  // Encode each segment but keep the slashes — the Contents API needs literal
+  // separators to create nested paths (e.g. `.attachments/.gitignore`).
+  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
   const res = await fetch(
-    `${API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`,
+    `${API}/repos/${owner}/${repo}/contents/${encodedPath}`,
     {
       method: "PUT",
       headers: { ...headers(pat), "Content-Type": "application/json" },

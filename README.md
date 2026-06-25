@@ -9,8 +9,14 @@
 - 💸 **Pay only for what you use, with a free tier** — Vercel Hobby and Neon free
   Postgres cost nothing at rest. AI runs through the Vercel AI Gateway — new
   accounts get $5 in credits each month.
+- 📎 **File attachments** — attach images, PDFs, text, and zips to a chat (or send
+  them via Telegram). Images and PDFs are shown inline and seen by the model; every
+  file lands in the sandbox's `.attachments/` for the agent to work with. Backed by
+  a private Vercel Blob store. Unstarred chats (and their attachments) are
+  auto-deleted after the retention window — default **7 days**, configurable in
+  **Administration** (`0` disables).
 - 🚀 **One-click install** — the button below clones the repo, provisions the
-  database, and deploys.
+  database and Blob storage, and deploys.
 
 ---
 
@@ -20,6 +26,7 @@
 | ----------------- | -------------------------------------- | ------------------------------------ |
 | Vercel (Hobby)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
 | Neon Postgres     | Yes — free serverless Postgres         | You outgrow the free database        |
+| Vercel Blob       | Yes — within Hobby limits (no overage; stops at the cap) | Pennies/GB on Pro (attachment storage is bounded by the retention policy) |
 | AI (AI Gateway)   | $5 credits/mo on new accounts          | Per token once the free credits run out |
 
 Scheduled runs and the supervisor depend on cron frequency: Vercel **Hobby** runs
@@ -31,14 +38,15 @@ cron **once a day**; **Pro** allows finer schedules (e.g. every 30 minutes).
 
 ### 1. Click the button
 
-<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET&envDescription=Generate+all+three+secrets+with+one+copy-paste+command+%28Mac%2FLinux+or+Windows%29+%E2%80%94+click+%27Learn+more%27.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%233-generate-the-secrets" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
+<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%2C%7B%22type%22%3A%22blob%22%2C%22access%22%3A%22private%22%7D%5D&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET&envDescription=Generate+all+three+secrets+with+one+copy-paste+command+%28Mac%2FLinux+or+Windows%29+%E2%80%94+click+%27Learn+more%27.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%233-generate-the-secrets" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
 
 Name the repo (or keep `knack`) and click **Create**.
 
-### 2. Add Neon
+### 2. Add the stores (Neon + Blob)
 
-Neon is preselected — click **Add**. It creates a free Postgres database and
-wires up `DATABASE_URL`. Nothing to copy.
+Both are preselected — click **Add** on each. **Neon** creates a free Postgres
+database and wires up `DATABASE_URL`; the **private Blob** store (for chat file
+attachments) wires up `BLOB_READ_WRITE_TOKEN`. Nothing to copy.
 
 ### 3. Generate the secrets
 
@@ -81,6 +89,7 @@ reference for self-hosting or local development.
 | Variable             | Required | Source                                                                 |
 | -------------------- | -------- | ---------------------------------------------------------------------- |
 | `DATABASE_URL`       | ✅        | **Auto** — Neon store created by the Deploy Button. Or your own Neon connection string. |
+| `BLOB_READ_WRITE_TOKEN` | ✅     | **Auto** — private Blob store created by the Deploy Button. Backs chat file attachments. |
 | `BETTER_AUTH_SECRET` | ✅        | `openssl rand -base64 32`                                              |
 | `ENCRYPTION_KEY`     | ✅        | `openssl rand -base64 32`                                              |
 | `CRON_SECRET`        | ✅        | `openssl rand -hex 32` — guards scheduled-run endpoints.              |

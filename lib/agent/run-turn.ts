@@ -38,6 +38,13 @@ import { fileRead } from "@/lib/files/read";
 import { fileEdit } from "@/lib/files/edit";
 import { searchFiles } from "@/lib/files/search";
 import { cloneUrlWithToken } from "@/lib/github";
+import { getAppSettings } from "@/lib/settings";
+import { prepareForModel, inlineCapsFor } from "@/lib/attachments/model";
+import {
+  materializeAttachments,
+  messageHasAttachments,
+  anyAttachments,
+} from "@/lib/attachments/materialize";
 
 function firstUserText(messages: UIMessage[]): string {
   const m = messages.find((x) => x.role === "user");
@@ -102,6 +109,12 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
     model: agentModel,
     providerOptions,
   } = await resolveAgentModel(params.model);
+
+  // What inline media the active provider accepts (drives how attachments are
+  // presented to the model — see prepareForModel). Keyed by the live connection
+  // mode + model provider, never assumed.
+  const { connectionMode } = await getAppSettings();
+  const inlineCaps = inlineCapsFor(connectionMode, modelId);
 
   // Ensure the chat exists and is owned by this user (created on first message).
   const existing = await getChat(userId, chatId);
@@ -248,6 +261,19 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
       repoChecked = true;
     }
     return b;
+  }
+
+  // Pull any attachments on the new message into the sandbox `.attachments/`
+  // folder and finalize their stored form (text inlined, transient blobs
+  // deleted). Forces the box up front, but only when attachments are present.
+  if (messageHasAttachments(message)) {
+    try {
+      if (await materializeAttachments(await box(), message)) {
+        await saveMessages(chatId, combined);
+      }
+    } catch {
+      // best-effort — the turn proceeds even if materialization fails
+    }
   }
 
   const tools = {
@@ -615,10 +641,20 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
     execute: async ({ writer }) => {
       // Stream the agent's response. The agent stream never emits data parts,
       // so it's safe to widen it to the writer's (data-part-carrying) type.
+      // Feed the model a provider-safe view: images/PDFs inlined only where the
+      // provider supports them, text files as fenced text, the rest as notes.
+      // The stored/displayed messages (originalMessages) keep the attachment
+      // parts untouched.
+      const modelMessages = anyAttachments(combined as UIMessage[])
+        ? ((await prepareForModel(
+            combined as UIMessage[],
+            inlineCaps,
+          )) as ChatMessage[])
+        : (combined as ChatMessage[]);
       writer.merge(
         (await createAgentUIStream({
           agent,
-          uiMessages: combined as ChatMessage[],
+          uiMessages: modelMessages,
         })) as unknown as Parameters<typeof writer.merge>[0],
       );
       // Once the parallel title resolves, persist it and push it to the client

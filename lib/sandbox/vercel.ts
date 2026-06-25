@@ -44,7 +44,7 @@ class VercelBox implements SandboxBox {
     return this.sb.fs.readFile(path, "utf8");
   }
 
-  async writeFile(path: string, content: string): Promise<void> {
+  async writeFile(path: string, content: string | Buffer | Uint8Array): Promise<void> {
     const dir = dirname(path);
     if (dir && dir !== "." && dir !== "/") {
       await this.sb.fs.mkdir(dir, { recursive: true });

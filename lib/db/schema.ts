@@ -270,6 +270,9 @@ export const appSettings = pgTable("app_settings", {
   maxTokensPerCard: bigint("max_tokens_per_card", { mode: "number" })
     .default(2_000_000)
     .notNull(),
+  // Chat retention window (days). Unstarred chats not used (updatedAt) within
+  // this window are swept daily by the cron tick. 0 = disabled (keep forever).
+  retentionDays: integer("retention_days").default(7).notNull(),
   // Vercel Sandbox snapshot — the baked tools image (ripgrep + agent-browser +
   // firecrawl-cli + built-in skills). Built lazily on first sandbox creation and
   // self-healed if deleted; id lives here because Vercel env can't be written at

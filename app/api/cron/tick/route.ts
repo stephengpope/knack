@@ -10,6 +10,8 @@ import {
   markFired,
 } from "@/lib/cron/state";
 import { listEligibleCardIds } from "@/lib/supervisor/select";
+import { getAppSettings } from "@/lib/settings";
+import { sweepExpiredChats } from "@/lib/retention/sweep";
 import type { CronState, Project } from "@/lib/db/schema";
 
 // Hobby allows 10 concurrent sandboxes; each dispatched run is one. Cap the
@@ -112,6 +114,18 @@ export async function GET(req: Request) {
     }
   }
 
+  // Phase 4: daily chat-retention sweep — delete unstarred chats not used within
+  // the retention window (global, not user-scoped). Skipped when disabled (0).
+  let swept = 0;
+  try {
+    const { retentionDays } = await getAppSettings();
+    if (retentionDays > 0) {
+      swept = await sweepExpiredChats(new Date(), retentionDays);
+    }
+  } catch (e) {
+    console.error("cron tick: retention sweep failed:", (e as Error).message);
+  }
+
   return Response.json({
     ok: true,
     projects: projects.length,
@@ -119,5 +133,6 @@ export async function GET(req: Request) {
     dispatched,
     supervised,
     deferred: Math.max(0, due.length - dispatched),
+    swept,
   });
 }

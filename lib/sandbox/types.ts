@@ -7,7 +7,7 @@ export type RunResult = { stdout: string; stderr: string; exitCode: number };
 export interface SandboxBox {
   run(cmd: string, args?: string[]): Promise<RunResult>;
   readFile(path: string): Promise<string>;
-  writeFile(path: string, content: string): Promise<void>;
+  writeFile(path: string, content: string | Buffer | Uint8Array): Promise<void>;
   listDir(path: string): Promise<string>;
   stop(): Promise<void>;
 }

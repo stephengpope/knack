@@ -15,6 +15,8 @@ export type Settings = {
   // Supervisor budget ceilings per card RUN (cards may override).
   maxRounds: number;
   maxTokensPerCard: number;
+  // Chat retention window (days). 0 = disabled (keep forever).
+  retentionDays: number;
   // Voice dictation (AssemblyAI). No secret here — just whether it's set + last4.
   voiceConfigured: boolean;
   voiceLast4: string | null;
@@ -29,6 +31,7 @@ const FALLBACK: Settings = {
   generalModel: null,
   maxRounds: 25,
   maxTokensPerCard: 2_000_000,
+  retentionDays: 7,
   voiceConfigured: false,
   voiceLast4: null,
 };
@@ -47,6 +50,7 @@ export async function getAppSettings(): Promise<Settings> {
     generalModel: row.generalModel ?? null,
     maxRounds: row.maxRounds ?? FALLBACK.maxRounds,
     maxTokensPerCard: row.maxTokensPerCard ?? FALLBACK.maxTokensPerCard,
+    retentionDays: row.retentionDays ?? 7,
     voiceConfigured: Boolean(row.assemblyaiKey),
     voiceLast4: row.assemblyaiKeyLast4 ?? null,
   };
@@ -62,6 +66,7 @@ async function upsert(patch: Partial<Settings>) {
       connectionMode: next.connectionMode,
       defaultModel: next.defaultModel,
       generalModel: next.generalModel,
+      retentionDays: next.retentionDays,
     })
     .onConflictDoUpdate({
       target: appSettings.id,
@@ -69,6 +74,7 @@ async function upsert(patch: Partial<Settings>) {
         connectionMode: next.connectionMode,
         defaultModel: next.defaultModel,
         generalModel: next.generalModel,
+        retentionDays: next.retentionDays,
         updatedAt: new Date(),
       },
     });
@@ -85,6 +91,11 @@ export async function setDefaultModel(model: string) {
 /** Set the General AI model, or null for "Same as AI Agent". */
 export async function setGeneralModel(model: string | null) {
   await upsert({ generalModel: model && model.trim() ? model : null });
+}
+
+/** Chat retention window in days (0 = disabled — keep chats forever). */
+export async function setRetentionDays(days: number) {
+  await upsert({ retentionDays: days });
 }
 
 /** Store the AssemblyAI streaming key (encrypted) + its last4 for display. */

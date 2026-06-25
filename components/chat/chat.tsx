@@ -19,7 +19,15 @@ import {
   Shield,
   Mic,
   Loader2,
+  Paperclip,
+  FileText,
 } from "lucide-react";
+import { upload } from "@vercel/blob/client";
+import {
+  classifyKind,
+  type AttachmentData,
+  type AttachmentPart,
+} from "@/lib/attachments/types";
 import {
   setSuperviseAction,
   updateCardAction,
@@ -76,6 +84,7 @@ import {
   PromptInputSubmit,
   PromptInputProvider,
   usePromptInputController,
+  usePromptInputAttachments,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
 import { useVoiceInput } from "@/lib/voice/use-voice-input";
@@ -194,6 +203,83 @@ function DictateButton({ className }: { className?: string }) {
         <Mic className="size-4" />
       )}
     </button>
+  );
+}
+
+// Client-side previews for just-uploaded attachments (object URLs), so an image
+// shows a thumbnail immediately — before a reload signs a real Blob URL. Keyed by
+// blob pathname; never sent to the server.
+const attachmentPreviews = new Map<string, string>();
+
+function formatSize(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function AttachmentView({ data }: { data: AttachmentData }) {
+  const src =
+    data.url ?? (data.pathname ? attachmentPreviews.get(data.pathname) : undefined);
+  if (data.kind === "image" && src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- private Blob (signed URL); next/image can't fetch it
+      <img
+        src={src}
+        alt={data.filename}
+        className="my-1 max-h-64 rounded-lg border border-border object-contain"
+      />
+    );
+  }
+  return (
+    <span className="my-1 flex w-fit items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-[13px]">
+      <FileText className="size-4 shrink-0 text-ink-soft" />
+      <span className="max-w-[220px] truncate">{data.filename}</span>
+      <span className="text-ink-faint">{formatSize(data.size)}</span>
+    </span>
+  );
+}
+
+// Click-to-attach button for the composer footer (drag/drop + paste already work).
+function AttachButton() {
+  const attachments = usePromptInputAttachments();
+  return (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => attachments.openFileDialog()}
+      aria-label="Attach files"
+      title="Attach files"
+      className="flex size-9 items-center justify-center rounded-[11px] border border-input text-ink-soft transition-colors hover:bg-accent"
+    >
+      <Paperclip className="size-4" />
+    </button>
+  );
+}
+
+// Removable chips for files selected but not yet sent.
+function AttachmentPreviews() {
+  const attachments = usePromptInputAttachments();
+  if (attachments.files.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 px-3 pt-3">
+      {attachments.files.map((f) => (
+        <span
+          key={f.id}
+          className="flex items-center gap-1.5 rounded-lg border border-input bg-muted px-2.5 py-1.5 text-[12.5px]"
+        >
+          <FileText className="size-3.5 shrink-0 text-ink-soft" />
+          <span className="max-w-[160px] truncate">{f.filename ?? "file"}</span>
+          <button
+            type="button"
+            onClick={() => attachments.remove(f.id)}
+            aria-label="Remove attachment"
+            className="text-ink-faint hover:text-foreground"
+          >
+            ×
+          </button>
+        </span>
+      ))}
+    </div>
   );
 }
 
@@ -331,10 +417,52 @@ export function Chat({
         )
       ));
 
-  function submit(message: PromptInputMessage) {
-    const text = message.text?.trim();
-    if (!text) return;
+  // Upload each composer file straight to private Blob (bypasses the 4.5 MB
+  // function limit), returning the attachment parts to put on the message.
+  async function uploadAttachments(
+    files: { mediaType: string; filename?: string; url: string }[],
+  ): Promise<AttachmentPart[]> {
+    const parts: AttachmentPart[] = [];
+    for (const f of files) {
+      const blob = await fetch(f.url).then((r) => r.blob());
+      const safe = (f.filename || "file").replace(/[\\/]+/g, "_");
+      const pathname = `chat/${id}/${crypto.randomUUID()}-${safe}`;
+      await upload(pathname, blob, {
+        access: "private",
+        handleUploadUrl: "/api/attachments/upload",
+        contentType: f.mediaType || "application/octet-stream",
+        clientPayload: JSON.stringify({ chatId: id }),
+      });
+      const kind = classifyKind(f.mediaType, safe);
+      if (kind === "image" || kind === "pdf") {
+        attachmentPreviews.set(pathname, URL.createObjectURL(blob));
+      }
+      parts.push({
+        type: "data-attachment",
+        data: { pathname, filename: safe, mediaType: f.mediaType, size: blob.size, kind },
+      });
+    }
+    return parts;
+  }
+
+  async function submit(message: PromptInputMessage) {
+    const text = message.text?.trim() ?? "";
+    const files = message.files ?? [];
+    if (!text && files.length === 0) return;
     if (!selectedProjectId) return; // no project selected → no turn to run
+
+    let attachmentParts: AttachmentPart[] = [];
+    if (files.length > 0) {
+      try {
+        attachmentParts = await uploadAttachments(files);
+      } catch (e) {
+        toast.error(
+          "Couldn't upload attachment: " + ((e as Error).message || "unknown error"),
+        );
+        return;
+      }
+    }
+
     if (isWelcome && !navigated.current) {
       navigated.current = true;
       // We're already at /chat/<id>; just surface it in the sidebar as "Untitled".
@@ -353,7 +481,12 @@ export function Chat({
     markChatGitStale(id, initialGitSha);
     // projectId is only honored server-side on chat creation; for existing
     // chats the stored project wins. Sending it always is harmless.
-    sendMessage({ text }, { body: { projectId } });
+    const parts: UIMessage["parts"] = [];
+    if (text) parts.push({ type: "text", text });
+    parts.push(...(attachmentParts as unknown as UIMessage["parts"]));
+    sendMessage({ parts } as Parameters<typeof sendMessage>[0], {
+      body: { projectId },
+    });
   }
 
   const composer = (
@@ -363,6 +496,7 @@ export function Chat({
       className="rounded-2xl border-input bg-card shadow-[0_14px_40px_-34px_var(--shadow)]"
     >
       <PromptInputBody>
+        <AttachmentPreviews />
         <PromptInputTextarea
           placeholder={isWelcome ? "How can I help you today?" : "Reply to Knack…"}
           autoFocus
@@ -395,7 +529,10 @@ export function Chat({
               ?.htmlUrl ?? null
           }
         />
-        <DictateButton className="ml-auto" />
+        <div className="ml-auto flex items-center gap-2">
+          <AttachButton />
+          <DictateButton />
+        </div>
         <PromptInputSubmit
           status={status}
           onStop={stop}
@@ -530,13 +667,24 @@ export function Chat({
               return (
                 <Message key={m.id} from="user">
                   <MessageContent>
-                    {m.parts.map((part, i) =>
-                      part.type === "text" ? (
-                        <span key={i} className="whitespace-pre-wrap">
-                          {part.text}
-                        </span>
-                      ) : null,
-                    )}
+                    {m.parts.map((part, i) => {
+                      if (part.type === "text") {
+                        return (
+                          <span key={i} className="whitespace-pre-wrap">
+                            {part.text}
+                          </span>
+                        );
+                      }
+                      if (part.type === "data-attachment") {
+                        return (
+                          <AttachmentView
+                            key={i}
+                            data={(part as unknown as AttachmentPart).data}
+                          />
+                        );
+                      }
+                      return null;
+                    })}
                   </MessageContent>
                 </Message>
               );

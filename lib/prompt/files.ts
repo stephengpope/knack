@@ -20,18 +20,31 @@ export const TEMPLATE_FILES = [
   "SUPERVISOR.md",
 ] as const;
 
+// Seed files whose repo path can't be derived from a plain <name> (slashed
+// paths, dotfiles). Each maps an explicit repo path to its DEFAULT_ source.
+// `.attachments/.gitignore` is self-ignoring (`*` + `!.gitignore`): it keeps the
+// per-chat attachments folder tracked in the repo while ignoring its contents.
+const MAPPED_TEMPLATE_FILES: { path: string; source: string }[] = [
+  { path: ".attachments/.gitignore", source: "DEFAULT_ATTACHMENTS_GITIGNORE" },
+];
+
 export type TemplateFile = { path: string; content: string };
 
 /**
  * Read the bundled seed files (for creating a new repo). Sources are stored as
  * DEFAULT_<name> so they can't be confused with the live, per-project files;
- * each seeds into the repo under its plain <name>.
+ * the plain entries seed into the repo under their <name>, while the mapped
+ * entries seed into an explicit repo path.
  */
 export async function readTemplate(): Promise<TemplateFile[]> {
-  return Promise.all(
-    TEMPLATE_FILES.map(async (name) => ({
+  return Promise.all([
+    ...TEMPLATE_FILES.map(async (name) => ({
       path: name,
       content: await readFile(path.join(DEFAULTS_DIR, `DEFAULT_${name}`), "utf8"),
     })),
-  );
+    ...MAPPED_TEMPLATE_FILES.map(async ({ path: repoPath, source }) => ({
+      path: repoPath,
+      content: await readFile(path.join(DEFAULTS_DIR, source), "utf8"),
+    })),
+  ]);
 }

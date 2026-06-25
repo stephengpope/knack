@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/session";
 import { getChat, loadMessages } from "@/lib/chats";
 import { listProjects, getDefaultProject } from "@/lib/projects";
+import { signMessageAttachments } from "@/lib/attachments/sign";
 import { Chat } from "@/components/chat/chat";
 
 export default async function ChatPage({
@@ -23,6 +24,9 @@ export default async function ChatPage({
   // New chats can only be started in active projects. Keep the current project
   // visible too, so an existing chat tied to a now-inactive project still shows
   // its name (the picker is disabled there anyway).
+  // Renderable attachments (image/pdf) get short-lived signed URLs for the client.
+  const initialMessages = await signMessageAttachments(messages);
+
   const initialProjectId = chat ? chat.projectId : (defaultProject?.id ?? null);
   const pickerProjects = projects.filter(
     (p) => p.active || p.id === initialProjectId,
@@ -32,7 +36,7 @@ export default async function ChatPage({
     <Chat
       key={chatId}
       id={chatId}
-      initialMessages={messages}
+      initialMessages={initialMessages}
       title={chat?.title ?? null}
       starred={chat?.starred ?? false}
       userName={user.name}

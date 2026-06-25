@@ -1,0 +1,1 @@
+ALTER TABLE "app_settings" ADD COLUMN "retention_days" integer DEFAULT 7 NOT NULL;

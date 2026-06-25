@@ -7,6 +7,7 @@ import {
   setConnectionMode,
   setDefaultModel,
   setGeneralModel,
+  setRetentionDays,
   setVoiceKey,
   deleteVoiceKey,
   setSmtpConfig,
@@ -83,6 +84,15 @@ export async function setGeneralModelAction(model: string | null) {
   // null clears it back to "Same as AI Agent"; validity per connection mode is
   // enforced when the model is resolved (lib/llm.ts).
   await setGeneralModel(model);
+  revalidatePath("/administration");
+}
+
+export async function setRetentionDaysAction(days: number) {
+  await requireAdmin();
+  if (!Number.isInteger(days) || days < 0) {
+    throw new Error("Retention must be a non-negative whole number of days");
+  }
+  await setRetentionDays(days);
   revalidatePath("/administration");
 }
 

@@ -169,6 +169,13 @@
       "when": 1782367794410,
       "tag": "0023_telegram_setup",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1782430955260,
+      "tag": "0024_yummy_goliath",
+      "breakpoints": true
     }
   ]
 }

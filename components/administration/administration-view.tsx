@@ -13,6 +13,7 @@ import {
   Server,
   ExternalLink,
   Mic,
+  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ import {
   deleteEndpointAction,
   setVoiceKeyAction,
   deleteVoiceKeyAction,
+  setRetentionDaysAction,
 } from "@/app/(app)/administration/actions";
 
 type Last4 = Record<string, string | undefined>;
@@ -300,7 +302,67 @@ function ModelsTab({
       )}
 
       <VoiceSection last4={settings.voiceLast4} />
+
+      <RetentionSection retentionDays={settings.retentionDays} />
     </>
+  );
+}
+
+// Chat retention — a daily cron sweep deletes unstarred chats not used within
+// the window (and their attachments). 0 = keep forever.
+function RetentionSection({ retentionDays }: { retentionDays: number }) {
+  const [value, setValue] = useState(String(retentionDays));
+  const [busy, setBusy] = useState(false);
+  const parsed = Number(value);
+  const valid = Number.isInteger(parsed) && parsed >= 0;
+  const dirty = value.trim() !== "" && parsed !== retentionDays;
+
+  async function save() {
+    if (!valid || !dirty) return;
+    setBusy(true);
+    try {
+      await setRetentionDaysAction(parsed);
+      toast.success(
+        parsed === 0 ? "Retention disabled" : `Retention set to ${parsed} days`,
+      );
+    } catch {
+      toast.error("Could not save retention");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-9 border-t border-border pt-7">
+      <div className="mb-3 flex items-center gap-2">
+        <Clock className="size-4 text-ink-soft" />
+        <SectionLabel className="mb-0">Retention</SectionLabel>
+      </div>
+      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+        Delete unstarred chats not used in N days (0 = never). Starred chats are
+        always kept; their attachments go with them.
+      </p>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={0}
+          step={1}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          aria-invalid={!valid}
+          className="w-28"
+        />
+        <span className="text-[13px] text-ink-soft">days</span>
+        <Button
+          onClick={save}
+          disabled={busy || !valid || !dirty}
+          className="knack-gradient h-9 px-4 font-bold text-white"
+        >
+          {busy ? <Spinner /> : "Save"}
+        </Button>
+      </div>
+    </div>
   );
 }
 
