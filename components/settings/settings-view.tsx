@@ -29,12 +29,14 @@ import { changeEmailDirectAction } from "@/app/(app)/settings/account-actions";
 import { SecretsTab } from "@/components/settings/secrets-tab";
 import type { ProviderOption } from "@/components/settings/secrets-tab";
 import { ProjectsTab } from "@/components/settings/projects-tab";
+import { TelegramTab } from "@/components/settings/telegram-tab";
 import type { SecretSummary } from "@/lib/user-secrets";
 import type { GlobalSecretSummary } from "@/lib/global-secrets";
 import type { GithubAccountSummary } from "@/lib/github-account";
 import type { ProjectSummary } from "@/lib/projects";
+import type { TelegramAccountSummary } from "@/lib/telegram-account";
 
-const TABS = ["Account", "Projects", "Secrets", "Appearance"] as const;
+const TABS = ["Account", "Projects", "Secrets", "Telegram", "Appearance"] as const;
 type Tab = (typeof TABS)[number];
 
 export function SettingsView({
@@ -48,6 +50,8 @@ export function SettingsView({
   providers,
   githubAccount,
   projects,
+  telegramAccount,
+  voiceConfigured,
 }: {
   name: string;
   email: string;
@@ -59,6 +63,8 @@ export function SettingsView({
   providers: ProviderOption[];
   githubAccount: GithubAccountSummary | null;
   projects: ProjectSummary[];
+  telegramAccount: TelegramAccountSummary | null;
+  voiceConfigured: boolean;
 }) {
   const params = useSearchParams();
   const tabParam = params.get("tab");
@@ -117,6 +123,12 @@ export function SettingsView({
                 globals={globals}
                 redirectUri={redirectUri}
                 providers={providers}
+              />
+            )}
+            {tab === "Telegram" && (
+              <TelegramTab
+                account={telegramAccount}
+                voiceConfigured={voiceConfigured}
               />
             )}
             {tab === "Appearance" && <AppearanceTab />}

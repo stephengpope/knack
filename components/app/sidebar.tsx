@@ -20,7 +20,6 @@ import {
   Trash2,
   MoreHorizontal,
   SquareKanban,
-  Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -192,13 +191,6 @@ export function Sidebar({
           icon={<Clock className="size-[18px]" strokeWidth={1.9} />}
           label="Cron"
           active={pathname === "/cron"}
-        />
-
-        <NavItem
-          href="/telegram"
-          icon={<Send className="size-[18px]" strokeWidth={1.9} />}
-          label="Telegram"
-          active={pathname === "/telegram"}
         />
       </nav>
 

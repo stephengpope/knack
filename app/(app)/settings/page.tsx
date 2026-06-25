@@ -4,20 +4,32 @@ import { secretsList } from "@/lib/user-secrets";
 import { globalSecretsList } from "@/lib/global-secrets";
 import { getGithubAccount } from "@/lib/github-account";
 import { listProjects } from "@/lib/projects";
+import { getTelegramAccount } from "@/lib/telegram-account";
+import { getAppSettings } from "@/lib/settings";
 import { emailConfigured } from "@/lib/email";
 import { PROVIDER_PRESETS, oauthRedirectUri } from "@/lib/oauth/providers";
 
 export default async function SettingsPage() {
   const user = await requireUser();
-  const [secrets, globals, redirectUri, githubAccount, projects, emailEnabled] =
-    await Promise.all([
-      secretsList(user.id),
-      globalSecretsList(),
-      oauthRedirectUri(),
-      getGithubAccount(user.id),
-      listProjects(user.id),
-      emailConfigured(),
-    ]);
+  const [
+    secrets,
+    globals,
+    redirectUri,
+    githubAccount,
+    projects,
+    emailEnabled,
+    telegramAccount,
+    settings,
+  ] = await Promise.all([
+    secretsList(user.id),
+    globalSecretsList(),
+    oauthRedirectUri(),
+    getGithubAccount(user.id),
+    listProjects(user.id),
+    emailConfigured(),
+    getTelegramAccount(user.id),
+    getAppSettings(),
+  ]);
   const providers = PROVIDER_PRESETS.map((p) => ({
     id: p.id,
     label: p.label,
@@ -38,6 +50,8 @@ export default async function SettingsPage() {
       providers={providers}
       githubAccount={githubAccount}
       projects={projects}
+      telegramAccount={telegramAccount}
+      voiceConfigured={settings.voiceConfigured}
     />
   );
 }
