@@ -25,6 +25,7 @@ import { VercelSandbox } from "@/lib/sandbox/vercel";
 import { resolveAgentModel, resolveGeneralModel } from "@/lib/llm";
 import { secretsList, secretGet } from "@/lib/user-secrets";
 import { globalSecretsList } from "@/lib/global-secrets";
+import { sendUserMessage } from "@/lib/messaging/send";
 import { getProject, getDefaultProject } from "@/lib/projects";
 import { getGithubAuth } from "@/lib/github-account";
 import { getUserTimezone } from "@/lib/user";
@@ -533,6 +534,27 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
         } catch (e) {
           return { error: (e as Error).message };
         }
+      },
+    }),
+    send_message: tool({
+      description:
+        "Send a message to the user on their connected messaging app (e.g. " +
+        "Telegram). Use to proactively notify them — a finished job, an answer " +
+        "they're waiting on, an alert. Returns an error if no app is connected.",
+      inputSchema: z.object({
+        text: z.string().describe("The message to send."),
+        platform: z
+          .string()
+          .optional()
+          .describe("Target platform; defaults to the user's connected app."),
+      }),
+      execute: async ({ text, platform }) => {
+        const result = await sendUserMessage(
+          userId,
+          text,
+          platform as "telegram" | undefined,
+        );
+        return result.ok ? { ok: true } : { error: result.error };
       },
     }),
   };

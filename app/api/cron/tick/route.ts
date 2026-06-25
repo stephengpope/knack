@@ -12,8 +12,6 @@ import {
 import { listEligibleCardIds } from "@/lib/supervisor/select";
 import type { CronState, Project } from "@/lib/db/schema";
 
-export const maxDuration = 300;
-
 // Hobby allows 10 concurrent sandboxes; each dispatched run is one. Cap the
 // runs started per tick to stay under it — anything left stays due and fires on
 // the next tick (catch-up). Operators on higher tiers can raise this.

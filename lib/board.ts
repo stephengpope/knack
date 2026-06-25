@@ -39,7 +39,7 @@ const cardSelect = {
   iteration: chat.iteration,
   runStartedAt: chat.runStartedAt,
   lastRunAt: chat.lastRunAt,
-  leaseUntil: chat.leaseUntil,
+  supervisorLeaseUntil: chat.supervisorLeaseUntil,
   projectId: chat.projectId,
   updatedAt: chat.updatedAt,
 };

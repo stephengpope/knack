@@ -11,7 +11,7 @@ Heartbeat is the **same cron tick** (`app/api/cron/tick`). After cron jobs, the
 tick calls `listEligibleCardIds(now, remaining)` and POSTs each to
 `app/api/cron/supervisor/run` (CRON_SECRET-gated), which runs the cycle inside
 `after()` (returns 202 immediately). One cycle:
-1. **`claimCard`** (`select.ts`) — atomic CAS on `leaseUntil`. Loses → another
+1. **`claimCard`** (`select.ts`) — atomic CAS on `supervisorLeaseUntil`. Loses → another
    runner has it, return. Lease = `MAX_RUN_SECONDS + 120s` (`constants.ts`), so a
    killed cycle isn't reclaimed for ~30 min (correctness over fast retry).
 2. **Budget guard** — `iteration >= maxRounds` or run-token-sum `>= maxTokens` →
@@ -48,7 +48,7 @@ tick calls `listEligibleCardIds(now, remaining)` and POSTs each to
   `lib/db/schema.ts`): `kanbanStatus`, `supervisorEnabled`, `cardSeq` (KNK-`<n>`
   from the `card_seq` sequence), `userStory`/`details`, `acceptanceCriteria`/
   `tasks`/`testCases` (jsonb), `activeRole`, `blockedReason`, `iteration`,
-  `runStartedAt`, `lastRunAt`, `leaseUntil`, `maxRoundsOverride`/`maxTokensOverride`.
+  `runStartedAt`, `lastRunAt`, `supervisorLeaseUntil`, `maxRoundsOverride`/`maxTokensOverride`.
 - **Budget resets per run.** Moving a card to `in_progress` zeroes `iteration` and
   sets `runStartedAt = now` (board action) — restart = fresh budget.
 - **Reuses the public agent API.** The supervisor never reaches into agent

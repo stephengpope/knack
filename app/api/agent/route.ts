@@ -3,8 +3,6 @@ import { after } from "next/server";
 import { getSession } from "@/lib/session";
 import { runAgentTurn } from "@/lib/agent/run-turn";
 
-export const maxDuration = 300; // one streamed turn, up to 5 min
-
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session?.user) {

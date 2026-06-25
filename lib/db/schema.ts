@@ -143,7 +143,13 @@ export const chat = pgTable(
     iteration: integer("iteration").default(0).notNull(), // rounds in the current run
     runStartedAt: timestamp("run_started_at"), // marks the current run's budget window
     lastRunAt: timestamp("last_run_at"),
-    leaseUntil: timestamp("lease_until"), // claim lock; tick won't re-dispatch until it passes
+    // Supervisor cycle lock — the tick won't re-dispatch a card while this is in
+    // the future. Held only for supervised cards; null for ordinary chats.
+    supervisorLeaseUntil: timestamp("supervisor_lease_until"),
+    // Interactive-turn lock — "a turn is currently running for this chat". Held
+    // by the Telegram path (and any future interactive caller) so a second
+    // inbound message can't start a concurrent turn on the same chat/sandbox.
+    chatLeaseUntil: timestamp("chat_lease_until"),
     maxRoundsOverride: integer("max_rounds_override"),
     maxTokensOverride: bigint("max_tokens_override", { mode: "number" }),
 
@@ -375,6 +381,42 @@ export const githubAccount = pgTable(
   (t) => [uniqueIndex("github_account_user_idx").on(t.userId)],
 );
 
+// PER-USER Telegram connection. One bot + one authorized human per user. The
+// bot token and webhook secret are AES-GCM encrypted (iv:tag:ciphertext) like
+// every other secret. `dmChatId` is the Telegram chat to send to (== the user's
+// numeric id in a private chat); `authorizedTgUserId` gates inbound messages to
+// that one person. `activeChatId` points at the knack `chat` this Telegram
+// conversation is currently driving (swapped by /new, /chat, /project).
+// `lastUpdateId` is a high-water mark for webhook dedup (ignore update_id <= it).
+export const telegramAccount = pgTable(
+  "telegram_account",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    encryptedBotToken: text("encrypted_bot_token").notNull(), // iv:tag:ciphertext
+    webhookSecret: text("webhook_secret").notNull(), // iv:tag:ciphertext
+    botUsername: text("bot_username"), // cached from getMe, for display
+    authorizedTgUserId: bigint("authorized_tg_user_id", {
+      mode: "number",
+    }).notNull(), // only this Telegram user may message the bot
+    dmChatId: bigint("dm_chat_id", { mode: "number" }), // where send_message posts
+    activeChatId: text("active_chat_id").references(() => chat.id, {
+      onDelete: "set null",
+    }), // the knack chat this conversation currently drives
+    lastUpdateId: bigint("last_update_id", { mode: "number" }), // webhook dedup high-water
+    active: boolean("active").default(true).notNull(),
+    createdAt: timestamp("created_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+    updatedAt: timestamp("updated_at")
+      .$defaultFn(() => new Date())
+      .notNull(),
+  },
+  (t) => [uniqueIndex("telegram_account_user_idx").on(t.userId)],
+);
+
 // PER-USER projects. Each maps 1:1 to a GitHub repo (created from the bundled
 // template on creation). One project per user may be the default, used for new
 // chats. Repo metadata is cached here; file contents always come from GitHub.
@@ -456,5 +498,6 @@ export type UserSettings = typeof userSettings.$inferSelect;
 export type CustomEndpoint = typeof customEndpoint.$inferSelect;
 export type UserSecret = typeof userSecret.$inferSelect;
 export type GithubAccount = typeof githubAccount.$inferSelect;
+export type TelegramAccount = typeof telegramAccount.$inferSelect;
 export type Project = typeof project.$inferSelect;
 export type CronState = typeof cronState.$inferSelect;

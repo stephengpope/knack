@@ -41,7 +41,7 @@ export type BoardCard = {
   iteration: number;
   runStartedAt: Date | null;
   lastRunAt: Date | null;
-  leaseUntil: Date | null;
+  supervisorLeaseUntil: Date | null;
   projectId: string | null;
   updatedAt: Date;
 };

@@ -22,7 +22,7 @@ async function block(chatId: string, reason: string) {
       kanbanStatus: "blocked",
       blockedReason: reason,
       activeRole: "supervisor",
-      leaseUntil: null,
+      supervisorLeaseUntil: null,
     })
     .where(eq(chat.id, chatId));
 }
@@ -122,7 +122,7 @@ export async function runSupervisorCycle(chatId: string): Promise<void> {
         iteration: 0,
         runStartedAt: new Date(),
         blockedReason: null,
-        leaseUntil: null,
+        supervisorLeaseUntil: null,
       })
       .where(eq(chat.id, chatId));
     return;
@@ -133,7 +133,11 @@ export async function runSupervisorCycle(chatId: string): Promise<void> {
   if (!planning && (verdict === "review" || verdict === "approve")) {
     await db
       .update(chat)
-      .set({ kanbanStatus: "review", activeRole: "supervisor", leaseUntil: null })
+      .set({
+        kanbanStatus: "review",
+        activeRole: "supervisor",
+        supervisorLeaseUntil: null,
+      })
       .where(eq(chat.id, chatId));
     return;
   }

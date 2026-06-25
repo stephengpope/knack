@@ -28,7 +28,10 @@ export async function listEligibleCardIds(
       and(
         eq(chat.supervisorEnabled, true),
         inArray(chat.kanbanStatus, ACTIVE_STATUSES as unknown as string[]),
-        or(isNull(chat.leaseUntil), lt(chat.leaseUntil, now)),
+        or(
+          isNull(chat.supervisorLeaseUntil),
+          lt(chat.supervisorLeaseUntil, now),
+        ),
       ),
     )
     .limit(limit);
@@ -46,7 +49,7 @@ export async function claimCard(chatId: string): Promise<ClaimedCard | null> {
   const rows = await db
     .update(chat)
     .set({
-      leaseUntil: lease,
+      supervisorLeaseUntil: lease,
       lastRunAt: now,
       runStartedAt: sql`coalesce(${chat.runStartedAt}, ${now})`,
     })
@@ -55,7 +58,10 @@ export async function claimCard(chatId: string): Promise<ClaimedCard | null> {
         eq(chat.id, chatId),
         eq(chat.supervisorEnabled, true),
         inArray(chat.kanbanStatus, ACTIVE_STATUSES as unknown as string[]),
-        or(isNull(chat.leaseUntil), lt(chat.leaseUntil, now)),
+        or(
+          isNull(chat.supervisorLeaseUntil),
+          lt(chat.supervisorLeaseUntil, now),
+        ),
       ),
     )
     .returning();
@@ -63,5 +69,8 @@ export async function claimCard(chatId: string): Promise<ClaimedCard | null> {
 }
 
 export async function releaseLease(chatId: string): Promise<void> {
-  await db.update(chat).set({ leaseUntil: null }).where(eq(chat.id, chatId));
+  await db
+    .update(chat)
+    .set({ supervisorLeaseUntil: null })
+    .where(eq(chat.id, chatId));
 }

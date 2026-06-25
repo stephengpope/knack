@@ -641,8 +641,8 @@ function CardDrawer({
               <Stat
                 label="Lease until"
                 value={
-                  card.leaseUntil
-                    ? new Date(card.leaseUntil).toLocaleTimeString()
+                  card.supervisorLeaseUntil
+                    ? new Date(card.supervisorLeaseUntil).toLocaleTimeString()
                     : "—"
                 }
               />

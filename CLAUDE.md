@@ -41,8 +41,8 @@ closure. It takes `userId` as a param (no session coupling) so **cron calls the
 same function** — see `### Scheduled runs`. The `sync` closure runs in `after()`:
 `lib/git/sync.ts` commits/merges/pushes the box; on conflict `lib/git/fix.ts`
 spawns a bounded LLM tool-loop to recover, then verifies clean+pushed independently.
-- `maxDuration = 300`. New chats get a title generated in parallel via the
-  "General AI" model, pushed as a transient `data-chat-title` part.
+- New chats get a title generated in parallel via the "General AI" model, pushed
+  as a transient `data-chat-title` part.
 - **System prompt is built once at chat creation and frozen on `chat.systemPrompt`**
   (assembled in `lib/prompt/build.ts`; skills scanned from the repo then); later
   turns reuse it. Composition: `lib/prompt/CLAUDE.md`.
@@ -117,10 +117,19 @@ re-derives `userId` from `project.userId` (never the body), creates a fresh chat
 Autonomous agent loops. A **card** is a `chat` row with non-null `kanbanStatus`;
 when it's `in_progress` + `supervisorEnabled`, the cron tick dispatches supervisor
 cycles (`/api/cron/supervisor/run` → `runSupervisorCycle`). Each cycle claims the
-card via a `leaseUntil` CAS, checks the per-run budget (`usageEvent` token sum vs
+card via a `supervisorLeaseUntil` CAS, checks the per-run budget (`usageEvent` token sum vs
 `app_settings.maxRounds`/`maxTokensPerCard`), runs a read-only **verify→decide**
 supervisor turn, and on `continue` posts the next prompt to the worker chat via the
 same `runAgentTurn`. Board UI: `app/(app)/board/`, `components/board/`.
+
+### Telegram (`lib/telegram/` — details in `lib/telegram/CLAUDE.md`)
+Per-user Telegram bot front-end to the **same** `runAgentTurn`. A public webhook
+(`app/api/telegram/[userId]/webhook`, gated by secret-token + `from.id` + update
+dedup) returns 200 fast and runs the turn in `after()`, locking the chat via
+`chat.chatLeaseUntil` (distinct from the supervisor's `supervisorLeaseUntil`).
+Replies stream by editing one Telegram message per text segment. `source='telegram'`
+chats; per-user config in the `telegram_account` table; outbound via the
+`send_message` tool (`lib/messaging/send.ts`). Voice → AssemblyAI (`lib/voice/`).
 
 ### System prompt & skills (`lib/prompt/`, `lib/skills/`)
 The system prompt is assembled server-side and **frozen per chat** on
@@ -147,7 +156,7 @@ on first query. Schema in `lib/db/schema.ts`: Better Auth tables (`user`/`sessio
 the frozen `systemPrompt`, `source`/`sourceRef` for cron/supervisor runs, **and
 the kanban+supervisor columns** — `kanbanStatus`, `supervisorEnabled`, `cardSeq`
 (from the `card_seq` sequence), `userStory`/`details`, `acceptanceCriteria`/`tasks`/
-`testCases` jsonb, `iteration`/`runStartedAt`/`leaseUntil`/`max*Override` loop
+`testCases` jsonb, `iteration`/`runStartedAt`/`supervisorLeaseUntil`/`chatLeaseUntil`/`max*Override` loop
 state], `message`, `usage_event` [per-call token log for supervisor budgets, indexed
 `(chatId, createdAt)`], `project` [GitHub-backed workspace; `active` gates cron +
 the chat selector], `cron_state` [per-project schedule cache], `github_account`

@@ -5,15 +5,13 @@ import { getProjectById } from "@/lib/projects";
 import { getJob } from "@/lib/cron/state";
 import { runAgentTurn, drainStream } from "@/lib/agent/run-turn";
 
-export const maxDuration = 300;
-
 /**
  * Cron run worker — executes one scheduled job as an agent turn. Called only by
  * the tick (server-to-server) behind `$CRON_SECRET`. Takes just
  * `{ projectId, jobName }` and re-derives the user from `project.userId` — it
  * never trusts a user id from the body. Returns 202 immediately and runs the
  * turn in the background (no client to stream to: the stream is drained
- * server-side so messages persist), within maxDuration.
+ * server-side so messages persist).
  */
 export async function POST(req: Request) {
   const auth = req.headers.get("authorization");
