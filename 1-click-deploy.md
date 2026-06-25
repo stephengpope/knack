@@ -61,7 +61,7 @@ does NOT provision a resource, so it can't go in `stores` and has no
 | `skippable-integrations` | `1` | makes `integration-ids` (Resend) **optional** — installer can skip email |
 | `env` | `BETTER_AUTH_SECRET,ENCRYPTION_KEY,CRON_SECRET,RESEND_FROM` | values prompted on the form |
 | `envDefaults` | `{"RESEND_FROM":"Knack <onboarding@resend.dev>"}` | prefills the sender |
-| `envDescription` | inline `openssl` instructions | shown on the form — **self-contained, no link back to the repo** |
+| `envDescription` | one-shot Mac/Linux (`openssl`) + Windows (PowerShell) generator commands | shown on the form — **self-contained, no link back to the repo**. Each command prints all three secrets at once, labelled + spaced to match the form fields |
 
 **Do NOT add** `RESEND_API_KEY` to `env` — the Resend integration injects it.
 **Do NOT add** `envLink` — it previously linked the deploy form back to this
@@ -80,8 +80,14 @@ repo's README (circular); the instructions are inline in `envDescription` now.
 
 Don't hand-edit the URL-encoded string. Regenerate it (correct encoding):
 
+A quoted heredoc is required — the Mac/Linux command contains single quotes, so
+the old `node -e '…'` wrapper would break. `<<'EOF'` keeps everything literal
+(single quotes, backticks, `$(…)`):
+
 ```bash
-node -e '
+node --input-type=module <<'EOF'
+const mac = `printf '\\n\\nBETTER_AUTH_SECRET = %s\\n\\nENCRYPTION_KEY     = %s\\n\\nCRON_SECRET        = %s\\n\\n' "$(openssl rand -base64 32)" "$(openssl rand -base64 32)" "$(openssl rand -hex 32)"`;
+const win = `"\`n\`nBETTER_AUTH_SECRET = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))\`n\`nENCRYPTION_KEY     = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))\`n\`nCRON_SECRET        = $(-join((1..32|%{'{0:x2}' -f (Get-Random -Maximum 256)})))\`n"`;
 const p = new URLSearchParams();
 p.set("repository-url", "https://github.com/stephengpope/knack");
 p.set("project-name", "knack");
@@ -91,9 +97,9 @@ p.set("integration-ids", "oac_KfIFnjXqCl4YJCHnt1bDTBI1");
 p.set("skippable-integrations", "1");
 p.set("env", "BETTER_AUTH_SECRET,ENCRYPTION_KEY,CRON_SECRET,RESEND_FROM");
 p.set("envDefaults", JSON.stringify({RESEND_FROM:"Knack <onboarding@resend.dev>"}));
-p.set("envDescription", "BETTER_AUTH_SECRET and ENCRYPTION_KEY: run `openssl rand -base64 32` (once each). CRON_SECRET: run `openssl rand -hex 32`. RESEND_FROM is prefilled.");
+p.set("envDescription", "Mac/Linux: " + mac + "\n\nWindows: " + win);
 console.log("https://vercel.com/new/clone?" + p.toString());
-'
+EOF
 ```
 
 Paste the output into the `<a href="…">` in `README.md` (the "Deploy" section).
