@@ -308,10 +308,10 @@ export function Chat({
   const isWelcome = messages.length === 0;
 
   // The project the turn will run in (the picker defaults to the first project
-  // when untouched). A chat can't run without one — block send until there is
-  // one. Drive the guard + button styling off this, NOT the native `disabled`
-  // attribute: the InputGroup dims on `has-disabled`, which would grey out the
-  // whole composer (textarea + the "Add a project" link) too.
+  // when untouched). A chat can't run without one — disable the send button
+  // until there is one. Native `disabled` blocks Enter + click and keeps the
+  // typed text (the InputGroup only dims when the textarea itself is disabled,
+  // not the send button), so the "Add a project" link stays bright.
   const selectedProjectId = projectId ?? projects[0]?.id ?? null;
 
   // Show the loader until the assistant produces real content. The stream flips
@@ -399,8 +399,8 @@ export function Chat({
         <PromptInputSubmit
           status={status}
           onStop={stop}
-          aria-disabled={!selectedProjectId}
-          className="knack-gradient knack-glow size-9 rounded-[11px] text-white aria-disabled:pointer-events-none aria-disabled:opacity-40"
+          disabled={!selectedProjectId}
+          className="knack-gradient knack-glow size-9 rounded-[11px] text-white"
         />
       </PromptInputFooter>
     </PromptInput>
