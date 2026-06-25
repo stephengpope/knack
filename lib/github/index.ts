@@ -72,6 +72,97 @@ export async function createRepo(
   };
 }
 
+export type RepoListItem = {
+  owner: string;
+  repo: string;
+  fullName: string;
+  private: boolean;
+  defaultBranch: string;
+  htmlUrl: string;
+};
+
+/**
+ * List repos the PAT can see (owner + collaborator + org member), most-recently
+ * pushed first. Powers the "add existing" picker. Capped at 5 pages (500 repos)
+ * — it's a UI picker, not a full inventory; the picker also accepts a pasted
+ * owner/repo for anything past the cap.
+ */
+export async function listRepos(pat: string): Promise<RepoListItem[]> {
+  const out: RepoListItem[] = [];
+  const perPage = 100;
+  for (let page = 1; page <= 5; page++) {
+    const url = new URL(`${API}/user/repos`);
+    url.searchParams.set("per_page", String(perPage));
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("sort", "pushed");
+    url.searchParams.set("affiliation", "owner,collaborator,organization_member");
+    const res = await fetch(url, { headers: headers(pat) });
+    if (res.status === 401) throw new Error("Invalid or expired GitHub token.");
+    if (!res.ok) throw new Error(`Couldn't list repositories (${res.status}).`);
+    const batch = (await res.json()) as {
+      name: string;
+      full_name: string;
+      private: boolean;
+      default_branch: string;
+      html_url: string;
+      owner: { login: string };
+    }[];
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    for (const r of batch) {
+      out.push({
+        owner: r.owner.login,
+        repo: r.name,
+        fullName: r.full_name,
+        private: !!r.private,
+        defaultBranch: r.default_branch ?? "main",
+        htmlUrl: r.html_url,
+      });
+    }
+    if (batch.length < perPage) break;
+  }
+  return out;
+}
+
+/**
+ * Fetch a single repo's canonical metadata. Used to validate a repo before
+ * linking it as a project (existence + that the PAT has push access). Throws a
+ * user-facing message on 404 (not found / not visible) and on missing write.
+ */
+export async function getRepo(
+  pat: string,
+  owner: string,
+  repo: string,
+): Promise<CreatedRepo> {
+  const res = await fetch(`${API}/repos/${owner}/${repo}`, {
+    headers: headers(pat),
+  });
+  if (res.status === 401) throw new Error("Invalid or expired GitHub token.");
+  if (res.status === 404) {
+    throw new Error("Repository not found, or your token can't see it.");
+  }
+  if (!res.ok) throw new Error(`Couldn't read repository (${res.status}).`);
+  const j = (await res.json()) as {
+    name: string;
+    full_name: string;
+    default_branch: string;
+    html_url: string;
+    owner: { login: string };
+    permissions?: { push?: boolean };
+  };
+  if (j.permissions && !j.permissions.push) {
+    throw new Error(
+      "Your token can read this repo but can't push to it (needs write access).",
+    );
+  }
+  return {
+    owner: j.owner.login,
+    repo: j.name,
+    fullName: j.full_name,
+    defaultBranch: j.default_branch ?? "main",
+    htmlUrl: j.html_url,
+  };
+}
+
 /** Create or overwrite a single file via the Contents API (one commit). */
 export async function putFile(
   pat: string,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -14,6 +14,8 @@ import {
   ExternalLink,
   Lock,
   Globe,
+  Link2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -31,10 +33,13 @@ import {
 } from "@/components/ui/dialog";
 import type { GithubAccountSummary } from "@/lib/github-account";
 import type { ProjectSummary } from "@/lib/projects";
+import type { RepoListItem } from "@/lib/github";
 import {
   connectGithubAction,
   disconnectGithubAction,
   createProjectAction,
+  addExistingProjectAction,
+  listReposAction,
   setDefaultProjectAction,
   setProjectActiveAction,
   deleteProjectAction,
@@ -244,6 +249,12 @@ function ProjectsSection({
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"create" | "existing">("create");
+
+  function done() {
+    setOpen(false);
+    onChanged();
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -271,17 +282,36 @@ function ProjectsSection({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New project</DialogTitle>
+            <DialogTitle>Add project</DialogTitle>
             <DialogDescription>
-              Creates a GitHub repository from the Knack template.
+              {mode === "create"
+                ? "Create a new GitHub repository from the Knack template."
+                : "Link an existing GitHub repository as a project."}
             </DialogDescription>
           </DialogHeader>
-          <CreateProjectForm
-            onDone={() => {
-              setOpen(false);
-              onChanged();
-            }}
-          />
+
+          <div className="inline-flex w-full rounded-[10px] border border-input bg-muted p-0.5">
+            <VisBtn
+              active={mode === "create"}
+              onClick={() => setMode("create")}
+              icon={<Sparkles className="size-[13px]" />}
+              label="Create new"
+              className="flex-1 justify-center"
+            />
+            <VisBtn
+              active={mode === "existing"}
+              onClick={() => setMode("existing")}
+              icon={<Link2 className="size-[13px]" />}
+              label="Add existing"
+              className="flex-1 justify-center"
+            />
+          </div>
+
+          {mode === "create" ? (
+            <CreateProjectForm onDone={done} />
+          ) : (
+            <AddExistingForm onDone={done} />
+          )}
         </DialogContent>
       </Dialog>
     </div>
@@ -371,16 +401,127 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+function AddExistingForm({ onDone }: { onDone: () => void }) {
+  const [repos, setRepos] = useState<RepoListItem[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [filter, setFilter] = useState("");
+  // The repo we'll link: a clicked row, or whatever the user typed/pasted.
+  const [selected, setSelected] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    listReposAction()
+      .then((r) => alive && setRepos(r))
+      .catch((e) => alive && setLoadError((e as Error).message));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const q = filter.trim().toLowerCase();
+  const filtered = (repos ?? []).filter((r) =>
+    r.fullName.toLowerCase().includes(q),
+  );
+  const target = (selected || filter).trim();
+
+  async function submit() {
+    setBusy(true);
+    try {
+      const p = await addExistingProjectAction({ repoFullName: target });
+      toast.success(`Added ${p.repoFullName}`);
+      onDone();
+    } catch (e) {
+      toast.error((e as Error).message || "Couldn't add project");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <Field label="Repository" hint="Pick one of your repos, or paste owner/repo.">
+        <Input
+          value={filter}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            setSelected("");
+          }}
+          placeholder={
+            repos === null && !loadError
+              ? "Loading your repos…"
+              : "Filter or paste owner/repo"
+          }
+          className="font-mono text-[13px]"
+          autoFocus
+        />
+      </Field>
+
+      <div className="max-h-56 overflow-x-hidden overflow-y-auto rounded-[10px] border border-border">
+        {loadError ? (
+          <div className="px-3 py-4 text-center text-[12px] text-ink-faint">
+            Couldn&apos;t load repos: {loadError}. Paste owner/repo above instead.
+          </div>
+        ) : repos === null ? (
+          <div className="flex items-center justify-center gap-2 px-3 py-6 text-[12.5px] text-ink-faint">
+            <Spinner /> Loading repos…
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="px-3 py-4 text-center text-[12px] text-ink-faint">
+            No matching repos.
+          </div>
+        ) : (
+          filtered.map((r) => {
+            const active = (selected || filter).trim() === r.fullName;
+            return (
+              <button
+                key={r.fullName}
+                type="button"
+                onClick={() => {
+                  setSelected(r.fullName);
+                  setFilter(r.fullName);
+                }}
+                className={cn(
+                  "flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-[13px] transition-colors",
+                  active ? "bg-accent" : "hover:bg-muted",
+                )}
+              >
+                <FolderGit2 className="size-3.5 shrink-0 text-ink-faint" />
+                <span className="min-w-0 truncate font-mono">{r.fullName}</span>
+                {r.private && (
+                  <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-bold text-ink-faint">
+                    Private
+                  </span>
+                )}
+              </button>
+            );
+          })
+        )}
+      </div>
+
+      <Button
+        onClick={submit}
+        disabled={busy || !target}
+        className="knack-gradient mt-1 w-full font-bold text-white"
+      >
+        {busy ? <Spinner /> : <Link2 className="size-4" />} Add project
+      </Button>
+    </div>
+  );
+}
+
 function VisBtn({
   active,
   onClick,
   icon,
   label,
+  className,
 }: {
   active: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
+  className?: string;
 }) {
   return (
     <button
@@ -390,6 +531,7 @@ function VisBtn({
         active
           ? "bg-background text-accent-text shadow-sm"
           : "text-ink-soft hover:text-foreground",
+        className,
       )}
     >
       {icon}

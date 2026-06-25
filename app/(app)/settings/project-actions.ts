@@ -8,11 +8,14 @@ import {
 } from "@/lib/github-account";
 import {
   createProject,
+  addExistingProject,
   setDefaultProject,
   setProjectActive,
   deleteProject,
   type ProjectSummary,
 } from "@/lib/projects";
+import { getGithubAuth } from "@/lib/github-account";
+import { listRepos, type RepoListItem } from "@/lib/github";
 
 // GitHub repo name rules: letters, numbers, dot, dash, underscore.
 const REPO_RE = /^[\w.-]{1,100}$/;
@@ -52,6 +55,38 @@ export async function createProjectAction(input: {
     name,
     repoName,
     private: input.private,
+  });
+  revalidatePath("/settings");
+  return summary;
+}
+
+/** List the connected account's repos for the "add existing" picker. The PAT
+ *  stays server-side — only repo coordinates cross to the client. */
+export async function listReposAction(): Promise<RepoListItem[]> {
+  const user = await requireUser();
+  const auth = await getGithubAuth(user.id);
+  if (!auth) throw new Error("Connect a GitHub account first.");
+  return listRepos(auth.pat);
+}
+
+// "owner/repo", tolerating a full github.com URL or a trailing .git.
+const OWNER_REPO_RE = /^([\w.-]+)\/([\w.-]+?)(?:\.git)?$/;
+
+export async function addExistingProjectAction(input: {
+  repoFullName: string;
+}): Promise<ProjectSummary> {
+  const user = await requireUser();
+  const raw = input.repoFullName
+    .trim()
+    .replace(/^https?:\/\/github\.com\//i, "")
+    .replace(/\/+$/, "");
+  const m = OWNER_REPO_RE.exec(raw);
+  if (!m) {
+    throw new Error("Enter a repo as owner/repo (or paste its GitHub URL).");
+  }
+  const summary = await addExistingProject(user.id, {
+    owner: m[1],
+    repo: m[2],
   });
   revalidatePath("/settings");
   return summary;

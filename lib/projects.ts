@@ -4,7 +4,7 @@ import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { project, type Project } from "@/lib/db/schema";
 import { getGithubAuth } from "@/lib/github-account";
-import { createRepo, putFile } from "@/lib/github";
+import { createRepo, putFile, getRepo } from "@/lib/github";
 import { readTemplate } from "@/lib/prompt/files";
 
 export type ProjectSummary = {
@@ -167,6 +167,63 @@ export async function createProject(
   return {
     id,
     name: input.name.trim(),
+    repoFullName: repo.fullName,
+    htmlUrl: repo.htmlUrl,
+    isDefault,
+    active: true,
+  };
+}
+
+/**
+ * Link an EXISTING GitHub repo as a project. Unlike createProject, this creates
+ * nothing on GitHub and seeds no template files — it just validates the repo
+ * (existence + push access) and records the row. The repo is cloned into the
+ * sandbox on the first chat message, same as any project. The first project
+ * becomes the default.
+ */
+export async function addExistingProject(
+  userId: string,
+  input: { owner: string; repo: string; name?: string },
+): Promise<ProjectSummary> {
+  const auth = await getGithubAuth(userId);
+  if (!auth) throw new Error("Connect a GitHub account first.");
+
+  const repo = await getRepo(auth.pat, input.owner, input.repo);
+
+  // Don't link the same repo twice for one user.
+  const [dup] = await db
+    .select({ id: project.id })
+    .from(project)
+    .where(
+      and(eq(project.userId, userId), eq(project.repoFullName, repo.fullName)),
+    )
+    .limit(1);
+  if (dup) throw new Error(`${repo.fullName} is already one of your projects.`);
+
+  const existing = await db
+    .select({ id: project.id })
+    .from(project)
+    .where(eq(project.userId, userId))
+    .limit(1);
+  const isDefault = existing.length === 0;
+
+  const name = input.name?.trim() || repo.repo;
+  const id = nanoid();
+  await db.insert(project).values({
+    id,
+    userId,
+    name,
+    repoOwner: repo.owner,
+    repoName: repo.repo,
+    repoFullName: repo.fullName,
+    defaultBranch: repo.defaultBranch,
+    htmlUrl: repo.htmlUrl,
+    isDefault,
+  });
+
+  return {
+    id,
+    name,
     repoFullName: repo.fullName,
     htmlUrl: repo.htmlUrl,
     isDefault,
