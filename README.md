@@ -1,14 +1,6 @@
 # Knack
 
-**A self-improving AI agent that requires no local computer or virtual machine, billed only when you use it (with a free tier) that installs in 1 click.**
-
-Knack is a single-surface AI chat agent that lives in the cloud. Every message
-runs a real tool-using agent inside an isolated [Vercel Sandbox](https://vercel.com/docs/vercel-sandbox)
-microVM — it can run shell commands, read and write files, search the web, and
-commit code to a GitHub repo it owns. Because that repo holds the agent's own
-prompt, memory, skills, and schedule, **Knack edits itself**: give it feedback and
-it rewrites its `SOUL/AGENT/MEMORY` files, adds new skills, and schedules its own
-recurring jobs.
+**An easy self-improving AI agent for EVERYONE. Requires no local computer or server. Billed only when you use it (and includes a free tier). Installs in 1 click.**
 
 - 🧠 **Self-improving** — the agent owns a GitHub repo with its prompt, memory,
   skills, and cron schedule, and rewrites them as it learns.
@@ -16,10 +8,9 @@ recurring jobs.
   runs on your laptop.
 - 💸 **Pay only for what you use, with a free tier** — Vercel Hobby and Neon free
   Postgres cost nothing at rest. AI runs through the Vercel AI Gateway — new
-  accounts get $5 in credits each month; past that it's per token, only when the
-  agent actually works.
+  accounts get $5 in credits each month.
 - 🚀 **One-click install** — the button below clones the repo, provisions the
-  database, and deploys. You paste a few secrets and you're live.
+  database, and deploys.
 
 ---
 
