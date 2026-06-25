@@ -23,7 +23,20 @@ recurring jobs.
 
 ---
 
-## Deploy
+## Cost & free tier
+
+| Service           | Free tier                              | Billed when                          |
+| ----------------- | -------------------------------------- | ------------------------------------ |
+| Vercel (Hobby)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
+| Neon Postgres     | Yes — free serverless Postgres         | You outgrow the free database        |
+| AI (AI Gateway)   | $5 credits/mo on new accounts          | Per token once the free credits run out |
+
+Scheduled runs and the supervisor depend on cron frequency: Vercel **Hobby** runs
+cron **once a day**; **Pro** allows finer schedules (e.g. every 30 minutes).
+
+---
+
+## Installation
 
 ### 1. Click the button
 
@@ -91,36 +104,6 @@ Built-in tokens (e.g. the web scrape/search tools in the sandbox) are set in-app
 not via env: per user under **Settings → Secrets**, or once for everyone by an
 admin under **Administration → Secrets** (cascades to all users; a user's own
 value overrides it).
-
----
-
-## What you get
-
-- **AI chat agent** with a sandboxed toolchain (bash, file read/write/edit,
-  search, web tools) — one isolated cloud box per chat.
-- **Projects** backed by your GitHub repos; the agent commits its work and syncs.
-- **Skills** the agent can load and author (`.skills/` in the project repo).
-- **Scheduled runs** via a root `cron.json` the agent can edit (`vercel.json`
-  drives a single Vercel cron heartbeat).
-- **Kanban supervisor** — autonomous agent loops that drive cards to completion.
-- **Admin console** — users, AI model/provider config, and secrets.
-
-Stack: Next.js 16 (App Router) · React 19 · Tailwind v4 · shadcn on Radix UI ·
-AI SDK 6 via Vercel AI Gateway · Better Auth · Drizzle · Neon Postgres ·
-Vercel Sandbox.
-
----
-
-## Cost & free tier
-
-| Service           | Free tier                              | Billed when                          |
-| ----------------- | -------------------------------------- | ------------------------------------ |
-| Vercel (Hobby)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
-| Neon Postgres     | Yes — free serverless Postgres         | You outgrow the free database        |
-| AI (AI Gateway)   | $5 credits/mo on new accounts          | Per token once the free credits run out |
-
-Scheduled runs and the supervisor depend on cron frequency: Vercel **Hobby** runs
-cron **once a day**; **Pro** allows finer schedules (e.g. every 30 minutes).
 
 ---
 
