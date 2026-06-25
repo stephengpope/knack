@@ -24,7 +24,7 @@ recurring jobs.
 
 ## Deploy
 
-<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&integration-ids=oac_KfIFnjXqCl4YJCHnt1bDTBI1&skippable-integrations=1&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack+%3Conboarding%40resend.dev%3E%22%7D&envDescription=Mac%2FLinux%3A+printf+%27%5Cn%5CnBETTER_AUTH_SECRET+%3D+%25s%5Cn%5CnENCRYPTION_KEY+++++%3D+%25s%5Cn%5CnCRON_SECRET++++++++%3D+%25s%5Cn%5Cn%27+%22%24%28openssl+rand+-base64+32%29%22+%22%24%28openssl+rand+-base64+32%29%22+%22%24%28openssl+rand+-hex+32%29%22%0A%0AWindows%3A+%22%60n%60nBETTER_AUTH_SECRET+%3D+%24%28%5BConvert%5D%3A%3AToBase64String%28%5Bbyte%5B%5D%5D%281..32%7C%25%7BGet-Random+-Maximum+256%7D%29%29%29%60n%60nENCRYPTION_KEY+++++%3D+%24%28%5BConvert%5D%3A%3AToBase64String%28%5Bbyte%5B%5D%5D%281..32%7C%25%7BGet-Random+-Maximum+256%7D%29%29%29%60n%60nCRON_SECRET++++++++%3D+%24%28-join%28%281..32%7C%25%7B%27%7B0%3Ax2%7D%27+-f+%28Get-Random+-Maximum+256%29%7D%29%29%29%60n%22" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
+<a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack&project-name=knack&repository-name=knack&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%7D%5D&integration-ids=oac_KfIFnjXqCl4YJCHnt1bDTBI1&skippable-integrations=1&env=BETTER_AUTH_SECRET%2CENCRYPTION_KEY%2CCRON_SECRET%2CRESEND_FROM&envDefaults=%7B%22RESEND_FROM%22%3A%22Knack+%3Conboarding%40resend.dev%3E%22%7D&envDescription=Generate+the+three+secrets+with+one+copy-paste+command+%28Mac%2FLinux+or+Windows%29+%E2%80%94+click+%27Learn+more%27.+RESEND_FROM+is+prefilled.&envLink=https%3A%2F%2Fgithub.com%2Fstephengpope%2Fknack%232-paste-four-values" target="_blank" rel="noopener noreferrer"><img src="https://vercel.com/button" alt="Deploy with Vercel"></a>
 
 Clicking it will:
 
@@ -49,12 +49,19 @@ During the flow Vercel shows **Neon** and **Resend** — click to add each:
 
 ### 2. Paste four values
 
-When the deploy form asks for environment variables, generate the three secrets
-with one command:
+When the deploy form asks for environment variables, generate all three secrets
+with one command — it prints them labelled and spaced, ready to paste.
+
+**Mac / Linux** (Terminal):
 
 ```bash
-printf 'BETTER_AUTH_SECRET=%s\nENCRYPTION_KEY=%s\nCRON_SECRET=%s\n' \
-  "$(openssl rand -base64 32)" "$(openssl rand -base64 32)" "$(openssl rand -hex 32)"
+printf '\n\nBETTER_AUTH_SECRET = %s\n\nENCRYPTION_KEY     = %s\n\nCRON_SECRET        = %s\n\n' "$(openssl rand -base64 32)" "$(openssl rand -base64 32)" "$(openssl rand -hex 32)"
+```
+
+**Windows** (PowerShell):
+
+```powershell
+"`n`nBETTER_AUTH_SECRET = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))`n`nENCRYPTION_KEY     = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))`n`nCRON_SECRET        = $(-join((1..32|%{'{0:x2}' -f (Get-Random -Maximum 256)})))`n"
 ```
 
 | Variable             | What to enter                                                                 |

@@ -61,11 +61,16 @@ does NOT provision a resource, so it can't go in `stores` and has no
 | `skippable-integrations` | `1` | makes `integration-ids` (Resend) **optional** — installer can skip email |
 | `env` | `BETTER_AUTH_SECRET,ENCRYPTION_KEY,CRON_SECRET,RESEND_FROM` | values prompted on the form |
 | `envDefaults` | `{"RESEND_FROM":"Knack <onboarding@resend.dev>"}` | prefills the sender |
-| `envDescription` | one-shot Mac/Linux (`openssl`) + Windows (PowerShell) generator commands | shown on the form — **self-contained, no link back to the repo**. Each command prints all three secrets at once, labelled + spaced to match the form fields |
+| `envDescription` | short instruction ("generate the three secrets with one command — click Learn more") | shown on the form. The form field is **plain single-line text — Vercel strips newlines**, so the full multi-line commands can't live here; they live in the README instead |
+| `envLink` | `https://github.com/stephengpope/knack#2-paste-four-values` | the form's "Learn more" link → README section with both generator commands (Mac/Linux + Windows) in proper code blocks |
 
 **Do NOT add** `RESEND_API_KEY` to `env` — the Resend integration injects it.
-**Do NOT add** `envLink` — it previously linked the deploy form back to this
-repo's README (circular); the instructions are inline in `envDescription` now.
+**Why `envLink` is back:** the generator commands are long and multi-line, and
+`envDescription` collapses newlines into one unreadable block. So the form shows a
+short note + a "Learn more" link to the README's **2. Paste four values** section,
+where both commands render with real formatting. The anchor (`#2-paste-four-values`)
+is GitHub's auto-slug of that heading — **if you rename the heading, update the
+anchor** here and in `README.md`'s button URL.
 
 ### Required vs optional email
 
@@ -80,14 +85,8 @@ repo's README (circular); the instructions are inline in `envDescription` now.
 
 Don't hand-edit the URL-encoded string. Regenerate it (correct encoding):
 
-A quoted heredoc is required — the Mac/Linux command contains single quotes, so
-the old `node -e '…'` wrapper would break. `<<'EOF'` keeps everything literal
-(single quotes, backticks, `$(…)`):
-
 ```bash
 node --input-type=module <<'EOF'
-const mac = `printf '\\n\\nBETTER_AUTH_SECRET = %s\\n\\nENCRYPTION_KEY     = %s\\n\\nCRON_SECRET        = %s\\n\\n' "$(openssl rand -base64 32)" "$(openssl rand -base64 32)" "$(openssl rand -hex 32)"`;
-const win = `"\`n\`nBETTER_AUTH_SECRET = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))\`n\`nENCRYPTION_KEY     = $([Convert]::ToBase64String([byte[]](1..32|%{Get-Random -Maximum 256})))\`n\`nCRON_SECRET        = $(-join((1..32|%{'{0:x2}' -f (Get-Random -Maximum 256)})))\`n"`;
 const p = new URLSearchParams();
 p.set("repository-url", "https://github.com/stephengpope/knack");
 p.set("project-name", "knack");
@@ -97,7 +96,8 @@ p.set("integration-ids", "oac_KfIFnjXqCl4YJCHnt1bDTBI1");
 p.set("skippable-integrations", "1");
 p.set("env", "BETTER_AUTH_SECRET,ENCRYPTION_KEY,CRON_SECRET,RESEND_FROM");
 p.set("envDefaults", JSON.stringify({RESEND_FROM:"Knack <onboarding@resend.dev>"}));
-p.set("envDescription", "Mac/Linux: " + mac + "\n\nWindows: " + win);
+p.set("envDescription", "Generate the three secrets with one copy-paste command (Mac/Linux or Windows) — click 'Learn more'. RESEND_FROM is prefilled.");
+p.set("envLink", "https://github.com/stephengpope/knack#2-paste-four-values");
 console.log("https://vercel.com/new/clone?" + p.toString());
 EOF
 ```
