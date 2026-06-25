@@ -5,15 +5,10 @@ import { nextCookies } from "better-auth/next-js";
 import { db, schema } from "@/lib/db";
 import { sendEmail } from "@/lib/email";
 import { captureResetLink, isManaged } from "@/lib/reset-capture";
+import { serverBaseUrl } from "@/lib/base-url";
 
 export const auth = betterAuth({
-  // On Vercel, fall back to the deployment URL so a 1-click deploy needs no
-  // BETTER_AUTH_URL paste. Locally, set BETTER_AUTH_URL in .env.local.
-  baseURL:
-    process.env.BETTER_AUTH_URL ||
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : undefined),
+  baseURL: serverBaseUrl(),
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {

@@ -3,6 +3,7 @@
 import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/session";
+import { serverBaseUrl } from "@/lib/base-url";
 import { TelegramClient } from "@/lib/telegram/api";
 import { BOT_COMMANDS } from "@/lib/telegram/commands";
 import {
@@ -25,7 +26,7 @@ export async function connectTelegramAction(token: string, tgUserId: string) {
   if (!Number.isInteger(uid) || uid <= 0) {
     throw new Error("Enter your numeric Telegram user ID (try @userinfobot).");
   }
-  const base = process.env.BETTER_AUTH_URL;
+  const base = serverBaseUrl();
   if (!base) {
     throw new Error("Server base URL (BETTER_AUTH_URL) is not configured.");
   }
@@ -49,7 +50,7 @@ export async function connectTelegramAction(token: string, tgUserId: string) {
     botUsername: me.username ?? null,
     authorizedTgUserId: uid,
   });
-  revalidatePath("/telegram");
+  revalidatePath("/settings");
   return { username: me.username ?? null };
 }
 
@@ -65,5 +66,5 @@ export async function disconnectTelegramAction() {
     }
   }
   await disconnectTelegram(user.id);
-  revalidatePath("/telegram");
+  revalidatePath("/settings");
 }
