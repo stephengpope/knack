@@ -1,6 +1,6 @@
 # Knack
 
-**An easy self-improving AI agent for EVERYONE. Requires no local computer or server. Billed only when you use it (and includes a free tier). Installs in 1 click.**
+**Knack is a self-improving AI agent for EVERYONE (non technical people). It requires no local computer or cloud server. Billed only when you use it (and includes a free tier). Installs in 1 click.**
 
 - 🧠 **Self-improving** — the agent owns a GitHub repo with its prompt, memory,
   skills, and cron schedule, and rewrites them as it learns.
