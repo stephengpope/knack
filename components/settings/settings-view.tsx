@@ -25,6 +25,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { authClient, signOut } from "@/lib/auth-client";
+import { changeEmailDirectAction } from "@/app/(app)/settings/account-actions";
 import { SecretsTab } from "@/components/settings/secrets-tab";
 import type { ProviderOption } from "@/components/settings/secrets-tab";
 import { ProjectsTab } from "@/components/settings/projects-tab";
@@ -39,6 +40,7 @@ type Tab = (typeof TABS)[number];
 export function SettingsView({
   name,
   email,
+  emailEnabled,
   timezone,
   secrets,
   globals,
@@ -49,6 +51,7 @@ export function SettingsView({
 }: {
   name: string;
   email: string;
+  emailEnabled: boolean;
   timezone: string;
   secrets: SecretSummary[];
   globals: GlobalSecretSummary[];
@@ -98,7 +101,12 @@ export function SettingsView({
         <div className="flex-1 overflow-y-auto px-9 pb-14 pt-8">
           <div className="max-w-[620px]">
             {tab === "Account" && (
-              <AccountTab name={name} email={email} timezone={timezone} />
+              <AccountTab
+                name={name}
+                email={email}
+                emailEnabled={emailEnabled}
+                timezone={timezone}
+              />
             )}
             {tab === "Projects" && (
               <ProjectsTab account={githubAccount} projects={projects} />
@@ -122,10 +130,12 @@ export function SettingsView({
 function AccountTab({
   name,
   email,
+  emailEnabled,
   timezone,
 }: {
   name: string;
   email: string;
+  emailEnabled: boolean;
   timezone: string;
 }) {
   const router = useRouter();
@@ -140,7 +150,7 @@ function AccountTab({
 
       <div className="mt-7 flex flex-col gap-4">
         <NameCard initial={name} />
-        <EmailCard initial={email} />
+        <EmailCard initial={email} emailEnabled={emailEnabled} />
         <TimezoneCard initial={timezone} />
         <PasswordCard />
 
@@ -328,7 +338,14 @@ function TimezoneCard({ initial }: { initial: string }) {
   );
 }
 
-function EmailCard({ initial }: { initial: string }) {
+function EmailCard({
+  initial,
+  emailEnabled,
+}: {
+  initial: string;
+  emailEnabled: boolean;
+}) {
+  const router = useRouter();
   const [email, setEmail] = useState(initial);
   const [busy, setBusy] = useState(false);
 
@@ -337,14 +354,23 @@ function EmailCard({ initial }: { initial: string }) {
     if (!next || next === initial.toLowerCase()) return;
     setBusy(true);
     try {
-      const res = await authClient.changeEmail({
-        newEmail: next,
-        callbackURL: "/settings",
-      });
-      if (res.error) throw new Error(res.error.message);
-      toast.success(
-        "Email change requested — check your inbox to confirm if prompted.",
-      );
+      if (emailEnabled) {
+        // Verified flow: if the current email is verified, Better Auth emails a
+        // confirmation link to the new address before applying the change.
+        const res = await authClient.changeEmail({
+          newEmail: next,
+          callbackURL: "/settings",
+        });
+        if (res.error) throw new Error(res.error.message);
+        toast.success(
+          "Email change requested — check your inbox to confirm if prompted.",
+        );
+      } else {
+        // No SMTP configured → no way to deliver a confirmation, so apply directly.
+        await changeEmailDirectAction(next);
+        toast.success("Email updated");
+        router.refresh();
+      }
     } catch (e) {
       toast.error((e as Error).message || "Couldn't change email");
     } finally {
@@ -355,7 +381,11 @@ function EmailCard({ initial }: { initial: string }) {
   return (
     <FormCard
       title="Email"
-      desc="If your current email is verified, we'll send a confirmation link to the new address."
+      desc={
+        emailEnabled
+          ? "If your current email is verified, we'll send a confirmation link to the new address."
+          : "Email delivery is off, so this updates your address immediately."
+      }
     >
       <div className="flex items-center gap-2.5">
         <Input

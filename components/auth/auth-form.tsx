@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 
-export function AuthForm() {
+export function AuthForm({ showForgot = true }: { showForgot?: boolean }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -67,12 +67,14 @@ export function AuthForm() {
           <div className="grid gap-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password</Label>
-              <Link
-                href="/forgot-password"
-                className="text-xs text-accent-text hover:underline"
-              >
-                Forgot?
-              </Link>
+              {showForgot && (
+                <Link
+                  href="/forgot-password"
+                  className="text-xs text-accent-text hover:underline"
+                >
+                  Forgot?
+                </Link>
+              )}
             </div>
             <Input
               id="password"

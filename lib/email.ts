@@ -1,15 +1,29 @@
 import "server-only";
+import nodemailer from "nodemailer";
+import { getSmtpConfig, type SmtpConfig } from "@/lib/settings";
 
 /**
- * Minimal Resend client over the REST API (no package dependency).
- * Configured via Vercel Marketplace → injects RESEND_API_KEY.
- * RESEND_FROM is the verified sender, e.g. "Knack <noreply@yourdomain.com>".
+ * Generic SMTP email via Nodemailer. Config is admin-managed and stored in the
+ * `app_settings` row (see lib/settings.ts) — there are no email env vars.
  *
- * Returns false (no-op) when not configured — callers fall back to the
- * copyable link shown in the UI.
+ * `emailConfigured()` is the master switch: when SMTP is disabled or incomplete
+ * it returns false, and callers fall back (forgot-password link hidden, invites
+ * surface a copyable link, email changes apply without confirmation).
  */
-export function emailConfigured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM);
+
+function transport(cfg: SmtpConfig) {
+  return nodemailer.createTransport({
+    host: cfg.host,
+    port: cfg.port,
+    secure: cfg.secure, // true = implicit TLS (465); false = STARTTLS (587)
+    auth: cfg.user ? { user: cfg.user, pass: cfg.pass } : undefined,
+  });
+}
+
+/** True when SMTP is enabled and has the minimum config to send. */
+export async function emailConfigured(): Promise<boolean> {
+  const cfg = await getSmtpConfig();
+  return Boolean(cfg);
 }
 
 export async function sendEmail(opts: {
@@ -17,23 +31,32 @@ export async function sendEmail(opts: {
   subject: string;
   html: string;
 }): Promise<boolean> {
-  if (!emailConfigured()) return false;
+  const cfg = await getSmtpConfig();
+  if (!cfg) return false; // no-op when email is off — callers handle the fallback
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM,
-        to: opts.to,
-        subject: opts.subject,
-        html: opts.html,
-      }),
+    await transport(cfg).sendMail({
+      from: cfg.from,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
     });
-    return res.ok;
+    return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Verify SMTP credentials without sending — opens the connection and runs the
+ * SMTP handshake/auth. Powers the admin "Test" button. Returns an error message
+ * on failure, or null on success. Takes an explicit config so the admin can test
+ * before saving.
+ */
+export async function verifySmtp(cfg: SmtpConfig): Promise<string | null> {
+  try {
+    await transport(cfg).verify();
+    return null;
+  } catch (e) {
+    return (e as Error).message || "Connection failed";
   }
 }

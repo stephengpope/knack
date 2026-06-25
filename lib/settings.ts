@@ -131,3 +131,147 @@ export async function getAssemblyaiKey(): Promise<string | null> {
     return null; // key predates an ENCRYPTION_KEY rotation
   }
 }
+
+// ── SMTP / email ─────────────────────────────────────────────────────────────
+
+/** Full, decrypted SMTP config — server-only, used to actually send mail. */
+export type SmtpConfig = {
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string | null;
+  pass: string; // decrypted; "" when no auth
+  from: string;
+};
+
+/** Admin-display view: no secret, just whether a password is set + its last4. */
+export type SmtpSettings = {
+  enabled: boolean;
+  host: string | null;
+  port: number | null;
+  secure: boolean;
+  user: string | null;
+  from: string | null;
+  passLast4: string | null;
+};
+
+const DEFAULT_SMTP_PORT = 587;
+
+/** Admin-facing SMTP settings for the Administration screen (no secret). */
+export async function getSmtpSettings(): Promise<SmtpSettings> {
+  const [row] = await db
+    .select()
+    .from(appSettings)
+    .where(eq(appSettings.id, APP_ID))
+    .limit(1);
+  return {
+    enabled: row?.smtpEnabled ?? false,
+    host: row?.smtpHost ?? null,
+    port: row?.smtpPort ?? null,
+    secure: row?.smtpSecure ?? false,
+    user: row?.smtpUser ?? null,
+    from: row?.smtpFrom ?? null,
+    passLast4: row?.smtpPassLast4 ?? null,
+  };
+}
+
+/**
+ * Decrypted send-ready config, or null when email is off/incomplete. Null is the
+ * single source of truth for "email disabled" — `emailConfigured()`/`sendEmail()`
+ * key off it.
+ */
+export async function getSmtpConfig(): Promise<SmtpConfig | null> {
+  const [row] = await db
+    .select()
+    .from(appSettings)
+    .where(eq(appSettings.id, APP_ID))
+    .limit(1);
+  if (!row?.smtpEnabled || !row.smtpHost || !row.smtpFrom) return null;
+  let pass = "";
+  if (row.smtpPass) {
+    try {
+      pass = decrypt(row.smtpPass);
+    } catch {
+      return null; // password predates an ENCRYPTION_KEY rotation — treat as off
+    }
+  }
+  return {
+    host: row.smtpHost,
+    port: row.smtpPort ?? DEFAULT_SMTP_PORT,
+    secure: row.smtpSecure,
+    user: row.smtpUser ?? null,
+    pass,
+    from: row.smtpFrom,
+  };
+}
+
+export type SmtpInput = {
+  enabled: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string | null;
+  // undefined/empty = keep the stored password (so the admin needn't retype it)
+  pass?: string | null;
+  from: string;
+};
+
+/** Upsert SMTP config. Encrypts the password; a blank password keeps the old one. */
+export async function setSmtpConfig(input: SmtpInput) {
+  const hasNewPass = Boolean(input.pass && input.pass.trim());
+  const encPass = hasNewPass ? encrypt(input.pass!.trim()) : undefined;
+  const last4 = hasNewPass ? input.pass!.trim().slice(-4) : undefined;
+
+  const fields = {
+    smtpEnabled: input.enabled,
+    smtpHost: input.host.trim() || null,
+    smtpPort: input.port,
+    smtpSecure: input.secure,
+    smtpUser: input.user?.trim() || null,
+    smtpFrom: input.from.trim() || null,
+    // only overwrite the secret when a new one was supplied
+    ...(encPass ? { smtpPass: encPass, smtpPassLast4: last4 } : {}),
+    updatedAt: new Date(),
+  };
+
+  await db
+    .insert(appSettings)
+    .values({ id: APP_ID, ...fields })
+    .onConflictDoUpdate({ target: appSettings.id, set: fields });
+}
+
+/**
+ * Decrypted stored SMTP password (or "" if none) — server-only. Lets the admin
+ * "Test" without re-typing the saved password.
+ */
+export async function getStoredSmtpPass(): Promise<string> {
+  const [row] = await db
+    .select({ enc: appSettings.smtpPass })
+    .from(appSettings)
+    .where(eq(appSettings.id, APP_ID))
+    .limit(1);
+  if (!row?.enc) return "";
+  try {
+    return decrypt(row.enc);
+  } catch {
+    return "";
+  }
+}
+
+/** Clear all SMTP config and turn email off. */
+export async function deleteSmtpConfig() {
+  await db
+    .update(appSettings)
+    .set({
+      smtpEnabled: false,
+      smtpHost: null,
+      smtpPort: null,
+      smtpSecure: false,
+      smtpUser: null,
+      smtpPass: null,
+      smtpPassLast4: null,
+      smtpFrom: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(appSettings.id, APP_ID));
+}

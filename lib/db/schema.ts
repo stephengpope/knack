@@ -276,6 +276,20 @@ export const appSettings = pgTable("app_settings", {
   // mic is hidden everywhere (voiceConfigured=false).
   assemblyaiKey: text("assemblyai_key"),
   assemblyaiKeyLast4: text("assemblyai_key_last4"),
+  // SMTP / email — admin-managed, replaces the old Resend env wiring. `smtpEnabled`
+  // is the master switch: when false, sendEmail() no-ops and the password-reset /
+  // change-email-verification flows fall back (forgot-password link is hidden,
+  // email changes apply without confirmation). Password AES-256-GCM (iv:tag:ct);
+  // last4 kept for the admin display. `smtpSecure` = implicit TLS (port 465);
+  // false uses STARTTLS (587).
+  smtpEnabled: boolean("smtp_enabled").default(false).notNull(),
+  smtpHost: text("smtp_host"),
+  smtpPort: integer("smtp_port"),
+  smtpSecure: boolean("smtp_secure").default(false).notNull(),
+  smtpUser: text("smtp_user"),
+  smtpPass: text("smtp_pass"),
+  smtpPassLast4: text("smtp_pass_last4"),
+  smtpFrom: text("smtp_from"),
   updatedAt: timestamp("updated_at")
     .$defaultFn(() => new Date())
     .notNull(),

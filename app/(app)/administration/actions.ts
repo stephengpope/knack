@@ -9,7 +9,12 @@ import {
   setGeneralModel,
   setVoiceKey,
   deleteVoiceKey,
+  setSmtpConfig,
+  deleteSmtpConfig,
+  getStoredSmtpPass,
+  type SmtpInput,
 } from "@/lib/settings";
+import { verifySmtp } from "@/lib/email";
 import { isProviderId, PROVIDER_IDS } from "@/lib/providers";
 import { MODELS_CACHE_TAG } from "@/lib/gateway-models";
 import { providerModelsTag } from "@/lib/provider-models";
@@ -93,6 +98,49 @@ export async function deleteVoiceKeyAction() {
   await requireAdmin();
   await deleteVoiceKey();
   revalidatePath("/administration");
+}
+
+function validateSmtp(input: SmtpInput) {
+  if (!input.host.trim()) throw new Error("SMTP host is required");
+  if (!input.from.trim()) throw new Error("From address is required");
+  if (!Number.isInteger(input.port) || input.port < 1 || input.port > 65535) {
+    throw new Error("Port must be between 1 and 65535");
+  }
+}
+
+export async function setSmtpAction(input: SmtpInput) {
+  await requireAdmin();
+  validateSmtp(input);
+  await setSmtpConfig(input);
+  revalidatePath("/administration");
+}
+
+export async function deleteSmtpAction() {
+  await requireAdmin();
+  await deleteSmtpConfig();
+  revalidatePath("/administration");
+}
+
+/**
+ * Test SMTP credentials with `transporter.verify()` (handshake + auth, no send).
+ * A blank password falls back to the stored one so the admin needn't retype it.
+ * Returns an error string on failure, or null on success.
+ */
+export async function testSmtpAction(input: SmtpInput): Promise<string | null> {
+  await requireAdmin();
+  validateSmtp(input);
+  const pass =
+    input.pass && input.pass.trim()
+      ? input.pass.trim()
+      : await getStoredSmtpPass();
+  return verifySmtp({
+    host: input.host.trim(),
+    port: input.port,
+    secure: input.secure,
+    user: input.user?.trim() || null,
+    pass,
+    from: input.from.trim(),
+  });
 }
 
 export async function setGlobalTokenAction(

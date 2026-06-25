@@ -29,10 +29,11 @@ import {
   providerOf,
   type ProviderId,
 } from "@/lib/providers";
-import type { Settings } from "@/lib/settings";
+import type { Settings, SmtpSettings } from "@/lib/settings";
 import type { EndpointInfo } from "@/lib/endpoints";
 import type { GlobalSecretSummary } from "@/lib/global-secrets";
 import { GlobalSecretsTab } from "@/components/administration/global-secrets-tab";
+import { SmtpTab } from "@/components/administration/smtp-tab";
 import {
   setKeyAction,
   deleteKeyAction,
@@ -47,12 +48,13 @@ import {
 } from "@/app/(app)/administration/actions";
 
 type Last4 = Record<string, string | undefined>;
-const TABS = ["AI Model", "Secrets", "User Admin"] as const;
+const TABS = ["AI Model", "Email", "Secrets", "User Admin"] as const;
 type Tab = (typeof TABS)[number];
 
 export function AdministrationView({
   last4,
   settings,
+  smtp,
   catalog,
   endpoints,
   globals,
@@ -60,6 +62,7 @@ export function AdministrationView({
 }: {
   last4: Last4;
   settings: Settings;
+  smtp: SmtpSettings;
   catalog: ModelOption[];
   endpoints: EndpointInfo[];
   globals: GlobalSecretSummary[];
@@ -109,6 +112,7 @@ export function AdministrationView({
                 endpoints={endpoints}
               />
             )}
+            {tab === "Email" && <SmtpTab smtp={smtp} />}
             {tab === "Secrets" && <GlobalSecretsTab globals={globals} />}
             {tab === "User Admin" && <UsersTab currentUserId={currentUserId} />}
           </div>

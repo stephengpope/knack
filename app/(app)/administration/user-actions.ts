@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/session";
 import { takeResetLink, markManaged } from "@/lib/reset-capture";
-import { emailConfigured, sendEmail } from "@/lib/email";
+import { sendEmail } from "@/lib/email";
 
 export type UserRow = {
   id: string;
@@ -77,8 +77,10 @@ async function inviteOne(
         (link.includes("?") ? "&" : "?") + `email=${encodeURIComponent(email)}`;
     }
 
+    // sendEmail() no-ops (returns false) when SMTP is off, so no guard needed —
+    // the link is always returned for the admin to copy.
     let emailed = false;
-    if (link && emailConfigured()) {
+    if (link) {
       emailed = await sendEmail({
         to: email,
         subject: "You're invited to my Knack",
@@ -99,7 +101,7 @@ async function inviteOne(
 
 /**
  * Invite one or more users by email. Each gets a set-password link, emailed
- * when Resend is configured and always returned for the admin to copy.
+ * when SMTP is configured and always returned for the admin to copy.
  */
 export async function inviteUsersAction(input: {
   emails: string[];
