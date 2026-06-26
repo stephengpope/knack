@@ -6,7 +6,7 @@ export type ModelOption = {
   label: string; // display name
 };
 
-export const DEFAULT_MODEL = "anthropic/claude-opus-4.8";
+export const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";
 
 // Accepts catalog ids AND manual "provider/model" overrides.
 const SLUG = /^[a-z0-9.-]+\/[a-z0-9._:-]+$/i;

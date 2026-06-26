@@ -260,7 +260,7 @@ export const appSettings = pgTable("app_settings", {
   id: text("id").primaryKey(), // singleton key: "app"
   connectionMode: text("connection_mode").default("gateway").notNull(), // 'gateway' | 'custom' | 'compatible'
   defaultModel: text("default_model")
-    .default("anthropic/claude-opus-4.8")
+    .default("deepseek/deepseek-v4-flash")
     .notNull(),
   // Lightweight model for background calls (e.g. chat titles). Null = "Same as
   // AI Agent" — fall back to defaultModel. Same connection mode as defaultModel.

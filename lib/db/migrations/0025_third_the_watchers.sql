@@ -1,0 +1,1 @@
+ALTER TABLE "app_settings" ALTER COLUMN "default_model" SET DEFAULT 'deepseek/deepseek-v4-flash';
