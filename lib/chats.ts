@@ -80,6 +80,18 @@ export async function getChat(userId: string, id: string) {
   return row ?? null;
 }
 
+/** Owner of a chat by id (no user filter), or null if it doesn't exist yet.
+ *  Used by the attachment-upload gate: a new chat's row is created only on its
+ *  first message, so uploads must be allowed before it exists. */
+export async function chatOwnerId(id: string): Promise<string | null> {
+  const [row] = await db
+    .select({ userId: chat.userId })
+    .from(chat)
+    .where(eq(chat.id, id))
+    .limit(1);
+  return row?.userId ?? null;
+}
+
 export async function createChat(
   userId: string,
   opts: {

@@ -1,7 +1,7 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
-import { getChat } from "@/lib/chats";
+import { chatOwnerId } from "@/lib/chats";
 
 /**
  * Client-direct attachment upload to the PRIVATE Blob store. The browser uploads
@@ -37,8 +37,11 @@ export async function POST(request: Request): Promise<NextResponse> {
         if (!pathname.startsWith(`chat/${chatId}/`)) {
           throw new Error("Invalid attachment path");
         }
-        const chat = await getChat(userId, chatId);
-        if (!chat) throw new Error("Unknown chat");
+        // A new chat's row is created only on its first message — which is sent
+        // AFTER this upload. So allow when the chat doesn't exist yet; only
+        // reject if it exists and belongs to someone else.
+        const owner = await chatOwnerId(chatId);
+        if (owner && owner !== userId) throw new Error("Unknown chat");
 
         return {
           access: "private",
