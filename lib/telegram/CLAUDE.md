@@ -1,4 +1,4 @@
-# Telegram integration (`lib/telegram/`, `app/api/telegram/`, `app/(app)/telegram/`)
+# Telegram integration (`lib/telegram/`, `app/api/telegram/`, Settings → Telegram tab)
 
 Per-user Telegram bot front-end to the **same** `runAgentTurn`. One bot + one
 authorized human per user. DM-only (no groups/forum topics). Telegram is just
@@ -23,6 +23,8 @@ authorizedTgUserId` → `markUpdateSeen` dedup. Returns **200 immediately**, the
 `after()`:
 1. Re-read account (fresh `activeChatId`). Resolve text — voice/audio →
    `lib/voice/transcribe.ts` (AssemblyAI, reuses app `getAssemblyaiKey()`).
+   Documents/photos → `putAttachment` (private Blob) as `data-attachment` parts on
+   the message before the turn (see `lib/attachments/CLAUDE.md`).
 2. Slash command? → `lib/telegram/commands.ts` (no turn). Else ensure a session
    (create a bare `chat` on the default project if `activeChatId` is null).
 3. `claimChatTurn(chatId)` CAS. Busy → reply **"Busy with your last request ⌛"**
@@ -44,10 +46,12 @@ Defined in `lib/agent/run-turn.ts`, delegates to `lib/messaging/send.ts`
 turn (web/cron/supervisor/telegram); returns an error if no account is connected.
 NOT in `READONLY_TOOLS`, so plan-mode supervisor turns can't message users.
 
-## Setup (`app/(app)/telegram/`)
-Own page + nav entry. Paste bot token + numeric user id (help: @userinfobot).
-`connectTelegramAction`: `getMe` (validate) → `setWebhook(secret_token)` →
-`setMyCommands(BOT_COMMANDS)` → store row. Webhook URL = `BETTER_AUTH_URL` +
+## Setup (Settings → **Telegram tab**)
+UI is `components/settings/telegram-tab.tsx` (a tab inside `/settings`, **not** its
+own page — it was moved out of the sidebar). Server actions in
+`app/(app)/telegram/actions.ts`. Paste bot token + numeric user id (help:
+@userinfobot). `connectTelegramAction`: `getMe` (validate) → `setWebhook(secret_token)`
+→ `setMyCommands(BOT_COMMANDS)` → store row. Webhook URL = `BETTER_AUTH_URL` +
 `/api/telegram/<userId>/webhook`.
 
 ## Gotchas

@@ -40,7 +40,8 @@ run `ToolLoopAgent` → return the UI stream (persists on finish) + a `sync`
 closure. It takes `userId` as a param (no session coupling) so **cron calls the
 same function** — see `### Scheduled runs`. The `sync` closure runs in `after()`:
 `lib/git/sync.ts` commits/merges/pushes the box; on conflict `lib/git/fix.ts`
-spawns a bounded LLM tool-loop to recover, then verifies clean+pushed independently.
+spawns a bounded LLM tool-loop to recover, then verifies clean+pushed
+independently (details: `lib/git/CLAUDE.md`).
 - New chats get a title generated in parallel via the "General AI" model, pushed
   as a transient `data-chat-title` part.
 - **System prompt is built once at chat creation and frozen on `chat.systemPrompt`**
@@ -48,12 +49,21 @@ spawns a bounded LLM tool-loop to recover, then verifies clean+pushed independen
   turns reuse it. Composition: `lib/prompt/CLAUDE.md`.
 - Tools (all `noun_verb`, snake_case): `bash_run`/`file_read`/`file_write`/
   `file_edit`/`files_list`/`search_files` (sandbox — file logic in
-  `lib/files/CLAUDE.md`) · `secrets_list`/`secret_get` (per-user secrets vault) ·
-  `skill_load`/`skill_manage`/`skills_list` (project skills — `lib/skills/CLAUDE.md`).
-  All sandbox ops go through one box per chat. Tool *definitions* live in
-  `lib/agent/run-turn.ts`; each tool with logic delegates to a same-named function.
-  Tool schemas reach the model via the AI SDK's tool-calling API — **not** listed
-  in the prompt.
+  `lib/files/CLAUDE.md`) · `secrets_list`/`secret_get` (secrets vault — per-user +
+  global cascade) · `skill_load`/`skill_manage`/`skills_list` (project skills —
+  `lib/skills/CLAUDE.md`) · `send_message` (proactively message the user on a
+  connected platform; today Telegram — `lib/messaging/send.ts`). All sandbox ops go
+  through one box per chat. Tool *definitions* live in `lib/agent/run-turn.ts`; each
+  tool with logic delegates to a same-named function. Tool schemas reach the model
+  via the AI SDK's tool-calling API — **not** listed in the prompt.
+- **Plan mode** (`mode='plan'`): the turn is handed only `READONLY_TOOLS` (read/list/
+  search/skill-read/secret-read — no write/bash/send) so it can inspect and plan
+  without mutating. The supervisor dispatches worker turns this way during a card's
+  planning phase (its own verify turn is a separate read-only path — see
+  `lib/supervisor/CLAUDE.md`).
+- **Attachments** (chat UI + Telegram inbound): file bytes live in a private Vercel
+  Blob store; the turn materializes them into the sandbox and feeds the model a
+  provider-safe rewrite (`prepareForModel`). Details: `lib/attachments/CLAUDE.md`.
 
 ### Models & connection modes (`lib/llm.ts`, `lib/settings.ts`)
 Models are **gateway `"provider/model"` strings** (dots, e.g. `anthropic/claude-opus-4.8`
@@ -87,9 +97,10 @@ Provider-agnostic adapter; `vercel.ts` is the **only file allowed to import
 `@vercel/sandbox`**. One box per chat (`name: chat-${chatId}`, `resume: true`).
 New boxes boot from a lazily-built, self-healing **snapshot** (chromium +
 agent-browser, ripgrep, firecrawl-cli, 11 built-in skills) instead of installing
-inline. Snapshot id/status persist on `app_settings`; CAS build-lock so one builder
-wins. Built-in skills (`$HOME/.skills/`) are read-only and merge with project
-skills at runtime.
+inline. Snapshot id/status persist on `app_settings`. **No build lock** — a rare
+race before any snapshot exists lets two requests each build once (last id wins),
+simpler than a lock. Built-in skills (`$HOME/.skills/`) are read-only and merge
+with project skills at runtime.
 
 ### Projects & GitHub (`lib/projects.ts`, `lib/github/`, `lib/github-account.ts`)
 A chat works in a GitHub-backed **project** (chosen at creation). On the first
@@ -99,19 +110,15 @@ templates (`lib/prompt/defaults/`). GitHub auth is a per-user PAT
 (`github_account`), embedded in the clone URL for pull/push. The repo's
 `SOUL/AGENT/MEMORY/USER.md` feed the system prompt; `.skills/` feeds skills.
 
-### Scheduled runs / cron (`lib/cron/`, `app/api/cron/`, `vercel.json`)
-Each project repo owns a root **`cron.json`** (array of `{name, schedule, prompt,
-model?, enabled}`) — the source of truth, agent-editable. A **single** Vercel cron
-(`vercel.json` → `/api/cron/tick`, daily by default; Hobby is daily-only, Pro can
-go `*/30`/per-minute) is the heartbeat. The tick (CRON_SECRET-gated GET) polls
-every `active` project's `cron.json` **ETag-conditionally** (304s are free), keeps
-the `cron_state` cache (parsed jobs + precomputed `nextRunAt`) in sync, and
-dispatches due jobs (`nextRunAt <= now`, catch-up) to `/api/cron/run`. The worker
-re-derives `userId` from `project.userId` (never the body), creates a fresh chat
-(`source='cron'`, `sourceRef=projectId:jobName`), and runs the **same**
-`runAgentTurn`, draining the stream server-side (no client) inside `after()`.
-`cron_state` is a cache only — GitHub is truth. `lib/cron/file.ts` parses/validates;
-`lib/cron/state.ts` is the cache layer (uses `cron-parser`, UTC).
+### Scheduled runs / cron (`lib/cron/` — details in `lib/cron/CLAUDE.md`)
+Each project repo owns a root **`cron.json`** (the source of truth, agent-editable).
+A **single** Vercel cron (`vercel.json` → `/api/cron/tick`, CRON_SECRET-gated) is
+the heartbeat. The tick polls each `active` project's `cron.json` ETag-conditionally,
+syncs the `cron_state` cache, and runs **4 phases**: dispatch due jobs → dispatch
+supervisor cycles → **chat-retention sweep** (`lib/retention/sweep.ts`). Job/cron
+workers re-derive `userId` from `project.userId` (never the body) and run the
+**same** `runAgentTurn`, drained server-side inside `after()`. `cron_state` is a
+cache only — GitHub is truth.
 
 ### Kanban supervisor (`lib/supervisor/` — details in `lib/supervisor/CLAUDE.md`)
 Autonomous agent loops. A **card** is a `chat` row with non-null `kanbanStatus`;
@@ -120,7 +127,8 @@ cycles (`/api/cron/supervisor/run` → `runSupervisorCycle`). Each cycle claims 
 card via a `supervisorLeaseUntil` CAS, checks the per-run budget (`usageEvent` token sum vs
 `app_settings.maxRounds`/`maxTokensPerCard`), runs a read-only **verify→decide**
 supervisor turn, and on `continue` posts the next prompt to the worker chat via the
-same `runAgentTurn`. Board UI: `app/(app)/board/`, `components/board/`.
+same `runAgentTurn`. Board UI: `app/(app)/board/`, `components/board/`. New cards can
+be drafted from a rough brief by the **Task Helper** (`lib/task-helper/CLAUDE.md`).
 
 ### Telegram (`lib/telegram/` — details in `lib/telegram/CLAUDE.md`)
 Per-user Telegram bot front-end to the **same** `runAgentTurn`. A public webhook
@@ -143,37 +151,63 @@ Better Auth, email+password, **invite-only** (`disableSignUp: true`; first admin
 `(app)/layout.tsx`. Session uses a signed cookie cache to avoid a Neon round-trip
 per navigation.
 
-### Encryption (`lib/crypto.ts`)
-All secret material (shared API keys, custom-endpoint keys, per-user OAuth/static
-secrets) is **AES-256-GCM** encrypted at rest as `iv:tag:ciphertext`, keyed by
-`ENCRYPTION_KEY`. Decryption happens only server-side at point of use.
+### Email / SMTP (`lib/email.ts`)
+Generic SMTP via **Nodemailer** (replaced Resend). **No email env vars** — config
+is admin-managed in the `app_settings` row (`smtp*` columns; password AES-GCM),
+edited in Administration → Email. `emailConfigured()` is the master switch: when
+SMTP is off/incomplete it returns false and callers **fall back** — forgot-password
+link hidden, invites surface a copyable link, email changes apply without
+confirmation. `verifySmtp()` validates credentials before save. Used by Better Auth
+flows in `lib/auth.ts`.
 
-### Data (`lib/db/`)
-Drizzle + Neon HTTP driver. `db` is a lazy Proxy so importing never throws at
-build time — the connection (and the missing-`DATABASE_URL` error) only resolves
-on first query. Schema in `lib/db/schema.ts`: Better Auth tables (`user`/`session`/
-`account`/`verification`/`rate_limit`) + app tables (`chat` [carries `projectId`,
-the frozen `systemPrompt`, `source`/`sourceRef` for cron/supervisor runs, **and
-the kanban+supervisor columns** — `kanbanStatus`, `supervisorEnabled`, `cardSeq`
-(from the `card_seq` sequence), `userStory`/`details`, `acceptanceCriteria`/`tasks`/
-`testCases` jsonb, `iteration`/`runStartedAt`/`supervisorLeaseUntil`/`chatLeaseUntil`/`max*Override` loop
-state], `message`, `usage_event` [per-call token log for supervisor budgets, indexed
-`(chatId, createdAt)`], `project` [GitHub-backed workspace; `active` gates cron +
-the chat selector], `cron_state` [per-project schedule cache], `github_account`
-[per-user PAT], `api_key` shared BYOK, `app_settings` singleton [+ supervisor
-budgets `maxRounds`/`maxTokensPerCard` and `sandbox_snapshot_id`/`_status`],
-`custom_endpoint`, `user_secret` per-user vault). `user_settings` is **deprecated**
-— kept only so migrations stay additive; superseded by `app_settings`. Schema
-changes: edit `schema.ts` → `db:generate` → `db:migrate`.
+### Voice (`lib/voice/`)
+Voice dictation via **AssemblyAI**. Key is admin-managed in `app_settings`
+(`assemblyaiKey`, AES-GCM); unset ⇒ the mic is hidden everywhere
+(`settings.voiceConfigured`). The real key never reaches the client:
+`actions.ts` mints a short-lived streaming token (`getVoiceTokenAction`), the
+client hook (`use-voice-input.ts`) opens a WebSocket to AssemblyAI v3 for live
+transcripts (chat composer + board task-helper dialog). Inbound Telegram voice is
+transcribed server-side (`transcribe.ts`, upload→poll).
+
+### Encryption (`lib/crypto.ts`)
+All secret material (shared/global API keys, custom-endpoint keys, per-user
+OAuth/static secrets, SMTP password, AssemblyAI key, Telegram bot token) is
+**AES-256-GCM** encrypted at rest as `iv:tag:ciphertext`, keyed by `ENCRYPTION_KEY`.
+Decryption happens only server-side at point of use.
+
+### Secrets, vaults & OAuth (`lib/user-secrets.ts`, `lib/global-secrets.ts`, `lib/secrets/`, `lib/oauth/`)
+The agent's `secret_get`/`secrets_list` tools read a **two-tier vault**: the
+per-user `user_secret` value wins, else the deployment-wide `global_secret`
+(admin-managed cascade — e.g. a shared `FIRECRAWL_API_KEY`). `lib/secrets/builtins.ts`
+is the curated list of system-relevant tokens pinned in the UI. User secrets can be
+**OAuth connections** (`lib/oauth/providers.ts` — 16 presets + custom, PKCE/refresh);
+`secret_get` returns a **fresh** access token (refreshed on read). OAuth callback:
+`app/api/oauth/callback`.
+
+### Data (`lib/db/` — full table catalog in `lib/db/CLAUDE.md`)
+Drizzle + Neon HTTP driver. `db` is a lazy Proxy so importing never throws at build
+time — the connection (and the missing-`DATABASE_URL` error) only resolves on first
+query. Schema in `schema.ts`: Better Auth tables + app tables. The central row is
+**`chat`**, which carries the frozen `systemPrompt`, `source`/`sourceRef`, git-sync
+state, **and** doubles as a kanban **card** (the `kanbanStatus`/`supervisorEnabled`/
+`cardSeq`/lease columns). `app_settings` is the admin-managed **singleton** holding
+all deployment config (models, supervisor budgets, snapshot id, retention window,
+voice key, SMTP). Secrets live in `global_secret` (deployment) + `user_secret`
+(per-user); `user_settings` is **deprecated**. Schema changes: edit `schema.ts` →
+`db:generate` → `db:migrate` (renames need a TTY — see the sub-doc).
 
 ### Routes
 - `(auth)/` — login, forgot/reset password, accept-invite.
 - `(app)/` — protected shell: `page.tsx` (new chat), `chat/[chatId]`, `chats`,
-  `board` (kanban supervisor), `cron` (schedule UI), `settings` (projects +
-  per-user secrets), `administration` (admin: users, AI models, secrets).
-- `api/` — `agent` (main loop), `cron/tick` (heartbeat dispatcher) + `cron/run`
-  (scheduled-run worker) + `cron/supervisor/run` (supervisor cycle worker),
-  `auth/[...all]` (Better Auth), `oauth/callback` (user-secret OAuth connections).
+  `board` (kanban supervisor), `cron` (schedule UI), `settings` (tabs: Account,
+  Projects, Secrets, Telegram, Appearance — **Telegram setup lives here, not its own
+  page**), `administration` (admin tabs: AI Model, Secrets, Users, Email, Voice to
+  text, Retention).
+- `api/` — `agent` (main loop), `attachments/upload` (private Blob upload),
+  `cron/tick` (heartbeat dispatcher) + `cron/run` (scheduled-run worker) +
+  `cron/supervisor/run` (supervisor cycle worker), `auth/[...all]` (Better Auth),
+  `oauth/callback` (user-secret OAuth connections), `telegram/[userId]/webhook`
+  (public, secret-gated — see `lib/telegram/CLAUDE.md`).
 
 Server Actions live next to their pages (`*-actions.ts` / `actions.ts`).
 
@@ -190,6 +224,6 @@ Server Actions live next to their pages (`*-actions.ts` / `actions.ts`).
 
 ## Phase 2 / known gaps
 
-Password-reset email transport configurable but generic. Cron delivery is
-UI-only (runs appear as chats); notify-out (email/webhook), one-shot/repeat
-counts, and per-user timezones are deferred.
+Cron delivery is UI-only (runs appear as chats); notify-out (email/webhook),
+one-shot/repeat counts, and per-user timezones are deferred (schedules are UTC).
+Messaging is Telegram-only (the `Platform` type leaves room for more).
