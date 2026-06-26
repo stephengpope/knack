@@ -276,6 +276,13 @@ export const appSettings = pgTable("app_settings", {
   maxTokensPerCard: bigint("max_tokens_per_card", { mode: "number" })
     .default(2_000_000)
     .notNull(),
+  // Output token cap per AI Agent request, always applied. The AI SDK's
+  // fallback when unset is the model's *ceiling* (e.g. 128k on Opus), which
+  // reserves that whole budget against the provider's per-minute output limit
+  // every turn → 429s — so we send a deliberate value instead. The SDK clamps
+  // it down to each model's real max, so it's safe across providers. 16384
+  // matches the pi-coding-agent default.
+  maxOutputTokens: integer("max_output_tokens").default(16384).notNull(),
   // Chat retention window (days). Unstarred chats not used (updatedAt) within
   // this window are swept daily by the cron tick. 0 = disabled (keep forever).
   retentionDays: integer("retention_days").default(7).notNull(),

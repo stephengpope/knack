@@ -40,6 +40,7 @@ import {
   setConnectionModeAction,
   setDefaultModelAction,
   setGeneralModelAction,
+  setMaxOutputTokensAction,
   refreshModelsAction,
   addEndpointAction,
   deleteEndpointAction,
@@ -320,6 +321,65 @@ function ModelsTab({
           />
         </>
       )}
+      <MaxOutputTokensField maxOutputTokens={settings.maxOutputTokens} />
+    </>
+  );
+}
+
+// Output token cap applied to every AI Agent turn. Without it the AI SDK falls
+// back to the model's ceiling (e.g. 128k), reserving that against the provider's
+// per-minute output limit. The SDK clamps this down to each model's real max.
+function MaxOutputTokensField({
+  maxOutputTokens,
+}: {
+  maxOutputTokens: number;
+}) {
+  const [value, setValue] = useState(String(maxOutputTokens));
+  const [busy, setBusy] = useState(false);
+  const parsed = Number(value);
+  const valid = Number.isInteger(parsed) && parsed >= 256;
+  const dirty = value.trim() !== "" && parsed !== maxOutputTokens;
+
+  async function save() {
+    if (!valid || !dirty) return;
+    setBusy(true);
+    try {
+      await setMaxOutputTokensAction(parsed);
+      toast.success(`Max output set to ${parsed.toLocaleString()} tokens`);
+    } catch {
+      toast.error("Could not save max output tokens");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <SectionLabel className="mt-7">Max output tokens</SectionLabel>
+      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+        Largest response per turn, applied to every model. Default 16,384 — the
+        AI SDK clamps it down to each model&apos;s real max.
+      </p>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={256}
+          step={256}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          aria-invalid={!valid}
+          className="w-32"
+        />
+        <span className="text-[13px] text-ink-soft">tokens</span>
+        <Button
+          onClick={save}
+          disabled={busy || !valid || !dirty}
+          className="knack-gradient h-9 px-4 font-bold text-white"
+        >
+          {busy ? <Spinner /> : "Save"}
+        </Button>
+      </div>
     </>
   );
 }

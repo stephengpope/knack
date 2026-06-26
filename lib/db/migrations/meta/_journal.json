@@ -190,6 +190,27 @@
       "when": 1782443407691,
       "tag": "0026_left_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1782510216665,
+      "tag": "0027_glamorous_moonstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1782513813033,
+      "tag": "0028_luxuriant_juggernaut",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782514204009,
+      "tag": "0029_crazy_vermin",
+      "breakpoints": true
     }
   ]
 }

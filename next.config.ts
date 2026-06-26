@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Next logs every Server Function call with its arguments in dev — which
+  // leaks secrets passed to actions like setKeyAction into the terminal.
+  logging: {
+    serverFunctions: false,
+  },
   devIndicators: {
     position: "bottom-right",
   },

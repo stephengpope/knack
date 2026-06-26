@@ -1,0 +1,1 @@
+ALTER TABLE "app_settings" ADD COLUMN "max_output_tokens" integer DEFAULT 16384 NOT NULL;

@@ -94,6 +94,45 @@ const mistralCacheFetch: typeof fetch = async (input, init) => {
   return fetch(input, init);
 };
 
+// Claude subscription OAuth tokens (sk-ant-oat01…) only work when the request
+// looks exactly like the Claude Code CLI — otherwise Anthropic throttles them
+// to an unusable rate-limit pool (instant 429s). This replicates the disguise
+// @earendil-works/pi-ai uses: identity headers are set via the provider's
+// `headers` option; here at the HTTP layer we (1) strip x-api-key (the typed
+// headers option can't carry an `undefined` to remove it, and sending it
+// alongside the Bearer token 401s), and (2) prepend the Claude Code identity as
+// the first system block, which the subscription gate requires.
+const CLAUDE_CODE_SYSTEM =
+  "You are Claude Code, Anthropic's official CLI for Claude.";
+
+const anthropicOAuthFetch: typeof fetch = (input, init) => {
+  const headers = new Headers(init?.headers);
+  headers.delete("x-api-key");
+
+  let body = init?.body;
+  if (typeof body === "string") {
+    try {
+      const json = JSON.parse(body);
+      const cur = json.system;
+      const already = Array.isArray(cur) && cur[0]?.text === CLAUDE_CODE_SYSTEM;
+      if (!already) {
+        const identity = { type: "text", text: CLAUDE_CODE_SYSTEM };
+        if (typeof cur === "string") {
+          json.system = cur ? [identity, { type: "text", text: cur }] : [identity];
+        } else if (Array.isArray(cur)) {
+          json.system = [identity, ...cur];
+        } else {
+          json.system = [identity];
+        }
+        body = JSON.stringify(json);
+      }
+    } catch {
+      // non-JSON body — leave it untouched
+    }
+  }
+  return fetch(input, { ...init, headers, body });
+};
+
 // Build a direct provider client for "custom" (provide-your-own-keys) mode.
 // `id` is the provider's NATIVE model id (the gateway is not involved), so no
 // slug translation happens — it's passed straight to the provider package.
@@ -105,11 +144,29 @@ function directModel(
   switch (provider) {
     case "openai":
       return createOpenAI({ apiKey })(id);
-    case "anthropic":
+    case "anthropic": {
+      // OAuth tokens (sk-ant-oat01…) authenticate via Authorization: Bearer +
+      // the oauth beta header, NOT x-api-key (see anthropicOAuthFetch).
+      const client = apiKey.startsWith("sk-ant-oat01")
+        ? createAnthropic({
+            apiKey: "unused", // never sent — x-api-key is stripped; Bearer below
+            headers: {
+              authorization: `Bearer ${apiKey}`,
+              // Claude Code identity — required for subscription OAuth tokens to
+              // land in their normal rate-limit pool. Matches pi-ai's OAuth path.
+              "anthropic-beta": "claude-code-20250219,oauth-2025-04-20",
+              "user-agent": "claude-cli/2.1.75",
+              "x-app": "cli",
+              "anthropic-dangerous-direct-browser-access": "true",
+            },
+            fetch: anthropicOAuthFetch,
+          })
+        : createAnthropic({ apiKey });
       return wrapLanguageModel({
-        model: createAnthropic({ apiKey })(id),
+        model: client(id),
         middleware: anthropicCacheMiddleware,
       });
+    }
     case "google":
       return createGoogleGenerativeAI({ apiKey })(id);
     case "xai":

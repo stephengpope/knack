@@ -106,8 +106,12 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
   // What inline media the active provider accepts (drives how attachments are
   // presented to the model — see prepareForModel). Keyed by the live connection
   // mode + model provider, never assumed.
-  const { connectionMode, skillReviewEnabled, skillReviewInterval } =
-    await getAppSettings();
+  const {
+    connectionMode,
+    skillReviewEnabled,
+    skillReviewInterval,
+    maxOutputTokens,
+  } = await getAppSettings();
   const inlineCaps = inlineCapsFor(connectionMode, modelId);
 
   // Ensure the chat exists and is owned by this user (created on first message).
@@ -213,6 +217,10 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
           }),
         )
         .then((r) => r.text.replace(/^["'#*\s]+|["'\s]+$/g, "").slice(0, 80))
+        // Best-effort: never let a failed title call (e.g. a 429) become an
+        // unhandled rejection if the consumer below is skipped on a torn-down
+        // stream. Degrades to "no title".
+        .catch(() => null)
     : null;
 
   const sandbox = new VercelSandbox();
@@ -304,6 +312,10 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
 
   const agent = new ToolLoopAgent({
     model: agentModel,
+    // Cap output per request — without this the AI SDK falls back to the
+    // model's ceiling (e.g. 128k), reserving it against the provider's OTPM
+    // limit every turn. The SDK clamps this down to each model's real max.
+    maxOutputTokens,
     providerOptions, // request-scoped provider options, when the mode sets any
     instructions, // base prompt, plus project repo context when the chat has one
     tools: activeTools,

@@ -7,6 +7,7 @@ import {
   setConnectionMode,
   setDefaultModel,
   setGeneralModel,
+  setMaxOutputTokens,
   setRetentionDays,
   setSkillReviewConfig,
   setVoiceKey,
@@ -94,6 +95,15 @@ export async function setRetentionDaysAction(days: number) {
     throw new Error("Retention must be a non-negative whole number of days");
   }
   await setRetentionDays(days);
+  revalidatePath("/administration");
+}
+
+export async function setMaxOutputTokensAction(tokens: number) {
+  await requireAdmin();
+  if (!Number.isInteger(tokens) || tokens < 256) {
+    throw new Error("Max output tokens must be a whole number of at least 256");
+  }
+  await setMaxOutputTokens(tokens);
   revalidatePath("/administration");
 }
 

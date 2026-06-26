@@ -15,6 +15,8 @@ export type Settings = {
   // Supervisor budget ceilings per card RUN (cards may override).
   maxRounds: number;
   maxTokensPerCard: number;
+  // Output token cap for the AI Agent, always applied (see schema note).
+  maxOutputTokens: number;
   // Chat retention window (days). 0 = disabled (keep forever).
   retentionDays: number;
   // Self-improvement skill review: master switch + step-count threshold per chat.
@@ -34,6 +36,7 @@ const FALLBACK: Settings = {
   generalModel: null,
   maxRounds: 25,
   maxTokensPerCard: 2_000_000,
+  maxOutputTokens: 16384,
   retentionDays: 7,
   skillReviewEnabled: true,
   skillReviewInterval: 10,
@@ -55,6 +58,7 @@ export async function getAppSettings(): Promise<Settings> {
     generalModel: row.generalModel ?? null,
     maxRounds: row.maxRounds ?? FALLBACK.maxRounds,
     maxTokensPerCard: row.maxTokensPerCard ?? FALLBACK.maxTokensPerCard,
+    maxOutputTokens: row.maxOutputTokens ?? FALLBACK.maxOutputTokens,
     retentionDays: row.retentionDays ?? 7,
     skillReviewEnabled: row.skillReviewEnabled ?? FALLBACK.skillReviewEnabled,
     skillReviewInterval: row.skillReviewInterval ?? FALLBACK.skillReviewInterval,
@@ -73,6 +77,7 @@ async function upsert(patch: Partial<Settings>) {
       connectionMode: next.connectionMode,
       defaultModel: next.defaultModel,
       generalModel: next.generalModel,
+      maxOutputTokens: next.maxOutputTokens,
       retentionDays: next.retentionDays,
       skillReviewEnabled: next.skillReviewEnabled,
       skillReviewInterval: next.skillReviewInterval,
@@ -83,6 +88,7 @@ async function upsert(patch: Partial<Settings>) {
         connectionMode: next.connectionMode,
         defaultModel: next.defaultModel,
         generalModel: next.generalModel,
+        maxOutputTokens: next.maxOutputTokens,
         retentionDays: next.retentionDays,
         skillReviewEnabled: next.skillReviewEnabled,
         skillReviewInterval: next.skillReviewInterval,
@@ -107,6 +113,11 @@ export async function setGeneralModel(model: string | null) {
 /** Chat retention window in days (0 = disabled — keep chats forever). */
 export async function setRetentionDays(days: number) {
   await upsert({ retentionDays: days });
+}
+
+/** Output token cap for the AI Agent (always applied). */
+export async function setMaxOutputTokens(tokens: number) {
+  await upsert({ maxOutputTokens: tokens });
 }
 
 /** Self-improvement skill review config: master switch + step-count threshold. */
