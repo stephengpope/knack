@@ -24,10 +24,10 @@
 
 | Service           | Free tier                              | Billed when                          |
 | ----------------- | -------------------------------------- | ------------------------------------ |
-| Vercel (Hobby)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
-| Neon Postgres     | Yes — free serverless Postgres         | You outgrow the free database        |
-| Vercel Blob       | Yes — free on Hobby within limits; **no overage** (usage pauses at the cap, never a surprise bill) | Pro includes 5 GB storage + 100 GB transfer, then **$0.023/GB‑mo** storage · **$0.05/GB** transfer. Deletes are free, and attachment storage is bounded by the retention policy. |
-| AI (AI Gateway)   | $5 credits/mo on new accounts          | Per token once the free credits run out |
+| [Vercel (Hobby)](https://vercel.com/pricing)    | Yes — hosting, functions, sandbox      | You exceed Hobby limits / go Pro     |
+| [Neon Postgres](https://neon.com/pricing)     | Yes — free serverless Postgres         | You outgrow the free database        |
+| [Vercel Blob](https://vercel.com/docs/vercel-blob/usage-and-pricing)       | Yes — chat file attachments (images, PDFs, docs) stored free on Hobby within its limits, with no overage | You exceed the Hobby limits or go Pro — then **$0.023/GB‑mo** storage and **$0.05/GB** transfer (Pro includes 5 GB + 100 GB; deletes are free, and storage stays bounded by the retention policy) |
+| [AI (AI Gateway)](https://vercel.com/docs/ai-gateway/pricing)   | $5 credits/mo on new accounts          | Per token once the free credits run out |
 
 Scheduled runs and the supervisor depend on cron frequency: Vercel **Hobby** runs
 cron **once a day**; **Pro** allows finer schedules (e.g. every 30 minutes).
