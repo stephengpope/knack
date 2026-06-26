@@ -183,6 +183,13 @@
       "when": 1782442631207,
       "tag": "0025_third_the_watchers",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1782443407691,
+      "tag": "0026_left_terror",
+      "breakpoints": true
     }
   ]
 }

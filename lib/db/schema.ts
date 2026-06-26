@@ -120,6 +120,12 @@ export const chat = pgTable(
     gitState: text("git_state"),
     lastCommitSha: text("last_commit_sha"),
     lastSyncedAt: timestamp("last_synced_at"),
+    // Self-improvement review counter. Each turn adds its step count; when it
+    // crosses app_settings.skillReviewInterval a post-turn skill review fires.
+    // Reset to 0 whenever the agent edits a skill itself, or after a review runs.
+    itersSinceSkillReview: integer("iters_since_skill_review")
+      .default(0)
+      .notNull(),
 
     // ---- Kanban card fields ----
     // A card IS a chat. The board is the set of chats with a non-null
@@ -273,6 +279,11 @@ export const appSettings = pgTable("app_settings", {
   // Chat retention window (days). Unstarred chats not used (updatedAt) within
   // this window are swept daily by the cron tick. 0 = disabled (keep forever).
   retentionDays: integer("retention_days").default(7).notNull(),
+  // Self-improvement skill review. `enabled` is the master switch; `interval` is
+  // the step-count threshold a chat must accumulate before a post-turn review of
+  // its conversation fires (see lib/agent/skill-review.ts).
+  skillReviewEnabled: boolean("skill_review_enabled").default(true).notNull(),
+  skillReviewInterval: integer("skill_review_interval").default(10).notNull(),
   // Vercel Sandbox snapshot — the baked tools image (ripgrep + agent-browser +
   // firecrawl-cli + built-in skills). Built lazily on first sandbox creation and
   // self-healed if deleted; id lives here because Vercel env can't be written at

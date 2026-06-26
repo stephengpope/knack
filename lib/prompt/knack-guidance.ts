@@ -29,9 +29,12 @@ across turns of this chat.
 When you complete a complex task, overcome a tricky error, or discover a
 reusable workflow, save it as a skill with \`skill_manage\` so you can reuse it
 later. When you load a skill and find it outdated, incomplete, or wrong, patch
-it immediately with \`skill_manage\` — don't wait to be asked. A skill you create
-or edit appears in the available-skills list (rendered below) starting with the
-next chat.
+it immediately with \`skill_manage\` — don't wait to be asked. Always make skill
+changes through \`skill_manage\` (create / patch / edit / write_file) — it lives
+under \`.skills/\` and validates the frontmatter and structure for you, so let it
+own those files rather than editing them with the generic file tools. A skill you
+create or edit appears in the available-skills list (rendered below) starting with
+the next chat.
 
 ## Scheduled runs (cron)
 

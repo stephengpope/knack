@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { Logomark } from "@/components/brand/logo";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
 import { ModelPicker } from "@/components/chat/model-picker";
 import { UsersTab } from "@/components/administration/users-tab";
@@ -45,6 +46,7 @@ import {
   setVoiceKeyAction,
   deleteVoiceKeyAction,
   setRetentionDaysAction,
+  setSkillReviewConfigAction,
 } from "@/app/(app)/administration/actions";
 
 type Last4 = Record<string, string | undefined>;
@@ -55,6 +57,7 @@ const TABS = [
   "Email",
   "Voice to text",
   "Retention",
+  "Behavior",
 ] as const;
 type Tab = (typeof TABS)[number];
 
@@ -124,6 +127,12 @@ export function AdministrationView({
             )}
             {tab === "Retention" && (
               <RetentionTab retentionDays={settings.retentionDays} />
+            )}
+            {tab === "Behavior" && (
+              <BehaviorTab
+                enabled={settings.skillReviewEnabled}
+                interval={settings.skillReviewInterval}
+              />
             )}
             {tab === "Email" && <SmtpTab smtp={smtp} />}
             {tab === "Secrets" && <GlobalSecretsTab globals={globals} />}
@@ -364,6 +373,84 @@ function RetentionTab({ retentionDays }: { retentionDays: number }) {
           className="w-28"
         />
         <span className="text-[13px] text-ink-soft">days</span>
+        <Button
+          onClick={save}
+          disabled={busy || !valid || !dirty}
+          className="knack-gradient h-9 px-4 font-bold text-white"
+        >
+          {busy ? <Spinner /> : "Save"}
+        </Button>
+      </div>
+    </>
+  );
+}
+
+function BehaviorTab({
+  enabled,
+  interval,
+}: {
+  enabled: boolean;
+  interval: number;
+}) {
+  const [on, setOn] = useState(enabled);
+  const [value, setValue] = useState(String(interval));
+  const [busy, setBusy] = useState(false);
+  const parsed = Number(value);
+  const valid = Number.isInteger(parsed) && parsed >= 1;
+  const dirty = on !== enabled || (value.trim() !== "" && parsed !== interval);
+
+  async function save() {
+    if (!valid || !dirty) return;
+    setBusy(true);
+    try {
+      await setSkillReviewConfigAction({ enabled: on, interval: parsed });
+      toast.success("Self-improvement settings saved");
+    } catch {
+      toast.error("Could not save settings");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+        Behavior
+      </h1>
+      <p className="mt-1 text-[13.5px] text-ink-soft">
+        After a chat turn, the agent can review the conversation and improve its
+        own skills — patching a skill when it was corrected, or saving a new one
+        when a reusable technique emerged. Changes are committed to the project
+        repo and take effect in future chats.
+      </p>
+
+      <SectionLabel className="mt-7">Self-improvement review</SectionLabel>
+      <div className="flex items-center gap-3">
+        <Switch id="skill-review" checked={on} onCheckedChange={setOn} />
+        <label htmlFor="skill-review" className="text-[13.5px] text-ink-soft">
+          Review conversations and update skills automatically
+        </label>
+      </div>
+
+      <SectionLabel className="mt-7">Review interval</SectionLabel>
+      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+        Run a review once a chat accumulates this many steps of agent activity.
+        The counter resets after each review, and whenever the agent edits a
+        skill itself.
+      </p>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min={1}
+          step={1}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          aria-invalid={!valid}
+          disabled={!on}
+          className="w-28"
+        />
+        <span className="text-[13px] text-ink-soft">steps</span>
         <Button
           onClick={save}
           disabled={busy || !valid || !dirty}

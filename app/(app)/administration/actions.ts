@@ -8,6 +8,7 @@ import {
   setDefaultModel,
   setGeneralModel,
   setRetentionDays,
+  setSkillReviewConfig,
   setVoiceKey,
   deleteVoiceKey,
   setSmtpConfig,
@@ -93,6 +94,18 @@ export async function setRetentionDaysAction(days: number) {
     throw new Error("Retention must be a non-negative whole number of days");
   }
   await setRetentionDays(days);
+  revalidatePath("/administration");
+}
+
+export async function setSkillReviewConfigAction(opts: {
+  enabled: boolean;
+  interval: number;
+}) {
+  await requireAdmin();
+  if (!Number.isInteger(opts.interval) || opts.interval < 1) {
+    throw new Error("Review interval must be a whole number ≥ 1");
+  }
+  await setSkillReviewConfig(opts);
   revalidatePath("/administration");
 }
 

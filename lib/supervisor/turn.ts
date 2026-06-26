@@ -2,7 +2,6 @@ import "server-only";
 import {
   streamText,
   generateObject,
-  tool,
   stepCountIs,
   convertToModelMessages,
   createUIMessageStream,
@@ -15,12 +14,11 @@ import { chat, type Project } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { loadMessages, saveMessages } from "@/lib/chats";
 import { drainStream } from "@/lib/agent/run-turn";
+import { fileReadTool, filesListTool, searchFilesTool } from "@/lib/agent/tools";
 import { resolveAgentModel } from "@/lib/llm";
 import { VercelSandbox } from "@/lib/sandbox/vercel";
 import { REPO_DIR } from "@/lib/prompt/paths";
 import { cloneUrlWithToken } from "@/lib/github";
-import { fileRead } from "@/lib/files/read";
-import { searchFiles } from "@/lib/files/search";
 import { getGithubAuth } from "@/lib/github-account";
 
 const checklistItem = z.object({ text: z.string(), done: z.boolean() });
@@ -143,46 +141,12 @@ export async function runSupervisorTurn(params: {
     return b;
   }
 
+  // Read-only subset, composed from the shared tool builders (lib/agent/tools.ts).
+  // The supervisor only inspects the worker's box — no write/bash tools.
   const tools = {
-    file_read: tool({
-      description:
-        "Read a text file (read-only). Use to verify the worker's output.",
-      inputSchema: z.object({
-        path: z.string(),
-        offset: z.number().int().min(1).default(1),
-        limit: z.number().int().min(1).max(2000).default(500),
-      }),
-      execute: async ({ path, offset, limit }) =>
-        fileRead(await box(), path, offset, limit),
-    }),
-    files_list: tool({
-      description: "List a directory's immediate contents (read-only).",
-      inputSchema: z.object({ path: z.string().default(".") }),
-      execute: async ({ path }) => {
-        try {
-          return { listing: await (await box()).listDir(path) };
-        } catch (e) {
-          return { error: (e as Error).message };
-        }
-      },
-    }),
-    search_files: tool({
-      description:
-        "Search the codebase (read-only). Regex over file contents, or a glob to find files.",
-      inputSchema: z.object({
-        pattern: z.string(),
-        target: z.enum(["content", "files"]).default("content"),
-        path: z.string().default("."),
-        file_glob: z.string().optional(),
-        output_mode: z
-          .enum(["content", "files_only", "count"])
-          .default("content"),
-        context: z.number().int().min(0).default(0),
-        limit: z.number().int().min(1).default(50),
-        offset: z.number().int().min(0).default(0),
-      }),
-      execute: async (a) => searchFiles(await box(), a),
-    }),
+    file_read: fileReadTool(box),
+    files_list: filesListTool(box),
+    search_files: searchFilesTool(box),
   };
 
   // ── Phase 1: VERIFY ──────────────────────────────────────────────────────

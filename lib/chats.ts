@@ -163,6 +163,14 @@ export async function setChatSystemPrompt(id: string, systemPrompt: string) {
   await db.update(chat).set({ systemPrompt }).where(eq(chat.id, id));
 }
 
+/**
+ * Persist the self-improvement review counter for a chat. Internal (no userId
+ * scope) — called from the agent turn's post-turn sync closure.
+ */
+export async function setChatSkillReviewCounter(id: string, n: number) {
+  await db.update(chat).set({ itersSinceSkillReview: n }).where(eq(chat.id, id));
+}
+
 export async function toggleStar(userId: string, id: string) {
   await db
     .update(chat)
