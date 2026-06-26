@@ -12,8 +12,6 @@ import {
   Plus,
   Server,
   ExternalLink,
-  Mic,
-  Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -50,7 +48,14 @@ import {
 } from "@/app/(app)/administration/actions";
 
 type Last4 = Record<string, string | undefined>;
-const TABS = ["AI Model", "Email", "Secrets", "User Admin"] as const;
+const TABS = [
+  "AI Model",
+  "Voice to text",
+  "Retention",
+  "Email",
+  "Secrets",
+  "User Admin",
+] as const;
 type Tab = (typeof TABS)[number];
 
 export function AdministrationView({
@@ -113,6 +118,12 @@ export function AdministrationView({
                 catalog={catalog}
                 endpoints={endpoints}
               />
+            )}
+            {tab === "Voice to text" && (
+              <VoiceTab last4={settings.voiceLast4} />
+            )}
+            {tab === "Retention" && (
+              <RetentionTab retentionDays={settings.retentionDays} />
             )}
             {tab === "Email" && <SmtpTab smtp={smtp} />}
             {tab === "Secrets" && <GlobalSecretsTab globals={globals} />}
@@ -300,17 +311,13 @@ function ModelsTab({
           />
         </>
       )}
-
-      <VoiceSection last4={settings.voiceLast4} />
-
-      <RetentionSection retentionDays={settings.retentionDays} />
     </>
   );
 }
 
 // Chat retention — a daily cron sweep deletes unstarred chats not used within
 // the window (and their attachments). 0 = keep forever.
-function RetentionSection({ retentionDays }: { retentionDays: number }) {
+function RetentionTab({ retentionDays }: { retentionDays: number }) {
   const [value, setValue] = useState(String(retentionDays));
   const [busy, setBusy] = useState(false);
   const parsed = Number(value);
@@ -333,14 +340,17 @@ function RetentionSection({ retentionDays }: { retentionDays: number }) {
   }
 
   return (
-    <div className="mt-9 border-t border-border pt-7">
-      <div className="mb-3 flex items-center gap-2">
-        <Clock className="size-4 text-ink-soft" />
-        <SectionLabel className="mb-0">Retention</SectionLabel>
-      </div>
+    <>
+      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+        Retention
+      </h1>
+      <p className="mt-1 text-[13.5px] text-ink-soft">
+        Automatically delete unstarred chats that haven&apos;t been used in a
+        while, along with their attachments. Starred chats are always kept.
+      </p>
+      <SectionLabel className="mt-7">Auto-delete window</SectionLabel>
       <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
-        Delete unstarred chats not used in N days (0 = never). Starred chats are
-        always kept; their attachments go with them.
+        Delete unstarred chats not used in N days (0 = never).
       </p>
       <div className="flex items-center gap-2">
         <Input
@@ -362,25 +372,25 @@ function RetentionSection({ retentionDays }: { retentionDays: number }) {
           {busy ? <Spinner /> : "Save"}
         </Button>
       </div>
-    </div>
+    </>
   );
 }
 
-// AssemblyAI streaming key — powers voice dictation in the board's Task Helper.
-// Unset → the mic is hidden everywhere.
-function VoiceSection({ last4 }: { last4: string | null }) {
+// AssemblyAI streaming key — powers voice-to-text dictation. Unset → the mic is
+// hidden everywhere.
+function VoiceTab({ last4 }: { last4: string | null }) {
   return (
-    <div className="mt-9 border-t border-border pt-7">
-      <div className="mb-3 flex items-center gap-2">
-        <Mic className="size-4 text-ink-soft" />
-        <SectionLabel className="mb-0">Voice dictation</SectionLabel>
-      </div>
-      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
-        An AssemblyAI streaming key enables dictating cards by voice. Without it,
-        the microphone is hidden.
+    <>
+      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+        Voice to text
+      </h1>
+      <p className="mt-1 text-[13.5px] text-ink-soft">
+        An AssemblyAI streaming key enables dictating by voice. Without it, the
+        microphone is hidden everywhere.
       </p>
+      <SectionLabel className="mt-7">AssemblyAI key</SectionLabel>
       <VoiceKeyEditor last4={last4} />
-    </div>
+    </>
   );
 }
 

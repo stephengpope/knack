@@ -407,6 +407,9 @@ function AddExistingForm({ onDone }: { onDone: () => void }) {
   const [filter, setFilter] = useState("");
   // The repo we'll link: a clicked row, or whatever the user typed/pasted.
   const [selected, setSelected] = useState("");
+  const [name, setName] = useState("");
+  // Until the user edits Name, keep deriving it from the picked repo.
+  const [nameTouched, setNameTouched] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -428,7 +431,10 @@ function AddExistingForm({ onDone }: { onDone: () => void }) {
   async function submit() {
     setBusy(true);
     try {
-      const p = await addExistingProjectAction({ repoFullName: target });
+      const p = await addExistingProjectAction({
+        repoFullName: target,
+        name: name.trim() || undefined,
+      });
       toast.success(`Added ${p.repoFullName}`);
       onDone();
     } catch (e) {
@@ -440,6 +446,17 @@ function AddExistingForm({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
+      <Field label="Name" hint="A friendly name for this project.">
+        <Input
+          value={name}
+          onChange={(e) => {
+            setNameTouched(true);
+            setName(e.target.value);
+          }}
+          placeholder="Marketing Site"
+          autoFocus
+        />
+      </Field>
       <Field label="Repository" hint="Pick one of your repos, or paste owner/repo.">
         <Input
           value={filter}
@@ -453,7 +470,6 @@ function AddExistingForm({ onDone }: { onDone: () => void }) {
               : "Filter or paste owner/repo"
           }
           className="font-mono text-[13px]"
-          autoFocus
         />
       </Field>
 
@@ -480,6 +496,7 @@ function AddExistingForm({ onDone }: { onDone: () => void }) {
                 onClick={() => {
                   setSelected(r.fullName);
                   setFilter(r.fullName);
+                  if (!nameTouched) setName(r.repo);
                 }}
                 className={cn(
                   "flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-[13px] transition-colors",

@@ -74,6 +74,7 @@ const OWNER_REPO_RE = /^([\w.-]+)\/([\w.-]+?)(?:\.git)?$/;
 
 export async function addExistingProjectAction(input: {
   repoFullName: string;
+  name?: string;
 }): Promise<ProjectSummary> {
   const user = await requireUser();
   const raw = input.repoFullName
@@ -87,6 +88,7 @@ export async function addExistingProjectAction(input: {
   const summary = await addExistingProject(user.id, {
     owner: m[1],
     repo: m[2],
+    name: input.name?.trim() || undefined,
   });
   revalidatePath("/settings");
   return summary;
