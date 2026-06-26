@@ -50,11 +50,11 @@ import {
 type Last4 = Record<string, string | undefined>;
 const TABS = [
   "AI Model",
+  "Secrets",
+  "Users",
+  "Email",
   "Voice to text",
   "Retention",
-  "Email",
-  "Secrets",
-  "User Admin",
 ] as const;
 type Tab = (typeof TABS)[number];
 
@@ -127,7 +127,7 @@ export function AdministrationView({
             )}
             {tab === "Email" && <SmtpTab smtp={smtp} />}
             {tab === "Secrets" && <GlobalSecretsTab globals={globals} />}
-            {tab === "User Admin" && <UsersTab currentUserId={currentUserId} />}
+            {tab === "Users" && <UsersTab currentUserId={currentUserId} />}
           </div>
         </div>
       </div>

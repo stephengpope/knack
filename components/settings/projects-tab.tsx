@@ -16,6 +16,7 @@ import {
   Globe,
   Link2,
   Sparkles,
+  ChevronsUpDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import type { GithubAccountSummary } from "@/lib/github-account";
 import type { ProjectSummary } from "@/lib/projects";
 import type { RepoListItem } from "@/lib/github";
@@ -404,9 +418,7 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
 function AddExistingForm({ onDone }: { onDone: () => void }) {
   const [repos, setRepos] = useState<RepoListItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
-  // The repo we'll link: a clicked row, or whatever the user typed/pasted.
-  const [selected, setSelected] = useState("");
+  const [repo, setRepo] = useState(""); // chosen "owner/repo"
   const [name, setName] = useState("");
   // Until the user edits Name, keep deriving it from the picked repo.
   const [nameTouched, setNameTouched] = useState(false);
@@ -422,17 +434,16 @@ function AddExistingForm({ onDone }: { onDone: () => void }) {
     };
   }, []);
 
-  const q = filter.trim().toLowerCase();
-  const filtered = (repos ?? []).filter((r) =>
-    r.fullName.toLowerCase().includes(q),
-  );
-  const target = (selected || filter).trim();
+  function pickRepo(fullName: string) {
+    setRepo(fullName);
+    if (!nameTouched) setName(fullName.split("/")[1] ?? fullName);
+  }
 
   async function submit() {
     setBusy(true);
     try {
       const p = await addExistingProjectAction({
-        repoFullName: target,
+        repoFullName: repo,
         name: name.trim() || undefined,
       });
       toast.success(`Added ${p.repoFullName}`);
@@ -458,72 +469,131 @@ function AddExistingForm({ onDone }: { onDone: () => void }) {
         />
       </Field>
       <Field label="Repository" hint="Pick one of your repos, or paste owner/repo.">
-        <Input
-          value={filter}
-          onChange={(e) => {
-            setFilter(e.target.value);
-            setSelected("");
-          }}
-          placeholder={
-            repos === null && !loadError
-              ? "Loading your repos…"
-              : "Filter or paste owner/repo"
-          }
-          className="font-mono text-[13px]"
+        <RepoCombobox
+          repos={repos}
+          loading={repos === null && !loadError}
+          error={loadError}
+          value={repo}
+          onChange={pickRepo}
         />
       </Field>
 
-      <div className="max-h-56 overflow-x-hidden overflow-y-auto rounded-[10px] border border-border">
-        {loadError ? (
-          <div className="px-3 py-4 text-center text-[12px] text-ink-faint">
-            Couldn&apos;t load repos: {loadError}. Paste owner/repo above instead.
-          </div>
-        ) : repos === null ? (
-          <div className="flex items-center justify-center gap-2 px-3 py-6 text-[12.5px] text-ink-faint">
-            <Spinner /> Loading repos…
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="px-3 py-4 text-center text-[12px] text-ink-faint">
-            No matching repos.
-          </div>
-        ) : (
-          filtered.map((r) => {
-            const active = (selected || filter).trim() === r.fullName;
-            return (
-              <button
-                key={r.fullName}
-                type="button"
-                onClick={() => {
-                  setSelected(r.fullName);
-                  setFilter(r.fullName);
-                  if (!nameTouched) setName(r.repo);
-                }}
-                className={cn(
-                  "flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-[13px] transition-colors",
-                  active ? "bg-accent" : "hover:bg-muted",
-                )}
-              >
-                <FolderGit2 className="size-3.5 shrink-0 text-ink-faint" />
-                <span className="min-w-0 truncate font-mono">{r.fullName}</span>
-                {r.private && (
-                  <span className="ml-auto shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-bold text-ink-faint">
-                    Private
-                  </span>
-                )}
-              </button>
-            );
-          })
-        )}
-      </div>
-
       <Button
         onClick={submit}
-        disabled={busy || !target}
+        disabled={busy || !repo.trim()}
         className="knack-gradient mt-1 w-full font-bold text-white"
       >
         {busy ? <Spinner /> : <Link2 className="size-4" />} Add project
       </Button>
     </div>
+  );
+}
+
+// "owner/repo" — used to offer a paste-through for repos not in the loaded list.
+const OWNER_REPO_RE = /^[\w.-]+\/[\w.-]+$/;
+
+function RepoCombobox({
+  repos,
+  loading,
+  error,
+  value,
+  onChange,
+}: {
+  repos: RepoListItem[] | null;
+  loading: boolean;
+  error: string | null;
+  value: string;
+  onChange: (fullName: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const typed = query.trim();
+  const canPaste =
+    OWNER_REPO_RE.test(typed) &&
+    !(repos ?? []).some((r) => r.fullName.toLowerCase() === typed.toLowerCase());
+
+  function pick(fullName: string) {
+    onChange(fullName);
+    setQuery("");
+    setOpen(false);
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between px-3 font-mono text-[13px] font-normal"
+        >
+          <span className={cn("truncate", !value && "text-ink-faint")}>
+            {value || "Select a repository…"}
+          </span>
+          <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-(--radix-popover-trigger-width) p-0"
+      >
+        <Command>
+          <CommandInput
+            placeholder="Search or paste owner/repo…"
+            value={query}
+            onValueChange={setQuery}
+          />
+          <CommandList>
+            {loading ? (
+              <div className="flex items-center justify-center gap-2 py-6 text-[12.5px] text-ink-faint">
+                <Spinner /> Loading repos…
+              </div>
+            ) : error ? (
+              <div className="px-3 py-4 text-center text-[12px] text-ink-faint">
+                Couldn&apos;t load repos: {error}. Paste owner/repo above.
+              </div>
+            ) : (
+              <>
+                <CommandEmpty>
+                  {canPaste ? (
+                    <button
+                      type="button"
+                      onClick={() => pick(typed)}
+                      className="mx-auto flex items-center gap-1.5 text-[13px] hover:text-foreground"
+                    >
+                      Use <span className="font-mono">{typed}</span>
+                    </button>
+                  ) : (
+                    "No repositories found."
+                  )}
+                </CommandEmpty>
+                <CommandGroup>
+                  {(repos ?? []).map((r) => (
+                    <CommandItem
+                      key={r.fullName}
+                      value={r.fullName}
+                      onSelect={() => pick(r.fullName)}
+                    >
+                      <FolderGit2 className="size-3.5 shrink-0 text-ink-faint" />
+                      <span className="flex-1 truncate font-mono">
+                        {r.fullName}
+                      </span>
+                      {r.private && (
+                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-bold text-ink-faint">
+                          Private
+                        </span>
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
