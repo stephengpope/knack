@@ -42,15 +42,29 @@ export function ProjectPicker({
     setSearch("");
   }
 
-  return (
-    <Popover open={open} onOpenChange={disabled ? undefined : setOpen}>
-      <PopoverTrigger
-        aria-disabled={disabled || undefined}
-        className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft outline-none transition-colors hover:text-foreground aria-disabled:pointer-events-none aria-disabled:cursor-default aria-disabled:opacity-70"
+  // On an existing chat the picker is locked to its project; surface it as a
+  // link out to the repo on GitHub (main) instead of an inert label.
+  if (disabled) {
+    return (
+      <a
+        href={current?.htmlUrl ?? "#"}
+        target="_blank"
+        rel="noreferrer"
+        title="View repository on GitHub"
+        className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft outline-none transition-colors hover:text-foreground"
       >
         <FolderGit2 className="size-3.5" />
         {label}
-        {!disabled && <ChevronDown className="size-3.5" strokeWidth={2.2} />}
+      </a>
+    );
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft outline-none transition-colors hover:text-foreground">
+        <FolderGit2 className="size-3.5" />
+        {label}
+        <ChevronDown className="size-3.5" strokeWidth={2.2} />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-75 p-0">
         <Command shouldFilter>
