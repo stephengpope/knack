@@ -33,6 +33,7 @@ import { runImprovementReview } from "@/lib/agent/skill-review";
 import { cloneUrlWithToken } from "@/lib/github";
 import { getAppSettings } from "@/lib/settings";
 import { reasoningOptionsFor } from "@/lib/reasoning";
+import { modelSupportsReasoning } from "@/lib/model-catalog";
 import { prepareForModel, inlineCapsFor } from "@/lib/attachments/model";
 import {
   materializeAttachments,
@@ -118,10 +119,13 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
   // Reasoning/thinking options for the agent turn (custom + gateway; gated to
   // reasoning-capable models). Merged into providerOptions for the ToolLoopAgent
   // ONLY — title gen, supervisor verify, and task-helper keep thinking off.
+  const reasoningCapable =
+    agentReasoning === "off" ? false : await modelSupportsReasoning(modelId);
   const reasoningOpts = reasoningOptionsFor(
     connectionMode,
     modelId,
     agentReasoning,
+    reasoningCapable,
   );
   const agentProviderOptions = reasoningOpts
     ? { ...(providerOptions ?? {}), ...reasoningOpts }

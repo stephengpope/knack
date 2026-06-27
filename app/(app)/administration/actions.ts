@@ -20,9 +20,9 @@ import {
   type SmtpInput,
 } from "@/lib/settings";
 import { verifySmtp } from "@/lib/email";
-import { isProviderId, PROVIDER_IDS } from "@/lib/providers";
+import { isProviderId } from "@/lib/providers";
 import { MODELS_CACHE_TAG } from "@/lib/gateway-models";
-import { providerModelsTag } from "@/lib/provider-models";
+import { MODELS_DEV_TAG } from "@/lib/model-catalog";
 import { addEndpoint, deleteEndpoint } from "@/lib/endpoints";
 import { setGlobalSecret, deleteGlobalSecret } from "@/lib/global-secrets";
 
@@ -34,7 +34,8 @@ export async function setKeyAction(provider: string, key: string) {
   const value = key.trim();
   if (!value) throw new Error("Empty key");
   await setKey(provider, value);
-  revalidateTag(providerModelsTag(provider), "seconds"); // refetch this provider's models
+  // The model list is credential-independent (models.dev); a new key just makes
+  // that provider's models eligible — revalidatePath re-renders with the key.
   revalidatePath("/administration");
 }
 
@@ -42,7 +43,6 @@ export async function deleteKeyAction(provider: string) {
   await requireAdmin();
   if (!isProviderId(provider)) throw new Error("Unknown provider");
   await deleteKey(provider);
-  revalidateTag(providerModelsTag(provider), "seconds");
   revalidatePath("/administration");
 }
 
@@ -221,8 +221,6 @@ export async function deleteGlobalTokenAction(name: string) {
 export async function refreshModelsAction() {
   await requireAdmin();
   revalidateTag(MODELS_CACHE_TAG, "seconds"); // gateway catalog
-  for (const p of PROVIDER_IDS) {
-    revalidateTag(providerModelsTag(p), "seconds"); // direct-mode provider lists
-  }
+  revalidateTag(MODELS_DEV_TAG, "seconds"); // custom-mode registry (models.dev)
   revalidatePath("/administration");
 }

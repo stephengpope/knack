@@ -24,6 +24,15 @@ export function providerOf(modelId: string): string {
   return i === -1 ? "" : modelId.slice(0, i);
 }
 
+/**
+ * An Anthropic credential is an OAuth/subscription token (Bearer auth) when it
+ * starts with `sk-ant-` but is NOT a Console API key (`sk-ant-api…`, x-api-key
+ * auth). Same rule hermes uses. Drives the auth header at inference.
+ */
+export function isAnthropicOAuth(key: string): boolean {
+  return key.startsWith("sk-ant-") && !key.startsWith("sk-ant-api");
+}
+
 export function providerLabel(modelId: string): string {
   const p = providerOf(modelId);
   if (isProviderId(p)) return PROVIDERS[p].label;

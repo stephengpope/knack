@@ -4,6 +4,7 @@
 export type ModelOption = {
   id: string; // gateway "provider/model" string
   label: string; // display name
+  reasoning?: boolean; // model supports extended thinking (from the registry)
 };
 
 export const DEFAULT_MODEL = "deepseek/deepseek-v4-flash";

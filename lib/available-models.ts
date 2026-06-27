@@ -3,7 +3,7 @@ import { getAppSettings } from "@/lib/settings";
 import { getKeyMap } from "@/lib/api-keys";
 import { listEndpoints } from "@/lib/endpoints";
 import { fetchGatewayModels } from "@/lib/gateway-models";
-import { fetchProviderModels } from "@/lib/provider-models";
+import { getCatalogModels } from "@/lib/model-catalog";
 import { type ModelOption } from "@/lib/models";
 import { type ProviderId } from "@/lib/providers";
 
@@ -42,14 +42,14 @@ export async function getAvailableModels(): Promise<{
     return { models: catalog, defaultModel: settings.defaultModel, gateway: true };
   }
 
-  // custom: list directly from each provider that has a stored key.
+  // custom: list from the models.dev registry for each provider that has a
+  // stored key. Credential-independent — works with API keys or OAuth tokens,
+  // since listing never authenticates with the key.
   const keyMap = await getKeyMap();
-  const lists = await Promise.all(
-    (Object.keys(keyMap) as ProviderId[]).map((p) =>
-      fetchProviderModels(p, keyMap[p]!),
-    ),
+  const providers = (Object.keys(keyMap) as ProviderId[]).filter(
+    (p) => keyMap[p],
   );
-  const models = lists.flat();
+  const models = await getCatalogModels(providers);
   return {
     models,
     defaultModel: pickDefault(models, settings.defaultModel),

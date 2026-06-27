@@ -18,7 +18,7 @@ import { isCatalogModel } from "@/lib/gateway-models";
 import { gatewayByokOptions } from "@/lib/gateway-byok";
 import { getEndpointWithKey } from "@/lib/endpoints";
 import { getKeyMap } from "@/lib/api-keys";
-import { providerOf, type ProviderId } from "@/lib/providers";
+import { providerOf, isAnthropicOAuth, type ProviderId } from "@/lib/providers";
 
 /**
  * A ready-to-use language model plus the request-scoped provider options it
@@ -145,9 +145,9 @@ function directModel(
     case "openai":
       return createOpenAI({ apiKey })(id);
     case "anthropic": {
-      // OAuth tokens (sk-ant-oat01…) authenticate via Authorization: Bearer +
-      // the oauth beta header, NOT x-api-key (see anthropicOAuthFetch).
-      const client = apiKey.startsWith("sk-ant-oat01")
+      // OAuth tokens authenticate via Authorization: Bearer + the oauth beta
+      // header, NOT x-api-key (see anthropicOAuthFetch).
+      const client = isAnthropicOAuth(apiKey)
         ? createAnthropic({
             apiKey: "unused", // never sent — x-api-key is stripped; Bearer below
             headers: {

@@ -179,7 +179,7 @@ function ModelsTab({
     }
   }
 
-  const available =
+  const available: ModelOption[] =
     mode === "compatible"
       ? endpoints.map((e) => ({ id: e.id, label: e.name }))
       : gateway
@@ -189,6 +189,7 @@ function ModelsTab({
   const fieldModel = available.some((m) => m.id === settings.defaultModel)
     ? settings.defaultModel
     : (available[0]?.id ?? settings.defaultModel);
+  const selectedModel = available.find((m) => m.id === fieldModel);
 
   return (
     <>
@@ -308,22 +309,24 @@ function ModelsTab({
             : "Connect a provider key above to choose a model."}
         </p>
       ) : (
-        <>
-          <ModelPicker
-            variant="field"
-            model={fieldModel}
-            onModelChange={(m) => setDefaultModelAction(m)}
-            models={available}
-          />
-          <GeneralAiField
-            available={available}
-            generalModel={settings.generalModel}
-            agentModel={fieldModel}
-          />
-        </>
+        <ModelPicker
+          variant="field"
+          model={fieldModel}
+          onModelChange={(m) => setDefaultModelAction(m)}
+          models={available}
+        />
       )}
+      <GeneralAiField
+        available={available}
+        generalModel={settings.generalModel}
+        agentModel={fieldModel}
+      />
       <MaxOutputTokensField maxOutputTokens={settings.maxOutputTokens} />
-      <ReasoningField effort={settings.agentReasoning} />
+      <ReasoningField
+        effort={settings.agentReasoning}
+        modelReasons={selectedModel?.reasoning}
+        modelLabel={selectedModel?.label ?? fieldModel}
+      />
     </>
   );
 }
@@ -331,7 +334,15 @@ function ModelsTab({
 // Agent reasoning/thinking depth. Applied only to reasoning-capable models
 // (Anthropic, OpenAI, xAI, Google, DeepSeek reasoner families) — a no-op on
 // models that don't support it. "Off" sends no reasoning options.
-function ReasoningField({ effort }: { effort: ReasoningEffort }) {
+function ReasoningField({
+  effort,
+  modelReasons,
+  modelLabel,
+}: {
+  effort: ReasoningEffort;
+  modelReasons?: boolean;
+  modelLabel?: string;
+}) {
   const [busy, setBusy] = useState(false);
   const options: ReasoningEffort[] = ["off", "low", "medium", "high", "max"];
 
@@ -356,8 +367,15 @@ function ReasoningField({ effort }: { effort: ReasoningEffort }) {
     <>
       <SectionLabel className="mt-7">Agent reasoning</SectionLabel>
       <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
-        Extended thinking depth for the agent. Only applies to reasoning-capable
-        models — ignored on models that don&apos;t support it.
+        {modelReasons === false ? (
+          <>
+            <span className="font-semibold text-foreground">{modelLabel}</span>{" "}
+            doesn&apos;t support reasoning — this setting won&apos;t affect it.
+            It applies to models that do.
+          </>
+        ) : (
+          "Extended thinking depth for the agent. Applies to reasoning-capable models."
+        )}
       </p>
       <div className="inline-flex rounded-md border border-input bg-muted/50 p-0.5">
         {options.map((o) => (

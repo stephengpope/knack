@@ -2,10 +2,9 @@ import "server-only";
 import { providerOf } from "@/lib/providers";
 import type { ConnectionMode, ReasoningEffort } from "@/lib/settings";
 
-// Reasoning-capable model families, matched by native-id / gateway-slug prefix.
-// Capability can't be detected reliably, so — like hermes — we allowlist known
-// families. Anything not listed (e.g. deepseek-v4-flash, haiku) gets no
-// reasoning options, making the setting a safe no-op there.
+// Fallback reasoning-capable families, matched by id prefix. The catalog
+// (models.dev) is the primary source — see modelSupportsReasoning. This covers
+// ids the registry doesn't carry: gateway dot-slugs and offline.
 const REASONING_PREFIXES: Record<string, string[]> = {
   anthropic: [
     "claude-opus-4",
@@ -20,19 +19,18 @@ const REASONING_PREFIXES: Record<string, string[]> = {
   deepseek: ["deepseek-reasoner", "deepseek-r"],
 };
 
-// Both custom ("provider/<native-id>", dashes) and gateway ("provider/model"
-// slug, dots) split on the first "/". The native id keeps any remaining dots.
-function splitModel(modelId: string): { provider: string; id: string } {
-  const provider = providerOf(modelId);
-  const i = modelId.indexOf("/");
-  return { provider, id: i === -1 ? modelId : modelId.slice(i + 1) };
-}
-
-function isReasoningModel(provider: string, id: string): boolean {
+/** Family-allowlist reasoning check — the fallback when the registry lacks an id. */
+export function isReasoningFamily(provider: string, id: string): boolean {
   const prefixes = REASONING_PREFIXES[provider];
   if (!prefixes) return false;
   const lid = id.toLowerCase();
   return prefixes.some((p) => lid.startsWith(p));
+}
+
+function splitModel(modelId: string): { provider: string; id: string } {
+  const provider = providerOf(modelId);
+  const i = modelId.indexOf("/");
+  return { provider, id: i === -1 ? modelId : modelId.slice(i + 1) };
 }
 
 type Level = Exclude<ReasoningEffort, "off">;
@@ -52,21 +50,22 @@ const GOOGLE_BUDGET: Record<Level, number> = {
 
 /**
  * Provider-keyed reasoning `providerOptions` for the AGENT turn, or undefined
- * when reasoning is off, the model isn't reasoning-capable, or the provider has
- * no knob. Shared by `custom` and `gateway` (the gateway forwards
- * providerOptions untouched). `compatible` is endpoint-dependent — the endpoint
- * may ignore or reject `reasoning_effort`, and capability can't be detected — so
- * it's left to per-endpoint opt-in and returns undefined here.
+ * when off / the model isn't reasoning-capable / no provider knob. `capable` is
+ * the registry-backed capability for this model (see modelSupportsReasoning);
+ * gating lives with the caller so this stays a pure, synchronous mapper. Shared
+ * by custom + gateway (the gateway forwards providerOptions untouched);
+ * compatible is endpoint-specific and opt-in, so it returns undefined.
  */
 export function reasoningOptionsFor(
   mode: ConnectionMode,
   modelId: string,
   effort: ReasoningEffort,
+  capable: boolean,
 ): Record<string, unknown> | undefined {
   if (effort === "off") return undefined;
   if (mode === "compatible") return undefined;
-  const { provider, id } = splitModel(modelId);
-  if (!isReasoningModel(provider, id)) return undefined;
+  if (!capable) return undefined;
+  const { provider } = splitModel(modelId);
 
   switch (provider) {
     case "anthropic":
