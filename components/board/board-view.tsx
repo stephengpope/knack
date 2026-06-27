@@ -93,7 +93,8 @@ export function BoardView({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<KanbanStatus | null>(null);
   const [isCreating, setIsCreating] = useState(false);
-  // Which status columns are shown. Default hides Done; persisted to localStorage.
+  // Which statuses show their cards (every column always renders as a drop
+  // target). Default hides Done's cards; persisted to localStorage.
   // SSR renders the default; the saved value is read on mount (an external store),
   // which is why this stays an effect rather than a lazy initializer.
   const [visible, setVisible] = useState<KanbanStatus[]>(DEFAULT_VISIBLE);
@@ -280,9 +281,9 @@ export function BoardView({
       {/* columns */}
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-3.5">
         <div className="flex h-full min-w-max items-stretch gap-3.5">
-          {KANBAN_STATUSES.filter((status) => visible.includes(status)).map(
-            (status) => {
+          {KANBAN_STATUSES.map((status) => {
             const col = filtered.filter((c) => c.kanbanStatus === status);
+            const shown = visible.includes(status);
             return (
               <div
                 key={status}
@@ -329,25 +330,32 @@ export function BoardView({
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-2.5 overflow-y-auto px-2.5 pb-3 pt-0.5">
-                  {col.map((c) => (
-                    <CardChip
-                      key={c.id}
-                      card={c}
-                      onClick={() => setOpenId(c.id)}
-                      onDragStart={() => setDraggingId(c.id)}
-                      onDragEnd={() => setDraggingId(null)}
-                    />
-                  ))}
-                  {col.length === 0 && (
+                  {shown ? (
+                    <>
+                      {col.map((c) => (
+                        <CardChip
+                          key={c.id}
+                          card={c}
+                          onClick={() => setOpenId(c.id)}
+                          onDragStart={() => setDraggingId(c.id)}
+                          onDragEnd={() => setDraggingId(null)}
+                        />
+                      ))}
+                      {col.length === 0 && (
+                        <div className="flex flex-1 items-center justify-center rounded-md border border-dashed px-2.5 py-4 text-center text-xs text-ink-faint">
+                          Nothing here
+                        </div>
+                      )}
+                    </>
+                  ) : (
                     <div className="flex flex-1 items-center justify-center rounded-md border border-dashed px-2.5 py-4 text-center text-xs text-ink-faint">
-                      Nothing here
+                      {col.length} {col.length === 1 ? "card" : "cards"} hidden
                     </div>
                   )}
                 </div>
               </div>
             );
-            },
-          )}
+          })}
         </div>
       </div>
 
