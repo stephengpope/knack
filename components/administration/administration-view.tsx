@@ -29,7 +29,7 @@ import {
   providerOf,
   type ProviderId,
 } from "@/lib/providers";
-import type { Settings, SmtpSettings } from "@/lib/settings";
+import type { Settings, SmtpSettings, ReasoningEffort } from "@/lib/settings";
 import type { EndpointInfo } from "@/lib/endpoints";
 import type { GlobalSecretSummary } from "@/lib/global-secrets";
 import { GlobalSecretsTab } from "@/components/administration/global-secrets-tab";
@@ -41,6 +41,7 @@ import {
   setDefaultModelAction,
   setGeneralModelAction,
   setMaxOutputTokensAction,
+  setAgentReasoningAction,
   refreshModelsAction,
   addEndpointAction,
   deleteEndpointAction,
@@ -322,6 +323,49 @@ function ModelsTab({
         </>
       )}
       <MaxOutputTokensField maxOutputTokens={settings.maxOutputTokens} />
+      <ReasoningField effort={settings.agentReasoning} />
+    </>
+  );
+}
+
+// Agent reasoning/thinking depth. Applied only to reasoning-capable models
+// (Anthropic, OpenAI, xAI, Google, DeepSeek reasoner families) — a no-op on
+// models that don't support it. "Off" sends no reasoning options.
+function ReasoningField({ effort }: { effort: ReasoningEffort }) {
+  const [busy, setBusy] = useState(false);
+  const options: ReasoningEffort[] = ["off", "low", "medium", "high", "max"];
+
+  async function set(next: ReasoningEffort) {
+    if (next === effort || busy) return;
+    setBusy(true);
+    try {
+      await setAgentReasoningAction(next);
+      toast.success(
+        next === "off"
+          ? "Agent reasoning off"
+          : `Agent reasoning: ${next}`,
+      );
+    } catch {
+      toast.error("Could not save reasoning setting");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <SectionLabel className="mt-7">Agent reasoning</SectionLabel>
+      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+        Extended thinking depth for the agent. Only applies to reasoning-capable
+        models — ignored on models that don&apos;t support it.
+      </p>
+      <div className="inline-flex rounded-md border border-input bg-muted/50 p-0.5">
+        {options.map((o) => (
+          <ToggleBtn key={o} active={o === effort} onClick={() => set(o)}>
+            {o === "off" ? "Off" : o[0].toUpperCase() + o.slice(1)}
+          </ToggleBtn>
+        ))}
+      </div>
     </>
   );
 }

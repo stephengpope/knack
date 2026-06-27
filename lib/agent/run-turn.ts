@@ -32,6 +32,7 @@ import { buildAgentTools } from "@/lib/agent/tools";
 import { runImprovementReview } from "@/lib/agent/skill-review";
 import { cloneUrlWithToken } from "@/lib/github";
 import { getAppSettings } from "@/lib/settings";
+import { reasoningOptionsFor } from "@/lib/reasoning";
 import { prepareForModel, inlineCapsFor } from "@/lib/attachments/model";
 import {
   materializeAttachments,
@@ -111,7 +112,20 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
     skillReviewEnabled,
     skillReviewInterval,
     maxOutputTokens,
+    agentReasoning,
   } = await getAppSettings();
+
+  // Reasoning/thinking options for the agent turn (custom + gateway; gated to
+  // reasoning-capable models). Merged into providerOptions for the ToolLoopAgent
+  // ONLY — title gen, supervisor verify, and task-helper keep thinking off.
+  const reasoningOpts = reasoningOptionsFor(
+    connectionMode,
+    modelId,
+    agentReasoning,
+  );
+  const agentProviderOptions = reasoningOpts
+    ? { ...(providerOptions ?? {}), ...reasoningOpts }
+    : providerOptions;
   const inlineCaps = inlineCapsFor(connectionMode, modelId);
 
   // Ensure the chat exists and is owned by this user (created on first message).
@@ -316,7 +330,7 @@ export async function runAgentTurn(params: RunAgentTurnParams) {
     // model's ceiling (e.g. 128k), reserving it against the provider's OTPM
     // limit every turn. The SDK clamps this down to each model's real max.
     maxOutputTokens,
-    providerOptions, // request-scoped provider options, when the mode sets any
+    providerOptions: agentProviderOptions, // BYOK/gateway opts + agent reasoning
     instructions, // base prompt, plus project repo context when the chat has one
     tools: activeTools,
     onFinish: (event) => {

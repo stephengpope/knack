@@ -8,7 +8,9 @@ import {
   setDefaultModel,
   setGeneralModel,
   setMaxOutputTokens,
+  setAgentReasoning,
   setRetentionDays,
+  type ReasoningEffort,
   setSkillReviewConfig,
   setVoiceKey,
   deleteVoiceKey,
@@ -104,6 +106,23 @@ export async function setMaxOutputTokensAction(tokens: number) {
     throw new Error("Max output tokens must be a whole number of at least 256");
   }
   await setMaxOutputTokens(tokens);
+  revalidatePath("/administration");
+}
+
+const REASONING_EFFORTS: ReasoningEffort[] = [
+  "off",
+  "low",
+  "medium",
+  "high",
+  "max",
+];
+
+export async function setAgentReasoningAction(effort: ReasoningEffort) {
+  await requireAdmin();
+  if (!REASONING_EFFORTS.includes(effort)) {
+    throw new Error("Invalid reasoning effort");
+  }
+  await setAgentReasoning(effort);
   revalidatePath("/administration");
 }
 

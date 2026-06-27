@@ -7,6 +7,11 @@ import { encrypt, decrypt } from "@/lib/crypto";
 
 export type ConnectionMode = "gateway" | "custom" | "compatible";
 
+// Agent reasoning/thinking depth. "off" = no reasoning; the rest map to each
+// provider's effort knob (see lib/reasoning.ts). Gated to reasoning-capable
+// models, so it's a no-op on models that don't support it.
+export type ReasoningEffort = "off" | "low" | "medium" | "high" | "max";
+
 export type Settings = {
   connectionMode: ConnectionMode;
   defaultModel: string;
@@ -17,6 +22,8 @@ export type Settings = {
   maxTokensPerCard: number;
   // Output token cap for the AI Agent, always applied (see schema note).
   maxOutputTokens: number;
+  // Agent reasoning depth (gated to reasoning-capable models).
+  agentReasoning: ReasoningEffort;
   // Chat retention window (days). 0 = disabled (keep forever).
   retentionDays: number;
   // Self-improvement skill review: master switch + step-count threshold per chat.
@@ -37,6 +44,7 @@ const FALLBACK: Settings = {
   maxRounds: 25,
   maxTokensPerCard: 2_000_000,
   maxOutputTokens: 16384,
+  agentReasoning: "medium",
   retentionDays: 7,
   skillReviewEnabled: true,
   skillReviewInterval: 10,
@@ -59,6 +67,8 @@ export async function getAppSettings(): Promise<Settings> {
     maxRounds: row.maxRounds ?? FALLBACK.maxRounds,
     maxTokensPerCard: row.maxTokensPerCard ?? FALLBACK.maxTokensPerCard,
     maxOutputTokens: row.maxOutputTokens ?? FALLBACK.maxOutputTokens,
+    agentReasoning:
+      (row.agentReasoning as ReasoningEffort) ?? FALLBACK.agentReasoning,
     retentionDays: row.retentionDays ?? 7,
     skillReviewEnabled: row.skillReviewEnabled ?? FALLBACK.skillReviewEnabled,
     skillReviewInterval: row.skillReviewInterval ?? FALLBACK.skillReviewInterval,
@@ -78,6 +88,7 @@ async function upsert(patch: Partial<Settings>) {
       defaultModel: next.defaultModel,
       generalModel: next.generalModel,
       maxOutputTokens: next.maxOutputTokens,
+      agentReasoning: next.agentReasoning,
       retentionDays: next.retentionDays,
       skillReviewEnabled: next.skillReviewEnabled,
       skillReviewInterval: next.skillReviewInterval,
@@ -89,6 +100,7 @@ async function upsert(patch: Partial<Settings>) {
         defaultModel: next.defaultModel,
         generalModel: next.generalModel,
         maxOutputTokens: next.maxOutputTokens,
+        agentReasoning: next.agentReasoning,
         retentionDays: next.retentionDays,
         skillReviewEnabled: next.skillReviewEnabled,
         skillReviewInterval: next.skillReviewInterval,
@@ -118,6 +130,11 @@ export async function setRetentionDays(days: number) {
 /** Output token cap for the AI Agent (always applied). */
 export async function setMaxOutputTokens(tokens: number) {
   await upsert({ maxOutputTokens: tokens });
+}
+
+/** Agent reasoning depth (gated to reasoning-capable models). */
+export async function setAgentReasoning(effort: ReasoningEffort) {
+  await upsert({ agentReasoning: effort });
 }
 
 /** Self-improvement skill review config: master switch + step-count threshold. */

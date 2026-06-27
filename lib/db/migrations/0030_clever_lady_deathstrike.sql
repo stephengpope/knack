@@ -1,0 +1,1 @@
+ALTER TABLE "app_settings" ADD COLUMN "agent_reasoning" text DEFAULT 'medium' NOT NULL;

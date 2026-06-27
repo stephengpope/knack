@@ -283,6 +283,10 @@ export const appSettings = pgTable("app_settings", {
   // it down to each model's real max, so it's safe across providers. 16384
   // matches the pi-coding-agent default.
   maxOutputTokens: integer("max_output_tokens").default(16384).notNull(),
+  // Agent reasoning/thinking depth: 'off' | 'low' | 'medium' | 'high' | 'max'.
+  // Mapped to each provider's effort knob (lib/reasoning.ts) and gated to
+  // reasoning-capable models, so it's a no-op on models that don't support it.
+  agentReasoning: text("agent_reasoning").default("medium").notNull(),
   // Chat retention window (days). Unstarred chats not used (updatedAt) within
   // this window are swept daily by the cron tick. 0 = disabled (keep forever).
   retentionDays: integer("retention_days").default(7).notNull(),
