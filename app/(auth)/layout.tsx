@@ -14,9 +14,9 @@ export default async function AuthLayout({
     <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-12">
       <div className="mb-8 flex items-center gap-2">
         <Logomark size={32} />
-        <span className="text-2xl font-extrabold tracking-[-0.03em]">Knack</span>
+        <span className="text-2xl font-extrabold tracking-display">Knack</span>
       </div>
-      <div className="w-full max-w-[400px]">{children}</div>
+      <div className="w-full max-w-100">{children}</div>
       <p className="mt-8 text-xs text-ink-faint">Your AI agent.</p>
     </div>
   );

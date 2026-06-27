@@ -25,7 +25,7 @@ export function GlobalSecretsTab({
 
   return (
     <div className="flex flex-col gap-8">
-      <p className="text-[13px] text-ink-soft">
+      <p className="text-sm text-ink-soft">
         Global tokens are set once here and cascade to every user. A user who sets
         the same token name in their own Secrets overrides the global for them.
         Values are encrypted at rest — only the last 4 characters are shown.
@@ -34,7 +34,7 @@ export function GlobalSecretsTab({
       {/* Built-in tokens */}
       <section className="flex flex-col gap-3">
         <SectionLabel>Built-in tokens</SectionLabel>
-        <p className="-mt-1 text-[12px] text-ink-soft">
+        <p className="-mt-1 text-xs text-ink-soft">
           Known token names the system and built-in skills look for. Optional —
           set one to provide it for all users.
         </p>
@@ -71,7 +71,7 @@ export function GlobalSecretsTab({
             <OtherRow key={g.name} secret={g} />
           ))}
           {others.length === 0 && !adding && (
-            <p className="rounded-xl border border-dashed border-input px-4 py-5 text-center text-[13px] text-ink-soft">
+            <p className="rounded-xl border border-dashed border-input px-4 py-5 text-center text-sm text-ink-soft">
               No custom global tokens yet.
             </p>
           )}
@@ -127,19 +127,19 @@ function BuiltinRow({
   return (
     <div>
       <div className="mb-1 flex items-baseline justify-between px-1">
-        <span className="font-mono text-[12.5px] font-bold">{name}</span>
-        <span className="text-[12px] text-ink-soft">{label}</span>
+        <span className="font-mono text-xs font-bold">{name}</span>
+        <span className="text-xs text-ink-soft">{label}</span>
       </div>
       <div
         className={cn(
           "flex items-center gap-2 rounded-xl border bg-muted/50 py-1.5 pl-3.5 pr-1.5",
-          last4 ? "border-[#1B9C5D]/40" : "border-input",
+          last4 ? "border-success/40" : "border-input",
         )}
       >
         <KeyRound
           className={cn(
             "size-4 shrink-0",
-            last4 ? "text-[#1B9C5D]" : "text-ink-faint",
+            last4 ? "text-success" : "text-ink-faint",
           )}
         />
         <input
@@ -153,10 +153,10 @@ function BuiltinRow({
           }
           onKeyDown={(e) => e.key === "Enter" && save()}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-ink-faint"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-ink-faint"
         />
         {last4 && !value && (
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(27,156,93,.13)] px-2 py-1 text-[11px] font-bold text-[#1B9C5D]">
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-bold text-success">
             <Check className="size-3" strokeWidth={3} /> Saved
           </span>
         )}
@@ -165,7 +165,7 @@ function BuiltinRow({
             onClick={remove}
             disabled={busy}
             title="Remove token"
-            className="flex size-8 shrink-0 items-center justify-center rounded-[9px] text-ink-faint transition-colors hover:bg-background hover:text-foreground"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-background hover:text-foreground"
           >
             <Trash2 className="size-4" />
           </button>
@@ -173,12 +173,12 @@ function BuiltinRow({
         <Button
           onClick={save}
           disabled={busy || !value.trim()}
-          className="knack-gradient h-8 shrink-0 rounded-[9px] px-4 text-[13px] font-semibold text-white"
+          className="knack-gradient h-8 shrink-0 rounded-md px-4 text-sm font-semibold text-white"
         >
           {busy ? <Spinner /> : "Save"}
         </Button>
       </div>
-      <div className="mt-1.5 px-1 text-[12px] text-ink-soft">
+      <div className="mt-1.5 px-1 text-xs text-ink-soft">
         {hint}{" "}
         <a
           href={url}
@@ -211,16 +211,16 @@ function OtherRow({ secret }: { secret: GlobalSecretSummary }) {
     <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
       <KeyRound className="size-4 shrink-0 text-ink-faint" />
       <div className="min-w-0 flex-1">
-        <div className="truncate font-mono text-[13px] font-bold">
+        <div className="truncate font-mono text-sm font-bold">
           {secret.name}
         </div>
         {secret.description && (
-          <div className="truncate text-[12px] text-ink-soft">
+          <div className="truncate text-xs text-ink-soft">
             {secret.description}
           </div>
         )}
       </div>
-      <span className="text-[13px] text-ink-faint">••••{secret.last4}</span>
+      <span className="text-sm text-ink-faint">••••{secret.last4}</span>
       <Button
         variant="ghost"
         size="icon-sm"
@@ -302,7 +302,7 @@ function SectionLabel({
   return (
     <div
       className={cn(
-        "mb-1 text-[12px] font-bold uppercase tracking-wide text-ink-faint",
+        "mb-1 text-xs font-bold uppercase tracking-wide text-ink-faint",
         className,
       )}
     >

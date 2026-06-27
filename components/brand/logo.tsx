@@ -37,7 +37,7 @@ export function Wordmark({
   return (
     <div className={cn("flex items-center gap-2", className)}>
       <Logomark size={size} />
-      <span className="text-[19px] font-extrabold tracking-[-0.03em]">Knack</span>
+      <span className="text-xl font-extrabold tracking-display">Knack</span>
     </div>
   );
 }

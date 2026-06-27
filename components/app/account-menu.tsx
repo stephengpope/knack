@@ -53,11 +53,11 @@ export function AccountMenu({
   return (
     <div className="border-t border-border p-3.5">
       <DropdownMenu>
-        <DropdownMenuTrigger className="flex w-full items-center gap-[11px] rounded-xl p-2 text-left transition-colors hover:bg-accent">
+        <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-accent">
           <Avatar name={user.name} image={user.image} />
           <div className="min-w-0 flex-1 text-left">
-            <div className="truncate text-[13.5px] font-bold">{user.name}</div>
-            <div className="text-[11.5px] text-ink-faint">
+            <div className="truncate text-sm font-bold">{user.name}</div>
+            <div className="text-xs text-ink-faint">
               {isAdmin ? "Admin" : "Member"}
             </div>
           </div>
@@ -66,16 +66,16 @@ export function AccountMenu({
         <DropdownMenuContent
           side="top"
           align="start"
-          className="w-[244px]"
+          className="w-61"
           sideOffset={8}
         >
           <DropdownMenuLabel className="flex items-center gap-2.5 py-2">
             <Avatar name={user.name} image={user.image} size={38} />
             <div className="min-w-0">
-              <div className="truncate text-[13.5px] font-bold">
+              <div className="truncate text-sm font-bold">
                 {user.name}
               </div>
-              <div className="truncate text-[12px] text-ink-faint">
+              <div className="truncate text-xs text-ink-faint">
                 {user.email}
               </div>
             </div>
@@ -83,30 +83,30 @@ export function AccountMenu({
 
           {/* theme toggle */}
           <div className="flex items-center gap-2.5 px-2 py-2">
-            <span className="flex-1 text-[13.5px] font-semibold">Theme</span>
-            <div className="flex rounded-[9px] border border-input bg-muted p-0.5">
+            <span className="flex-1 text-sm font-semibold">Theme</span>
+            <div className="flex rounded-md border border-input bg-muted p-0.5">
               <ThemeBtn
                 active={theme !== "dark"}
                 onClick={() => setTheme("light")}
               >
-                <Sun className="size-[13px]" /> Light
+                <Sun className="size-3.5" /> Light
               </ThemeBtn>
               <ThemeBtn
                 active={theme === "dark"}
                 onClick={() => setTheme("dark")}
               >
-                <Moon className="size-[13px]" /> Dark
+                <Moon className="size-3.5" /> Dark
               </ThemeBtn>
             </div>
           </div>
           <DropdownMenuSeparator />
 
           <DropdownMenuItem onClick={() => router.push("/settings")}>
-            <Settings className="size-[15px]" /> User Settings
+            <Settings className="size-4" /> User Settings
           </DropdownMenuItem>
           {isAdmin && (
             <DropdownMenuItem onClick={() => router.push("/administration")}>
-              <ShieldCheck className="size-[15px]" /> Administration
+              <ShieldCheck className="size-4" /> Administration
             </DropdownMenuItem>
           )}
           <DropdownMenuItem asChild>
@@ -115,12 +115,12 @@ export function AccountMenu({
               target="_blank"
               rel="noreferrer"
             >
-              <LifeBuoy className="size-[15px]" /> Help & support
+              <LifeBuoy className="size-4" /> Help & support
             </a>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={logout}>
-            <LogOut className="size-[15px]" /> Log out
+            <LogOut className="size-4" /> Log out
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -145,14 +145,14 @@ function Avatar({
         width={size}
         height={size}
         unoptimized
-        className="shrink-0 rounded-[11px] object-cover"
+        className="shrink-0 rounded-lg object-cover"
         style={{ width: size, height: size }}
       />
     );
   }
   return (
     <div
-      className="knack-gradient flex shrink-0 items-center justify-center rounded-[11px] font-extrabold text-white"
+      className="knack-gradient flex shrink-0 items-center justify-center rounded-lg font-extrabold text-white"
       style={{ width: size, height: size, fontSize: size * 0.4 }}
     >
       {initials(name)}
@@ -173,7 +173,7 @@ function ThemeBtn({
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-[7px] px-[9px] py-[5px] text-[12px] font-bold transition-colors",
+        "flex items-center gap-1.5 rounded-sm px-2.5 py-1.5 text-xs font-bold transition-colors",
         active
           ? "bg-background text-accent-text shadow-sm"
           : "text-ink-soft",

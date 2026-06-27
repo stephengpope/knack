@@ -60,11 +60,11 @@ export function ModelPicker({
             style={{ background: providerAccent(model) }}
           />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[13.5px] font-bold">
+            <span className="block truncate text-sm font-bold">
               {currentLabel}
             </span>
             {model.includes("/") && (
-              <span className="block truncate font-mono text-[11.5px] text-ink-soft">
+              <span className="block truncate font-mono text-xs text-ink-soft">
                 {model}
               </span>
             )}
@@ -74,14 +74,14 @@ export function ModelPicker({
           </span>
         </PopoverTrigger>
       ) : (
-        <PopoverTrigger className="flex items-center gap-1.5 text-[13px] font-semibold text-ink-soft outline-none transition-colors hover:text-foreground">
+        <PopoverTrigger className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft outline-none transition-colors hover:text-foreground">
           {currentLabel}
           <ChevronDown className="size-3.5" strokeWidth={2.2} />
         </PopoverTrigger>
       )}
       <PopoverContent
         align={variant === "field" ? "start" : "end"}
-        className={variant === "field" ? "w-[420px] p-0" : "w-[300px] p-0"}
+        className={variant === "field" ? "w-105 p-0" : "w-75 p-0"}
       >
         <Command shouldFilter>
           <CommandInput
@@ -103,11 +103,11 @@ export function ModelPicker({
                       className="size-2 shrink-0 rounded-full"
                       style={{ background: providerAccent(m.id) }}
                     />
-                    <span className="min-w-0 flex-1 truncate text-[13.5px]">
+                    <span className="min-w-0 flex-1 truncate text-sm">
                       {m.label}
                     </span>
                     {model === m.id && (
-                      <Check className="size-[14px] shrink-0 text-primary" />
+                      <Check className="size-3.5 shrink-0 text-primary" />
                     )}
                   </CommandItem>
                 ))}

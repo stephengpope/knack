@@ -104,10 +104,10 @@ export function SmtpTab({ smtp }: { smtp: SmtpSettings }) {
 
   return (
     <>
-      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+      <h1 className="font-heading text-3xl font-bold tracking-snug">
         Email
       </h1>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
+      <p className="mt-1 text-sm text-ink-soft">
         Connect an SMTP server to send password-reset and invite emails. When
         disabled, invites surface a copyable link and the “Forgot password?” link
         is hidden.
@@ -119,15 +119,15 @@ export function SmtpTab({ smtp }: { smtp: SmtpSettings }) {
           className={cn(
             "flex size-8 shrink-0 items-center justify-center rounded-full",
             enabled
-              ? "bg-[rgba(27,156,93,.13)] text-[#1B9C5D]"
+              ? "bg-success-soft text-success"
               : "bg-muted text-ink-faint",
           )}
         >
-          <Mail className="size-[17px]" />
+          <Mail className="size-4" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[13.5px] font-bold">Email sending</div>
-          <div className="text-[12px] text-ink-soft">
+          <div className="text-sm font-bold">Email sending</div>
+          <div className="text-xs text-ink-soft">
             {enabled
               ? "Reset and invite emails are delivered via SMTP."
               : "Email is off — links must be shared manually."}
@@ -158,7 +158,7 @@ export function SmtpTab({ smtp }: { smtp: SmtpSettings }) {
             />
           </Field>
           <Field label="Encryption">
-            <div className="inline-flex rounded-[10px] border border-input bg-muted/50 p-0.5">
+            <div className="inline-flex rounded-md border border-input bg-muted/50 p-0.5">
               <SegBtn active={!secure} onClick={() => setEncryption(false)}>
                 STARTTLS
               </SegBtn>
@@ -229,7 +229,7 @@ export function SmtpTab({ smtp }: { smtp: SmtpSettings }) {
             variant="ghost"
             onClick={clear}
             disabled={busy || testing}
-            className="ml-auto h-9 px-3 text-[13px] font-semibold text-ink-soft hover:text-foreground"
+            className="ml-auto h-9 px-3 text-sm font-semibold text-ink-soft hover:text-foreground"
           >
             Clear
           </Button>
@@ -248,7 +248,7 @@ function Field({
 }) {
   return (
     <div className="grid gap-1.5">
-      <label className="text-[12.5px] font-semibold text-ink-soft">
+      <label className="text-xs font-semibold text-ink-soft">
         {label}
       </label>
       {children}
@@ -270,7 +270,7 @@ function SegBtn({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition-colors",
+        "flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-semibold transition-colors",
         active
           ? "bg-card text-foreground shadow-sm"
           : "text-ink-soft hover:text-foreground",
@@ -292,7 +292,7 @@ function SectionLabel({
   return (
     <div
       className={cn(
-        "mb-3 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-faint",
+        "mb-3 text-xs font-bold uppercase tracking-label text-ink-faint",
         className,
       )}
     >

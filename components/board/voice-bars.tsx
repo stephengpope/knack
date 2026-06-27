@@ -41,13 +41,13 @@ export function VoiceBars({
   return (
     <div
       ref={barsRef}
-      className="flex items-center justify-center gap-[2px]"
+      className="flex items-center justify-center gap-0.5"
       style={{ width: 16, height: 16 }}
     >
       {Array.from({ length: BAR_COUNT }, (_, i) => (
         <div
           key={i}
-          className="w-[2px] rounded-full bg-current"
+          className="w-0.5 rounded-full bg-current"
           style={{ height: 3, transition: "height 80ms ease-out" }}
         />
       ))}

@@ -36,7 +36,7 @@ export function GitCommitBadge({
       }
       title={fresh ? "Synced — view this commit" : "View repository on GitHub"}
       className={cn(
-        "ml-1 inline-flex shrink-0 items-center rounded-[3px] border px-1.5 py-0.5 font-mono text-[11px] font-medium transition-colors",
+        "ml-1 inline-flex shrink-0 items-center rounded-xs border px-1.5 py-0.5 font-mono text-xs font-medium transition-colors",
         fresh
           ? "border-green-700/40 bg-green-600/10 text-green-700 hover:bg-green-600/20 dark:border-green-500/40 dark:text-green-400"
           : "border-border bg-muted/40 text-muted-foreground hover:bg-muted/70",

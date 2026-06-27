@@ -72,7 +72,7 @@ export function KnackLoader({
         />
       </div>
       {label && (
-        <div className="text-[14px] font-semibold tracking-[-0.01em] text-ink-soft">
+        <div className="text-sm font-semibold tracking-snug text-ink-soft">
           {label}
         </div>
       )}

@@ -201,10 +201,10 @@ export function BoardView({
   return (
     <div className="flex h-full min-h-0 flex-col bg-muted/40">
       {/* header */}
-      <div className="flex h-[58px] shrink-0 items-center gap-3 border-b px-5">
-        <h1 className="text-[19px] font-extrabold tracking-tight">Board</h1>
+      <div className="flex h-15 shrink-0 items-center gap-3 border-b px-5">
+        <h1 className="text-xl font-extrabold tracking-tight">Board</h1>
         {running > 0 && (
-          <span className="flex items-center gap-1.5 rounded-full bg-sidebar-accent px-2.5 py-1 text-[11.5px] font-bold text-accent-text">
+          <span className="flex items-center gap-1.5 rounded-full bg-sidebar-accent px-2.5 py-1 text-xs font-bold text-accent-text">
             <span className="size-1.5 animate-pulse rounded-full bg-primary" />
             {running} running
           </span>
@@ -212,7 +212,7 @@ export function BoardView({
         <div className="ml-auto flex items-center gap-2">
           {projects.length > 0 && (
             <Select value={projectFilter} onValueChange={setProjectFilter}>
-              <SelectTrigger className="h-9 w-[180px]">
+              <SelectTrigger className="h-9 w-45">
                 <SelectValue placeholder="All projects" />
               </SelectTrigger>
               <SelectContent>
@@ -231,13 +231,13 @@ export function BoardView({
                 <ListFilter className="size-4" />
                 Status
                 {hiddenCount > 0 && (
-                  <span className="rounded-full bg-muted px-1.5 text-[11px] font-bold text-ink-faint">
+                  <span className="rounded-full bg-muted px-1.5 text-xs font-bold text-ink-faint">
                     {visible.length}/{KANBAN_STATUSES.length}
                   </span>
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-[200px]">
+            <DropdownMenuContent align="end" className="w-50">
               <DropdownMenuLabel>Show statuses</DropdownMenuLabel>
               {KANBAN_STATUSES.map((status) => (
                 <DropdownMenuCheckboxItem
@@ -295,7 +295,7 @@ export function BoardView({
                 }
                 onDrop={() => handleDrop(status)}
                 className={cn(
-                  "flex max-h-full w-[286px] shrink-0 flex-col rounded-[14px] border bg-background transition-colors",
+                  "flex max-h-full w-72 shrink-0 flex-col rounded-lg border bg-background transition-colors",
                   dragOver === status && "border-primary ring-2 ring-primary/30",
                 )}
               >
@@ -306,10 +306,10 @@ export function BoardView({
                       STATUS_META[status].dot,
                     )}
                   />
-                  <span className="text-[13px] font-bold">
+                  <span className="text-sm font-bold">
                     {STATUS_META[status].label}
                   </span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11.5px] font-bold text-ink-faint">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-ink-faint">
                     {col.length}
                   </span>
                   {status === "todo" && (
@@ -339,7 +339,7 @@ export function BoardView({
                     />
                   ))}
                   {col.length === 0 && (
-                    <div className="flex flex-1 items-center justify-center rounded-[10px] border border-dashed px-2.5 py-4 text-center text-[12px] text-ink-faint">
+                    <div className="flex flex-1 items-center justify-center rounded-md border border-dashed px-2.5 py-4 text-center text-xs text-ink-faint">
                       Nothing here
                     </div>
                   )}
@@ -385,7 +385,7 @@ function CardChip({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
-        "cursor-grab rounded-[12px] border bg-background p-3 text-left transition-colors hover:border-primary active:cursor-grabbing",
+        "cursor-grab rounded-lg border bg-background p-3 text-left transition-colors hover:border-primary active:cursor-grabbing",
         card.kanbanStatus === "blocked" && "border-red-500/30",
       )}
     >
@@ -398,11 +398,11 @@ function CardChip({
             <Shield className="size-3" strokeWidth={2.4} />
           </span>
         )}
-        <span className="ml-auto text-[11px] font-semibold text-ink-faint">
+        <span className="ml-auto text-xs font-semibold text-ink-faint">
           {ref(card)}
         </span>
       </div>
-      <div className="mb-2 text-[13.5px] font-bold leading-snug">
+      <div className="mb-2 text-sm font-bold leading-snug">
         {card.title ?? "Untitled"}
       </div>
       {acTotal > 0 && (
@@ -413,12 +413,12 @@ function CardChip({
               style={{ width: `${Math.round((acDone / acTotal) * 100)}%` }}
             />
           </div>
-          <span className="text-[11px] font-bold text-ink-soft">
+          <span className="text-xs font-bold text-ink-soft">
             {acDone}/{acTotal} AC
           </span>
         </div>
       )}
-      <div className="flex items-center gap-2 text-[11px] font-semibold text-ink-soft">
+      <div className="flex items-center gap-2 text-xs font-semibold text-ink-soft">
         <RotateCw className="size-3" />
         iter {card.iteration}
       </div>
@@ -476,9 +476,9 @@ function CardDrawer({
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />
-      <aside className="fixed inset-y-0 right-0 z-50 flex w-[480px] max-w-[92vw] flex-col border-l bg-background shadow-2xl">
+      <aside className="fixed inset-y-0 right-0 z-50 flex w-120 max-w-[92vw] flex-col border-l bg-background shadow-2xl">
         <div className="flex items-center gap-2 border-b p-4">
-          <span className="text-[12px] font-semibold text-ink-faint">
+          <span className="text-xs font-semibold text-ink-faint">
             {ref(card)}
           </span>
           <div className="ml-auto flex items-center gap-1.5">
@@ -518,7 +518,7 @@ function CardDrawer({
           {projects.length > 0 && (
             <div>
               <Label>Project</Label>
-              <div className="mt-1.5 flex h-9 items-center rounded-[10px] border px-3">
+              <div className="mt-1.5 flex h-9 items-center rounded-md border px-3">
                 <ProjectPicker
                   value={card.projectId ?? ""}
                   onChange={(id) => onPatch({ projectId: id })}
@@ -553,12 +553,12 @@ function CardDrawer({
             </div>
             <div className="flex-1">
               <Label>Supervisor</Label>
-              <div className="mt-1.5 flex h-9 items-center gap-2.5 rounded-[10px] border px-3">
+              <div className="mt-1.5 flex h-9 items-center gap-2.5 rounded-md border px-3">
                 <Switch
                   checked={card.supervisorEnabled}
                   onCheckedChange={onToggleSupervise}
                 />
-                <span className="text-[13px] font-bold">
+                <span className="text-sm font-bold">
                   {card.supervisorEnabled ? "On" : "Off"}
                 </span>
               </div>
@@ -566,7 +566,7 @@ function CardDrawer({
           </div>
 
           {card.blockedReason && (
-            <div className="rounded-[10px] border border-red-500/30 bg-red-500/5 p-3 text-[12.5px] text-red-600">
+            <div className="rounded-md border border-red-500/30 bg-red-500/5 p-3 text-xs text-red-600">
               <span className="font-bold">Blocked:</span> {card.blockedReason}
             </div>
           )}
@@ -622,9 +622,9 @@ function CardDrawer({
             onChange={(items) => onPatch({ acceptanceCriteria: items })}
           />
 
-          <div className="rounded-[12px] border p-4">
+          <div className="rounded-lg border p-4">
             <Label>Loop bookkeeping</Label>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-[13px]">
+            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
               <Stat label="Iteration" value={String(card.iteration)} />
               <Stat
                 label="Tests"
@@ -665,7 +665,7 @@ function CardDrawer({
         <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-5xl">
           <DialogHeader className="shrink-0 border-b pb-3">
             <DialogTitle className="flex items-center gap-2 text-lg">
-              <Shield className="size-[18px] text-green-600" />
+              <Shield className="size-5 text-green-600" />
               Supervisor Logs · {ref(card)}
             </DialogTitle>
           </DialogHeader>
@@ -712,7 +712,7 @@ function Checklist({
     <div>
       <div className="flex items-center gap-2">
         <Label>{label}</Label>
-        <span className="text-[11px] font-bold text-ink-soft">
+        <span className="text-xs font-bold text-ink-soft">
           {done}/{items.length}
         </span>
       </div>
@@ -720,7 +720,7 @@ function Checklist({
         {items.map((item, i) => (
           <div
             key={i}
-            className="flex items-start gap-2.5 rounded-[10px] border bg-card px-3 py-2.5"
+            className="flex items-start gap-2.5 rounded-md border bg-card px-3 py-2.5"
           >
             <button
               onClick={() =>
@@ -731,7 +731,7 @@ function Checklist({
                 )
               }
               className={cn(
-                "mt-0.5 flex size-[18px] shrink-0 items-center justify-center rounded-md border",
+                "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border",
                 item.done ? "border-primary bg-primary" : "border-ink-faint",
               )}
             >
@@ -739,7 +739,7 @@ function Checklist({
             </button>
             <span
               className={cn(
-                "flex-1 text-[12.5px] leading-snug",
+                "flex-1 text-xs leading-snug",
                 item.done && "text-ink-soft line-through",
               )}
             >
@@ -764,7 +764,7 @@ function Checklist({
           }
         }}
         placeholder={`Add ${label.toLowerCase()}…`}
-        className="mt-1.5 h-8 text-[12.5px]"
+        className="mt-1.5 h-8 text-xs"
       />
     </div>
   );
@@ -772,7 +772,7 @@ function Checklist({
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+    <div className="text-xs font-bold uppercase tracking-wide text-ink-faint">
       {children}
     </div>
   );
@@ -781,7 +781,7 @@ function Label({ children }: { children: React.ReactNode }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="mb-0.5 text-[11px] text-ink-soft">{label}</div>
+      <div className="mb-0.5 text-xs text-ink-soft">{label}</div>
       <div className="font-bold">{value}</div>
     </div>
   );

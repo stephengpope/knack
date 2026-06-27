@@ -119,10 +119,10 @@ export function SecretsTab({
 
   return (
     <>
-      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+      <h1 className="font-heading text-3xl font-bold tracking-snug">
         Secrets
       </h1>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
+      <p className="mt-1 text-sm text-ink-soft">
         API tokens and connected accounts your agent can use on your behalf.
       </p>
 
@@ -138,12 +138,12 @@ export function SecretsTab({
               <DialogTitle>Add secret</DialogTitle>
             </DialogHeader>
 
-            <div className="inline-flex rounded-[10px] border border-input bg-muted p-0.5">
+            <div className="inline-flex rounded-md border border-input bg-muted p-0.5">
               <SegBtn active={mode === "token"} onClick={() => setMode("token")}>
-                <KeyRound className="size-[14px]" /> Token
+                <KeyRound className="size-3.5" /> Token
               </SegBtn>
               <SegBtn active={mode === "oauth"} onClick={() => setMode("oauth")}>
-                <Link2 className="size-[14px]" /> OAuth
+                <Link2 className="size-3.5" /> OAuth
               </SegBtn>
             </div>
 
@@ -165,7 +165,7 @@ export function SecretsTab({
         <SectionLabel icon={Sparkles} count={BUILTIN_TOKENS.length}>
           Built-in
         </SectionLabel>
-        <p className="-mt-0.5 text-[12px] text-ink-soft">
+        <p className="-mt-0.5 text-xs text-ink-soft">
           Token names the system and built-in skills look for. Set your own, or use
           a shared value provided by an admin.
         </p>
@@ -188,7 +188,7 @@ export function SecretsTab({
           <SectionLabel icon={Globe} count={sharedGlobals.length}>
             Shared by admin
           </SectionLabel>
-          <p className="-mt-0.5 text-[12px] text-ink-soft">
+          <p className="-mt-0.5 text-xs text-ink-soft">
             Provided for everyone. Set your own value to override it just for you.
           </p>
           {sharedGlobals.map((g) => (
@@ -253,10 +253,10 @@ function SectionLabel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide text-ink-faint">
-      <Icon className="size-[13px]" />
+    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-ink-faint">
+      <Icon className="size-3.5" />
       {children}
-      <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10.5px] tabular-nums">
+      <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs tabular-nums">
         {count}
       </span>
     </div>
@@ -278,7 +278,7 @@ function SegBtn({
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-[8px] px-3.5 py-1.5 text-[13px] font-bold transition-colors",
+        "flex items-center gap-1.5 rounded-sm px-3.5 py-1.5 text-sm font-bold transition-colors",
         active
           ? "bg-background text-accent-text shadow-sm"
           : "text-ink-soft hover:text-foreground",
@@ -300,16 +300,16 @@ function Field({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-[12px] text-ink-soft">{label}</Label>
+      <Label className="text-xs text-ink-soft">{label}</Label>
       {children}
-      {hint && <p className="text-[11.5px] text-ink-faint">{hint}</p>}
+      {hint && <p className="text-xs text-ink-faint">{hint}</p>}
     </div>
   );
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-[12px] border border-dashed border-border px-4 py-6 text-center text-[13px] text-ink-faint">
+    <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-ink-faint">
       {children}
     </div>
   );
@@ -383,8 +383,8 @@ function ManagedTokenRow({
   return (
     <div>
       <div className="mb-1 flex items-center gap-2 px-1">
-        <span className="font-mono text-[12.5px] font-bold">{name}</span>
-        {label && <span className="text-[12px] text-ink-soft">{label}</span>}
+        <span className="font-mono text-xs font-bold">{name}</span>
+        {label && <span className="text-xs text-ink-soft">{label}</span>}
         <span className="ml-auto">
           {hasUser ? (
             <Pill tone="green">
@@ -400,13 +400,13 @@ function ManagedTokenRow({
       <div
         className={cn(
           "flex items-center gap-2 rounded-xl border bg-muted/50 py-1.5 pl-3.5 pr-1.5",
-          isSet ? "border-[#1B9C5D]/40" : "border-input",
+          isSet ? "border-success/40" : "border-input",
         )}
       >
         <KeyRound
           className={cn(
             "size-4 shrink-0",
-            isSet ? "text-[#1B9C5D]" : "text-ink-faint",
+            isSet ? "text-success" : "text-ink-faint",
           )}
         />
         <input
@@ -416,14 +416,14 @@ function ManagedTokenRow({
           placeholder={placeholder}
           onKeyDown={(e) => e.key === "Enter" && save()}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-ink-faint"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-ink-faint"
         />
         {hasUser && (
           <button
             onClick={clear}
             disabled={busy}
             title={hasGlobal ? "Clear your value (use the shared one)" : "Remove"}
-            className="flex size-8 shrink-0 items-center justify-center rounded-[9px] text-ink-faint transition-colors hover:bg-background hover:text-foreground"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-background hover:text-foreground"
           >
             <Trash2 className="size-4" />
           </button>
@@ -431,13 +431,13 @@ function ManagedTokenRow({
         <Button
           onClick={save}
           disabled={busy || !value.trim()}
-          className="knack-gradient h-8 shrink-0 rounded-[9px] px-4 text-[13px] font-semibold text-white"
+          className="knack-gradient h-8 shrink-0 rounded-md px-4 text-sm font-semibold text-white"
         >
           {busy ? <Spinner /> : hasGlobal && !hasUser ? "Override" : "Save"}
         </Button>
       </div>
       {(hint || url) && (
-        <div className="mt-1.5 px-1 text-[12px] text-ink-soft">
+        <div className="mt-1.5 px-1 text-xs text-ink-soft">
           {hint}{" "}
           {url && (
             <a
@@ -464,14 +464,14 @@ function Pill({
   children: React.ReactNode;
 }) {
   const cls = {
-    green: "bg-[rgba(27,156,93,.13)] text-[#1B9C5D]",
+    green: "bg-success-soft text-success",
     blue: "bg-blue-500/12 text-blue-600 dark:text-blue-400",
     muted: "bg-muted text-ink-soft",
   }[tone];
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide",
+        "rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wide",
         cls,
       )}
     >
@@ -495,7 +495,7 @@ function StatusBadge({ status }: { status: string | null }) {
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[11px] font-bold",
+        "rounded-full px-2 py-0.5 text-xs font-bold",
         map[status ?? "disconnected"] ?? map.disconnected,
       )}
     >
@@ -609,17 +609,17 @@ function StaticRow({
     }
   }
   return (
-    <div className="flex items-center gap-3 rounded-[12px] border border-border bg-card px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
       <KeyRound className="size-4 shrink-0 text-ink-faint" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13.5px] font-bold">{secret.name}</div>
+        <div className="truncate text-sm font-bold">{secret.name}</div>
         {secret.description && (
-          <div className="truncate text-[12px] text-ink-soft">
+          <div className="truncate text-xs text-ink-soft">
             {secret.description}
           </div>
         )}
       </div>
-      <span className="text-[13px] text-ink-faint">••••••••</span>
+      <span className="text-sm text-ink-faint">••••••••</span>
       <Button variant="ghost" size="icon-sm" onClick={remove} disabled={busy}>
         {busy ? <Spinner /> : <Trash2 className="size-4" />}
       </Button>
@@ -707,7 +707,7 @@ function ConnectionForm({
             </SelectContent>
           </Select>
           {selected?.hint && (
-            <p className="text-[11.5px] text-ink-faint">{selected.hint}</p>
+            <p className="text-xs text-ink-faint">{selected.hint}</p>
           )}
         </Field>
 
@@ -716,7 +716,7 @@ function ConnectionForm({
           hint="Register this exact URL in your provider's console"
         >
           <div className="flex items-center gap-2">
-            <Input readOnly value={redirectUri} className="text-[13px]" />
+            <Input readOnly value={redirectUri} className="text-sm" />
             <Button
               type="button"
               variant="outline"
@@ -755,7 +755,7 @@ function ConnectionForm({
                 value={authUrl}
                 onChange={(e) => setAuthUrl(e.target.value)}
                 placeholder="https://provider.com/oauth/authorize"
-                className="text-[13px]"
+                className="text-sm"
               />
             </Field>
             <Field label="Token URL">
@@ -763,7 +763,7 @@ function ConnectionForm({
                 value={tokenUrl}
                 onChange={(e) => setTokenUrl(e.target.value)}
                 placeholder="https://provider.com/oauth/token"
-                className="text-[13px]"
+                className="text-sm"
               />
             </Field>
           </>
@@ -783,7 +783,7 @@ function ConnectionForm({
             value={scopes}
             onChange={(e) => setScopes(e.target.value)}
             placeholder="openid email profile"
-            className="text-[13px]"
+            className="text-sm"
           />
         </Field>
 
@@ -846,15 +846,15 @@ function OAuthRow({
   const connected = secret.status === "connected";
 
   return (
-    <div className="flex items-center gap-3 rounded-[12px] border border-border bg-card px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
       <Link2 className="size-4 shrink-0 text-ink-faint" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-[13.5px] font-bold">{secret.name}</span>
-          <span className="text-[11.5px] text-ink-faint">{secret.provider}</span>
+          <span className="truncate text-sm font-bold">{secret.name}</span>
+          <span className="text-xs text-ink-faint">{secret.provider}</span>
           <StatusBadge status={secret.status} />
         </div>
-        <div className="truncate text-[12px] text-ink-soft">
+        <div className="truncate text-xs text-ink-soft">
           {secret.accountEmail ??
             secret.description ??
             (secret.scopes?.length

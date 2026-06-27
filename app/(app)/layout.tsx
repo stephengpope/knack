@@ -14,7 +14,7 @@ export default async function AppLayout({
   const chats = await listChats(session.user.id);
 
   return (
-    <div className="flex h-dvh w-full overflow-hidden bg-background text-[14px] text-foreground">
+    <div className="flex h-dvh w-full overflow-hidden bg-background text-sm text-foreground">
       <Sidebar
         chats={chats}
         user={{

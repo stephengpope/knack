@@ -129,18 +129,18 @@ function DecisionCard({ d }: { d: Decision }) {
     <div className="mt-1 rounded-xl border bg-muted/40 p-3">
       <span
         className={cn(
-          "inline-flex rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide",
+          "inline-flex rounded-md px-2 py-0.5 text-xs font-bold uppercase tracking-wide",
           v.cls,
         )}
       >
         ▸ {v.label}
       </span>
       {d.reason && (
-        <div className="mt-2 text-[13px] leading-snug">{d.reason}</div>
+        <div className="mt-2 text-sm leading-snug">{d.reason}</div>
       )}
       {d.nextPrompt && (
-        <div className="mt-2 rounded-lg border bg-background px-3 py-2 text-[12.5px] leading-snug">
-          <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-ink-faint">
+        <div className="mt-2 rounded-lg border bg-background px-3 py-2 text-xs leading-snug">
+          <div className="mb-1 text-xs font-bold uppercase tracking-wide text-ink-faint">
             Next prompt → worker
           </div>
           {d.nextPrompt}

@@ -46,13 +46,13 @@ export function ProjectPicker({
     <Popover open={open} onOpenChange={disabled ? undefined : setOpen}>
       <PopoverTrigger
         aria-disabled={disabled || undefined}
-        className="flex items-center gap-1.5 text-[13px] font-semibold text-ink-soft outline-none transition-colors hover:text-foreground aria-disabled:pointer-events-none aria-disabled:cursor-default aria-disabled:opacity-70"
+        className="flex items-center gap-1.5 text-sm font-semibold text-ink-soft outline-none transition-colors hover:text-foreground aria-disabled:pointer-events-none aria-disabled:cursor-default aria-disabled:opacity-70"
       >
-        <FolderGit2 className="size-[14px]" />
+        <FolderGit2 className="size-3.5" />
         {label}
         {!disabled && <ChevronDown className="size-3.5" strokeWidth={2.2} />}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[300px] p-0">
+      <PopoverContent align="start" className="w-75 p-0">
         <Command shouldFilter>
           <CommandInput
             placeholder="Search projects…"
@@ -68,12 +68,12 @@ export function ProjectPicker({
                   value={`${p.name} ${p.repoFullName}`}
                   onSelect={() => pick(p.id)}
                 >
-                  <FolderGit2 className="size-[14px] shrink-0 text-ink-faint" />
-                  <span className="min-w-0 flex-1 truncate text-[13.5px]">
+                  <FolderGit2 className="size-3.5 shrink-0 text-ink-faint" />
+                  <span className="min-w-0 flex-1 truncate text-sm">
                     {p.name}
                   </span>
                   {value === p.id && (
-                    <Check className="size-[14px] shrink-0 text-primary" />
+                    <Check className="size-3.5 shrink-0 text-primary" />
                   )}
                 </CommandItem>
               ))}

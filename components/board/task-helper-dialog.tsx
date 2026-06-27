@@ -188,10 +188,10 @@ export function TaskHelperDialog({
     >
       <DialogContent className="flex max-h-[86vh] flex-col gap-0 p-0 sm:max-w-2xl">
         <DialogHeader className="shrink-0 border-b px-5 py-4">
-          <DialogTitle className="flex items-center gap-2 text-[16px]">
-            <Sparkles className="size-[18px] text-primary" />
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Sparkles className="size-5 text-primary" />
             Task Helper
-            <span className="ml-1 text-[12px] font-semibold text-ink-faint">
+            <span className="ml-1 text-xs font-semibold text-ink-faint">
               {cardRef}
             </span>
           </DialogTitle>
@@ -221,7 +221,7 @@ export function TaskHelperDialog({
           {phase === "review" && draft && <ReviewPhase draft={draft} />}
 
           {loading && (
-            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/70 text-[13px] font-semibold text-ink-soft backdrop-blur-sm">
+            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/70 text-sm font-semibold text-ink-soft backdrop-blur-sm">
               <Loader2 className="size-4 animate-spin" />
               Thinking…
             </div>
@@ -299,7 +299,7 @@ function CapturePhase({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-start gap-2.5 rounded-[10px] border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-[12.5px] text-amber-700 dark:text-amber-400">
+      <div className="flex items-start gap-2.5 rounded-md border border-amber-500/30 bg-amber-500/5 px-3.5 py-2.5 text-xs text-amber-700 dark:text-amber-400">
         <AlertTriangle className="mt-0.5 size-4 shrink-0" />
         <span>
           The Task Helper rewrites this card&apos;s <b>Goal</b>, <b>Details</b>,
@@ -320,7 +320,7 @@ function CapturePhase({
           }
           className="mt-1.5 resize-none"
         />
-        <p className="mt-2 text-[12px] text-ink-faint">
+        <p className="mt-2 text-xs text-ink-faint">
           Rough is fine — the helper will ask about anything unclear.
         </p>
       </div>
@@ -345,16 +345,16 @@ function QuestionsPhase({
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Label>A few questions</Label>
-        <span className="text-[11px] font-bold text-ink-faint">
+        <span className="text-xs font-bold text-ink-faint">
           Round {roundNo}
         </span>
       </div>
       {questions.map((q, i) => (
         <div
           key={i}
-          className="rounded-[12px] border bg-card p-3.5"
+          className="rounded-lg border bg-card p-3.5"
         >
-          <div className="mb-2 flex gap-2 text-[13.5px] font-semibold leading-snug">
+          <div className="mb-2 flex gap-2 text-sm font-semibold leading-snug">
             <span className="text-ink-faint">{i + 1}.</span>
             <span>{q}</span>
           </div>
@@ -364,7 +364,7 @@ function QuestionsPhase({
             onFocus={() => onFocus(i)}
             rows={2}
             placeholder="Your answer… (leave blank if it doesn't matter)"
-            className="resize-none text-[13px]"
+            className="resize-none text-sm"
           />
         </div>
       ))}
@@ -384,14 +384,14 @@ function ReviewPhase({ draft }: { draft: TicketDraft }) {
           {draft.acceptanceCriteria.map((c, i) => (
             <li
               key={i}
-              className="flex gap-2.5 rounded-[10px] border bg-card px-3 py-2 text-[13px]"
+              className="flex gap-2.5 rounded-md border bg-card px-3 py-2 text-sm"
             >
               <span className="text-ink-faint">{i + 1}.</span>
               <span>{c}</span>
             </li>
           ))}
           {draft.acceptanceCriteria.length === 0 && (
-            <li className="text-[12.5px] text-ink-faint">(none)</li>
+            <li className="text-xs text-ink-faint">(none)</li>
           )}
         </ul>
       </div>
@@ -413,7 +413,7 @@ function Field({
       <Label>{label}</Label>
       <p
         className={cn(
-          "mt-1.5 rounded-[10px] border bg-card px-3 py-2.5 text-[13.5px] leading-relaxed",
+          "mt-1.5 rounded-md border bg-card px-3 py-2.5 text-sm leading-relaxed",
           multiline && "whitespace-pre-wrap",
         )}
       >
@@ -442,7 +442,7 @@ function MicButton({
       onClick={onClick}
       aria-label={isRecording ? "Stop dictation" : "Dictate"}
       className={cn(
-        "flex h-9 items-center gap-2 rounded-[10px] border px-3 text-[12.5px] font-semibold transition-colors",
+        "flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold transition-colors",
         isRecording
           ? "border-black bg-black text-white"
           : "border-input text-ink-soft hover:bg-accent",
@@ -462,7 +462,7 @@ function MicButton({
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[11px] font-bold uppercase tracking-wide text-ink-faint">
+    <div className="text-xs font-bold uppercase tracking-wide text-ink-faint">
       {children}
     </div>
   );

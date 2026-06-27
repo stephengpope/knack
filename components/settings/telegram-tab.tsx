@@ -22,10 +22,10 @@ export function TelegramTab({
 }) {
   return (
     <>
-      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+      <h1 className="font-heading text-3xl font-bold tracking-snug">
         Telegram
       </h1>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
+      <p className="mt-1 text-sm text-ink-soft">
         Chat with your agent from Telegram. Connect a bot you create with
         @BotFather and lock it to your own Telegram account.
       </p>
@@ -51,15 +51,15 @@ function FormCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[14px] border border-border bg-card p-5">
+    <div className="rounded-lg border border-border bg-card p-5">
       <div className="mb-3.5 flex items-center gap-2.5">
-        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#229ED9] text-white">
-          <Send className="size-[18px]" strokeWidth={2} />
+        <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-telegram text-white">
+          <Send className="size-5" strokeWidth={2} />
         </span>
         <div>
-          <div className="text-[14px] font-bold">{title}</div>
+          <div className="text-sm font-bold">{title}</div>
           {desc && (
-            <div className="mt-0.5 text-[12.5px] text-ink-soft">{desc}</div>
+            <div className="mt-0.5 text-xs text-ink-soft">{desc}</div>
           )}
         </div>
       </div>
@@ -101,7 +101,7 @@ function Connected({
             ? "On (transcribes voice notes)"
             : "Off (admin sets the AssemblyAI key)"}
         </Row>
-        <p className="text-[12.5px] text-ink-soft">
+        <p className="text-xs text-ink-soft">
           Open Telegram and send your bot a message. Use{" "}
           <code className="rounded bg-muted px-1">/help</code> to see commands.
         </p>
@@ -149,7 +149,7 @@ function ConnectForm() {
             placeholder="123456:ABC-DEF..."
             autoComplete="off"
           />
-          <p className="text-[12px] text-ink-soft">
+          <p className="text-xs text-ink-soft">
             Create a bot with @BotFather and paste its token.
           </p>
         </div>
@@ -163,7 +163,7 @@ function ConnectForm() {
             placeholder="123456789"
             inputMode="numeric"
           />
-          <p className="text-[12px] text-ink-soft">
+          <p className="text-xs text-ink-soft">
             Message @userinfobot on Telegram to get your numeric ID. Only this
             user can talk to the bot.
           </p>
@@ -180,7 +180,7 @@ function ConnectForm() {
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between text-[13.5px]">
+    <div className="flex items-center justify-between text-sm">
       <span className="text-ink-soft">{label}</span>
       <span className="font-medium">{children}</span>
     </div>

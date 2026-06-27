@@ -85,10 +85,10 @@ export function AdministrationView({
     <div className="flex h-dvh flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-6">
         <Logomark size={22} />
-        <span className="text-[14.5px] font-bold">Administration</span>
+        <span className="text-sm font-bold">Administration</span>
         <Link
           href="/"
-          className="ml-auto flex size-8 items-center justify-center rounded-[9px] border border-border bg-card text-ink-soft transition-colors hover:bg-accent hover:text-foreground"
+          className="ml-auto flex size-8 items-center justify-center rounded-md border border-border bg-card text-ink-soft transition-colors hover:bg-accent hover:text-foreground"
           title="Close"
         >
           <X className="size-4" />
@@ -96,13 +96,13 @@ export function AdministrationView({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <nav className="flex w-[186px] shrink-0 flex-col gap-0.5 border-r border-border p-3">
+        <nav className="flex w-47 shrink-0 flex-col gap-0.5 border-r border-border p-3">
           {TABS.map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
               className={cn(
-                "rounded-[9px] px-3 py-2 text-left text-[13.5px] font-semibold transition-colors",
+                "rounded-md px-3 py-2 text-left text-sm font-semibold transition-colors",
                 tab === t
                   ? "bg-sidebar-accent text-accent-text"
                   : "text-ink-soft hover:bg-accent",
@@ -114,7 +114,7 @@ export function AdministrationView({
         </nav>
 
         <div className="flex-1 overflow-y-auto px-9 pb-14 pt-8">
-          <div className="max-w-[780px]">
+          <div className="max-w-195">
             {tab === "AI Model" && (
               <ModelsTab
                 last4={last4}
@@ -191,10 +191,10 @@ function ModelsTab({
 
   return (
     <>
-      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+      <h1 className="font-heading text-3xl font-bold tracking-snug">
         AI Model
       </h1>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
+      <p className="mt-1 text-sm text-ink-soft">
         Shared across the deployment — every user connects through the
         configuration you set here.
       </p>
@@ -232,12 +232,12 @@ function ModelsTab({
 
       {mode === "gateway" && (
         <div className="mt-6 flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5">
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(27,156,93,.13)] text-[#1B9C5D]">
-            <Check className="size-[17px]" strokeWidth={2.4} />
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success-soft text-success">
+            <Check className="size-4" strokeWidth={2.4} />
           </span>
           <div className="min-w-0">
-            <div className="text-[13.5px] font-bold">Gateway connected</div>
-            <div className="text-[12px] text-ink-soft">
+            <div className="text-sm font-bold">Gateway connected</div>
+            <div className="text-xs text-ink-soft">
               Managed by this deployment · all providers · no key required
             </div>
           </div>
@@ -255,7 +255,7 @@ function ModelsTab({
                   key={p}
                   onClick={() => setEditing(active ? null : p)}
                   className={cn(
-                    "flex items-center gap-2 rounded-[10px] border bg-card px-3 py-2 text-[13px] font-semibold transition-colors",
+                    "flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm font-semibold transition-colors",
                     active
                       ? "border-primary bg-sidebar-accent"
                       : "border-border hover:bg-accent",
@@ -267,7 +267,7 @@ function ModelsTab({
                   />
                   {PROVIDERS[p].label}
                   {connected && (
-                    <Check className="size-3.5 text-[#1B9C5D]" strokeWidth={3} />
+                    <Check className="size-3.5 text-success" strokeWidth={3} />
                   )}
                 </button>
               );
@@ -290,18 +290,18 @@ function ModelsTab({
           <button
             onClick={refresh}
             disabled={refreshing}
-            className="flex items-center gap-1.5 text-[12px] font-semibold text-ink-soft transition-colors hover:text-foreground disabled:opacity-50"
+            className="flex items-center gap-1.5 text-xs font-semibold text-ink-soft transition-colors hover:text-foreground disabled:opacity-50"
           >
             <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
             Refresh list
           </button>
         )}
       </div>
-      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+      <p className="-mt-1.5 mb-3 text-xs text-ink-soft">
         The model that powers the chat agent.
       </p>
       {available.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-input px-4 py-6 text-center text-[13px] text-ink-soft">
+        <p className="rounded-xl border border-dashed border-input px-4 py-6 text-center text-sm text-ink-soft">
           {mode === "compatible"
             ? "Add an endpoint above to choose a model."
             : "Connect a provider key above to choose a model."}
@@ -356,7 +356,7 @@ function MaxOutputTokensField({
   return (
     <>
       <SectionLabel className="mt-7">Max output tokens</SectionLabel>
-      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+      <p className="-mt-1.5 mb-3 text-xs text-ink-soft">
         Largest response per turn, applied to every model. Default 16,384 — the
         AI SDK clamps it down to each model&apos;s real max.
       </p>
@@ -371,7 +371,7 @@ function MaxOutputTokensField({
           aria-invalid={!valid}
           className="w-32"
         />
-        <span className="text-[13px] text-ink-soft">tokens</span>
+        <span className="text-sm text-ink-soft">tokens</span>
         <Button
           onClick={save}
           disabled={busy || !valid || !dirty}
@@ -410,15 +410,15 @@ function RetentionTab({ retentionDays }: { retentionDays: number }) {
 
   return (
     <>
-      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+      <h1 className="font-heading text-3xl font-bold tracking-snug">
         Retention
       </h1>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
+      <p className="mt-1 text-sm text-ink-soft">
         Automatically delete unstarred chats that haven&apos;t been used in a
         while, along with their attachments. Starred chats are always kept.
       </p>
       <SectionLabel className="mt-7">Auto-delete window</SectionLabel>
-      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+      <p className="-mt-1.5 mb-3 text-xs text-ink-soft">
         Delete unstarred chats not used in N days (0 = never).
       </p>
       <div className="flex items-center gap-2">
@@ -432,7 +432,7 @@ function RetentionTab({ retentionDays }: { retentionDays: number }) {
           aria-invalid={!valid}
           className="w-28"
         />
-        <span className="text-[13px] text-ink-soft">days</span>
+        <span className="text-sm text-ink-soft">days</span>
         <Button
           onClick={save}
           disabled={busy || !valid || !dirty}
@@ -474,10 +474,10 @@ function BehaviorTab({
 
   return (
     <>
-      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+      <h1 className="font-heading text-3xl font-bold tracking-snug">
         Behavior
       </h1>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
+      <p className="mt-1 text-sm text-ink-soft">
         After a chat turn, the agent can review the conversation and improve its
         own skills — patching a skill when it was corrected, or saving a new one
         when a reusable technique emerged. Changes are committed to the project
@@ -487,13 +487,13 @@ function BehaviorTab({
       <SectionLabel className="mt-7">Self-improvement review</SectionLabel>
       <div className="flex items-center gap-3">
         <Switch id="skill-review" checked={on} onCheckedChange={setOn} />
-        <label htmlFor="skill-review" className="text-[13.5px] text-ink-soft">
+        <label htmlFor="skill-review" className="text-sm text-ink-soft">
           Review conversations and update skills automatically
         </label>
       </div>
 
       <SectionLabel className="mt-7">Review interval</SectionLabel>
-      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+      <p className="-mt-1.5 mb-3 text-xs text-ink-soft">
         Run a review once a chat accumulates this many steps of agent activity.
         The counter resets after each review, and whenever the agent edits a
         skill itself.
@@ -510,7 +510,7 @@ function BehaviorTab({
           disabled={!on}
           className="w-28"
         />
-        <span className="text-[13px] text-ink-soft">steps</span>
+        <span className="text-sm text-ink-soft">steps</span>
         <Button
           onClick={save}
           disabled={busy || !valid || !dirty}
@@ -528,10 +528,10 @@ function BehaviorTab({
 function VoiceTab({ last4 }: { last4: string | null }) {
   return (
     <>
-      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+      <h1 className="font-heading text-3xl font-bold tracking-snug">
         Voice to text
       </h1>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
+      <p className="mt-1 text-sm text-ink-soft">
         An AssemblyAI streaming key enables dictating by voice. Without it, the
         microphone is hidden everywhere.
       </p>
@@ -576,13 +576,13 @@ function VoiceKeyEditor({ last4 }: { last4: string | null }) {
       <div
         className={cn(
           "flex items-center gap-2 rounded-xl border bg-muted/50 py-1.5 pl-3.5 pr-1.5",
-          last4 ? "border-[#1B9C5D]/40" : "border-input",
+          last4 ? "border-success/40" : "border-input",
         )}
       >
         <KeyRound
           className={cn(
             "size-4 shrink-0",
-            last4 ? "text-[#1B9C5D]" : "text-ink-faint",
+            last4 ? "text-success" : "text-ink-faint",
           )}
         />
         <input
@@ -596,10 +596,10 @@ function VoiceKeyEditor({ last4 }: { last4: string | null }) {
           }
           onKeyDown={(e) => e.key === "Enter" && save()}
           autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-ink-faint"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-ink-faint"
         />
         {last4 && !value && (
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(27,156,93,.13)] px-2 py-1 text-[11px] font-bold text-[#1B9C5D]">
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-bold text-success">
             <Check className="size-3" strokeWidth={3} /> Saved
           </span>
         )}
@@ -608,7 +608,7 @@ function VoiceKeyEditor({ last4 }: { last4: string | null }) {
             onClick={remove}
             disabled={busy}
             title="Remove key"
-            className="flex size-8 shrink-0 items-center justify-center rounded-[9px] text-ink-faint transition-colors hover:bg-background hover:text-foreground"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-background hover:text-foreground"
           >
             <Trash2 className="size-4" />
           </button>
@@ -616,12 +616,12 @@ function VoiceKeyEditor({ last4 }: { last4: string | null }) {
         <Button
           onClick={save}
           disabled={busy || !value.trim()}
-          className="knack-gradient h-8 shrink-0 rounded-[9px] px-4 text-[13px] font-semibold text-white"
+          className="knack-gradient h-8 shrink-0 rounded-md px-4 text-sm font-semibold text-white"
         >
           {busy ? <Spinner /> : "Save"}
         </Button>
       </div>
-      <div className="mt-1.5 px-1 text-[12px]">
+      <div className="mt-1.5 px-1 text-xs">
         <a
           href="https://www.assemblyai.com/dashboard/api-keys"
           target="_blank"
@@ -656,11 +656,11 @@ function GeneralAiField({
   return (
     <div className="mt-7">
       <SectionLabel className="mt-0">General AI</SectionLabel>
-      <p className="-mt-1.5 mb-3 text-[12.5px] text-ink-soft">
+      <p className="-mt-1.5 mb-3 text-xs text-ink-soft">
         Used for lightweight background tasks like naming chats. Uses the same
         connection as your AI Agent.
       </p>
-      <div className="mb-3 inline-flex rounded-[10px] border border-input bg-muted/50 p-0.5">
+      <div className="mb-3 inline-flex rounded-md border border-input bg-muted/50 p-0.5">
         <ToggleBtn active={isSame} onClick={() => setGeneralModelAction(null)}>
           Same as AI Agent
         </ToggleBtn>
@@ -698,7 +698,7 @@ function ToggleBtn({
     <button
       onClick={onClick}
       className={cn(
-        "rounded-[8px] px-3 py-1.5 text-[13px] font-semibold transition-colors",
+        "rounded-sm px-3 py-1.5 text-sm font-semibold transition-colors",
         active
           ? "bg-card text-foreground shadow-sm"
           : "text-ink-soft hover:text-foreground",
@@ -730,7 +730,7 @@ function EndpointsSection({ endpoints }: { endpoints: EndpointInfo[] }) {
           <EndpointRow key={e.id} endpoint={e} />
         ))}
         {endpoints.length === 0 && !adding && (
-          <p className="rounded-xl border border-dashed border-input px-4 py-5 text-center text-[13px] text-ink-soft">
+          <p className="rounded-xl border border-dashed border-input px-4 py-5 text-center text-sm text-ink-soft">
             No endpoints yet. Add one to connect your own model server.
           </p>
         )}
@@ -757,8 +757,8 @@ function EndpointRow({ endpoint }: { endpoint: EndpointInfo }) {
     <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
       <Server className="size-4 shrink-0 text-ink-soft" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-[13.5px] font-bold">{endpoint.name}</div>
-        <div className="truncate font-mono text-[11.5px] text-ink-soft">
+        <div className="truncate text-sm font-bold">{endpoint.name}</div>
+        <div className="truncate font-mono text-xs text-ink-soft">
           {endpoint.model} · {endpoint.baseUrl}
         </div>
       </div>
@@ -886,13 +886,13 @@ function KeyEditor({
       <div
         className={cn(
           "flex items-center gap-2 rounded-xl border bg-muted/50 py-1.5 pl-3.5 pr-1.5",
-          last4 ? "border-[#1B9C5D]/40" : "border-input",
+          last4 ? "border-success/40" : "border-input",
         )}
       >
         <KeyRound
           className={cn(
             "size-4 shrink-0",
-            last4 ? "text-[#1B9C5D]" : "text-ink-faint",
+            last4 ? "text-success" : "text-ink-faint",
           )}
         />
         <input
@@ -906,10 +906,10 @@ function KeyEditor({
               : `Paste your ${meta.label} API key`
           }
           onKeyDown={(e) => e.key === "Enter" && save()}
-          className="min-w-0 flex-1 bg-transparent text-[14px] text-foreground outline-none placeholder:text-ink-faint"
+          className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-ink-faint"
         />
         {last4 && !value && (
-          <span className="flex shrink-0 items-center gap-1 rounded-full bg-[rgba(27,156,93,.13)] px-2 py-1 text-[11px] font-bold text-[#1B9C5D]">
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-success-soft px-2 py-1 text-xs font-bold text-success">
             <Check className="size-3" strokeWidth={3} /> Saved
           </span>
         )}
@@ -918,7 +918,7 @@ function KeyEditor({
             onClick={remove}
             disabled={busy}
             title="Remove key"
-            className="flex size-8 shrink-0 items-center justify-center rounded-[9px] text-ink-faint transition-colors hover:bg-background hover:text-foreground"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md text-ink-faint transition-colors hover:bg-background hover:text-foreground"
           >
             <Trash2 className="size-4" />
           </button>
@@ -926,12 +926,12 @@ function KeyEditor({
         <Button
           onClick={save}
           disabled={busy || !value.trim()}
-          className="knack-gradient h-8 shrink-0 rounded-[9px] px-4 text-[13px] font-semibold text-white"
+          className="knack-gradient h-8 shrink-0 rounded-md px-4 text-sm font-semibold text-white"
         >
           {busy ? <Spinner /> : "Save"}
         </Button>
       </div>
-      <div className="mt-1.5 px-1 text-[12px]">
+      <div className="mt-1.5 px-1 text-xs">
         <a
           href={meta.url}
           target="_blank"
@@ -956,7 +956,7 @@ function SectionLabel({
   return (
     <div
       className={cn(
-        "mb-3 text-[11px] font-bold uppercase tracking-[0.07em] text-ink-faint",
+        "mb-3 text-xs font-bold uppercase tracking-label text-ink-faint",
         className,
       )}
     >
@@ -975,14 +975,14 @@ function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10.5px] font-bold",
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-bold",
         tone === "green"
-          ? "bg-[rgba(27,156,93,.13)] text-[#1B9C5D]"
+          ? "bg-success-soft text-success"
           : "bg-muted text-ink-soft",
       )}
     >
       {tone === "green" && (
-        <span className="size-1.5 rounded-full bg-[#1B9C5D]" />
+        <span className="size-1.5 rounded-full bg-success" />
       )}
       {children}
     </span>
@@ -1010,7 +1010,7 @@ function ConnCard({
     <button
       onClick={onClick}
       className={cn(
-        "rounded-[14px] border-[1.5px] p-4 text-left transition-colors",
+        "rounded-lg border-[1.5px] p-4 text-left transition-colors",
         active
           ? "border-primary bg-sidebar-accent"
           : "border-border bg-card hover:bg-accent",
@@ -1019,15 +1019,15 @@ function ConnCard({
       <div className="mb-2.5 flex items-center gap-2.5">
         <span
           className={cn(
-            "flex size-[30px] items-center justify-center rounded-[9px]",
+            "flex size-8 items-center justify-center rounded-md",
             iconClass,
           )}
         >
           {icon}
         </span>
-        <span className="text-[14px] font-bold">{title}</span>
+        <span className="text-sm font-bold">{title}</span>
       </div>
-      <p className="text-[12.5px] leading-relaxed text-ink-soft">{desc}</p>
+      <p className="text-xs leading-relaxed text-ink-soft">{desc}</p>
       <div className="mt-2.5">{badge}</div>
     </button>
   );

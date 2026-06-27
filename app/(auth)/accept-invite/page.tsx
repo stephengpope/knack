@@ -63,7 +63,7 @@ function AcceptForm() {
   }
 
   return (
-    <Card className="border-input shadow-[0_18px_50px_-34px_var(--shadow)]">
+    <Card className="border-input shadow-card">
       <CardHeader>
         <CardTitle className="font-heading text-2xl font-bold">
           Set up your account

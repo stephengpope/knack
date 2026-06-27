@@ -188,7 +188,7 @@ function DictateButton({ className }: { className?: string }) {
       aria-label={isRecording ? "Stop dictation" : "Dictate"}
       title={isRecording ? "Stop dictation" : "Dictate"}
       className={cn(
-        "flex size-9 items-center justify-center rounded-[11px] border transition-colors",
+        "flex size-9 items-center justify-center rounded-lg border transition-colors",
         isRecording
           ? "border-black bg-black text-white"
           : "border-input text-ink-soft hover:bg-accent",
@@ -231,9 +231,9 @@ function AttachmentView({ data }: { data: AttachmentData }) {
     );
   }
   return (
-    <span className="my-1 flex w-fit items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-[13px]">
+    <span className="my-1 flex w-fit items-center gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm">
       <FileText className="size-4 shrink-0 text-ink-soft" />
-      <span className="max-w-[220px] truncate">{data.filename}</span>
+      <span className="max-w-55 truncate">{data.filename}</span>
       <span className="text-ink-faint">{formatSize(data.size)}</span>
     </span>
   );
@@ -249,7 +249,7 @@ function AttachButton() {
       onClick={() => attachments.openFileDialog()}
       aria-label="Attach files"
       title="Attach files"
-      className="flex size-9 items-center justify-center rounded-[11px] border border-input text-ink-soft transition-colors hover:bg-accent"
+      className="flex size-9 items-center justify-center rounded-lg border border-input text-ink-soft transition-colors hover:bg-accent"
     >
       <Paperclip className="size-4" />
     </button>
@@ -265,10 +265,10 @@ function AttachmentPreviews() {
       {attachments.files.map((f) => (
         <span
           key={f.id}
-          className="flex items-center gap-1.5 rounded-lg border border-input bg-muted px-2.5 py-1.5 text-[12.5px]"
+          className="flex items-center gap-1.5 rounded-lg border border-input bg-muted px-2.5 py-1.5 text-xs"
         >
           <FileText className="size-3.5 shrink-0 text-ink-soft" />
-          <span className="max-w-[160px] truncate">{f.filename ?? "file"}</span>
+          <span className="max-w-40 truncate">{f.filename ?? "file"}</span>
           <button
             type="button"
             onClick={() => attachments.remove(f.id)}
@@ -493,7 +493,7 @@ export function Chat({
     <PromptInputProvider>
     <PromptInput
       onSubmit={submit}
-      className="rounded-2xl border-input bg-card shadow-[0_14px_40px_-34px_var(--shadow)]"
+      className="rounded-2xl border-input bg-card shadow-float"
     >
       <PromptInputBody>
         <AttachmentPreviews />
@@ -514,9 +514,9 @@ export function Chat({
           isWelcome && (
             <Link
               href="/settings?tab=Projects"
-              className="flex items-center gap-1.5 text-[13px] font-semibold text-primary outline-none transition-colors hover:underline"
+              className="flex items-center gap-1.5 text-sm font-semibold text-primary outline-none transition-colors hover:underline"
             >
-              <FolderPlus className="size-[14px]" />
+              <FolderPlus className="size-3.5" />
               Add a project
             </Link>
           )
@@ -537,7 +537,7 @@ export function Chat({
           status={status}
           onStop={stop}
           disabled={!selectedProjectId}
-          className="knack-gradient knack-glow size-9 rounded-[11px] text-white"
+          className="knack-gradient knack-glow size-9 rounded-lg text-white"
         />
       </PromptInputFooter>
     </PromptInput>
@@ -549,11 +549,11 @@ export function Chat({
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-10">
         <div className="mb-8 flex items-center gap-2.5">
           <Logomark size={38} strokeWidth={1.6} />
-          <h1 className="font-heading text-[34px] font-semibold tracking-[-0.02em]">
+          <h1 className="font-heading text-4xl font-semibold tracking-headline">
             Hey there, {userName.split(" ")[0]}
           </h1>
         </div>
-        <div className="w-full max-w-[780px]">{composer}</div>
+        <div className="w-full max-w-195">{composer}</div>
       </div>
     );
   }
@@ -571,14 +571,14 @@ export function Chat({
               if (e.key === "Enter") commitRename();
               if (e.key === "Escape") setRenaming(false);
             }}
-            className="min-w-0 max-w-[420px] flex-1 rounded-[9px] border border-primary bg-background px-2.5 py-1.5 text-[14.5px] font-bold outline-none"
+            className="min-w-0 max-w-105 flex-1 rounded-md border border-primary bg-background px-2.5 py-1.5 text-sm font-bold outline-none"
           />
         ) : (
           <div className="flex min-w-0 items-center gap-0.5">
             <div
               onDoubleClick={startRename}
               title="Double-click to rename"
-              className="-ml-2 min-w-0 truncate rounded-md px-2 py-1 text-[14.5px] font-bold transition-colors hover:bg-accent"
+              className="-ml-2 min-w-0 truncate rounded-md px-2 py-1 text-sm font-bold transition-colors hover:bg-accent"
             >
               {chatTitle || "Untitled"}
             </div>
@@ -589,22 +589,22 @@ export function Chat({
               >
                 <ChevronDown className="size-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[168px]">
+              <DropdownMenuContent align="start" className="w-42">
                 <DropdownMenuItem onClick={toggleStar}>
                   <Star
                     className={cn(
-                      "size-[15px]",
+                      "size-4",
                       isStarred && "fill-primary text-primary",
                     )}
                   />
                   {isStarred ? "Unstar" : "Star"}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={startRename}>
-                  <Pencil className="size-[15px]" />
+                  <Pencil className="size-4" />
                   Rename
                 </DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={deleteChat}>
-                  <Trash2 className="size-[15px]" />
+                  <Trash2 className="size-4" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -620,18 +620,18 @@ export function Chat({
                 : "Hand this chat to the autonomous supervisor (adds it to the board)"
             }
             className={cn(
-              "flex h-[34px] items-center gap-1.5 rounded-[10px] border px-3 text-[13px] font-semibold transition-colors",
+              "flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-semibold transition-colors",
               supervised
                 ? "border-green-600/30 bg-green-600/10 text-green-700"
                 : "border-border bg-card hover:bg-accent",
             )}
           >
-            <Shield className="size-[15px]" />
+            <Shield className="size-4" />
             {supervised ? "Supervising" : "Supervisor"}
           </button>
           {supervised && (
             <Select value={kanbanStatus} onValueChange={changeStatus}>
-              <SelectTrigger className="h-[34px] w-[140px] rounded-[10px] text-[13px] font-semibold">
+              <SelectTrigger className="h-9 w-35 rounded-md text-sm font-semibold">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -646,22 +646,22 @@ export function Chat({
           {supervised && (
             <Link
               href={`/board?card=${id}`}
-              className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 text-[13px] font-semibold transition-colors hover:bg-accent"
+              className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-semibold transition-colors hover:bg-accent"
             >
               View on board
             </Link>
           )}
           <button
             onClick={() => toast("Sharing is coming soon")}
-            className="flex h-[34px] items-center gap-1.5 rounded-[10px] border border-border bg-card px-3 text-[13px] font-semibold transition-colors hover:bg-accent"
+            className="flex h-9 items-center gap-1.5 rounded-md border border-border bg-card px-3 text-sm font-semibold transition-colors hover:bg-accent"
           >
-            <Share className="size-[15px]" /> Share
+            <Share className="size-4" /> Share
           </button>
         </div>
       </header>
 
       <Conversation>
-        <ConversationContent className="mx-auto max-w-[780px]">
+        <ConversationContent className="mx-auto max-w-195">
           {messages.map((m) => {
             if (m.role === "user") {
               return (
@@ -747,11 +747,11 @@ export function Chat({
           {awaitingReply && (
             <div className="flex items-center gap-3">
               <KnackLoader size={30} className="shrink-0" />
-              <div className="flex items-center gap-1.5 rounded-[14px] border border-input bg-muted px-4 py-3.5">
+              <div className="flex items-center gap-1.5 rounded-lg border border-input bg-muted px-4 py-3.5">
                 {[0, 0.2, 0.4].map((d) => (
                   <span
                     key={d}
-                    className="size-[7px] rounded-full bg-primary"
+                    className="size-2 rounded-full bg-primary"
                     style={{ animation: `knack-blink 1.2s ${d}s infinite` }}
                   />
                 ))}
@@ -763,7 +763,7 @@ export function Chat({
       </Conversation>
 
       <div className="px-6 pb-5 pt-1.5">
-        <div className="mx-auto max-w-[780px]">{composer}</div>
+        <div className="mx-auto max-w-195">{composer}</div>
       </div>
     </>
   );

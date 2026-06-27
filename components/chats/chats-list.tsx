@@ -100,11 +100,11 @@ export function ChatsList({ chats: serverChats }: { chats: ChatListItem[] }) {
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-10">
-      <div className="mx-auto max-w-[780px]">
-        <h1 className="font-heading text-[30px] font-bold tracking-[-0.01em]">
+      <div className="mx-auto max-w-195">
+        <h1 className="font-heading text-3xl font-bold tracking-snug">
           Chats
         </h1>
-        <p className="mt-1 text-[14px] text-ink-soft">
+        <p className="mt-1 text-sm text-ink-soft">
           {chats.length} conversation{chats.length === 1 ? "" : "s"}
         </p>
 
@@ -115,12 +115,12 @@ export function ChatsList({ chats: serverChats }: { chats: ChatListItem[] }) {
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search chats by name…"
             autoFocus
-            className="w-full rounded-xl border border-input bg-card py-2.5 pl-10 pr-4 text-[14px] outline-none transition-colors focus:border-primary"
+            className="w-full rounded-xl border border-input bg-card py-2.5 pl-10 pr-4 text-sm outline-none transition-colors focus:border-primary"
           />
         </div>
 
         {hasCron && (
-          <div className="mt-3 inline-flex rounded-[10px] border border-input bg-muted p-0.5">
+          <div className="mt-3 inline-flex rounded-md border border-input bg-muted p-0.5">
             {(
               [
                 ["all", "All"],
@@ -132,7 +132,7 @@ export function ChatsList({ chats: serverChats }: { chats: ChatListItem[] }) {
                 key={key}
                 onClick={() => setFilter(key)}
                 className={cn(
-                  "rounded-[8px] px-3 py-1 text-[12.5px] font-bold transition-colors",
+                  "rounded-sm px-3 py-1 text-xs font-bold transition-colors",
                   filter === key
                     ? "bg-background text-accent-text shadow-sm"
                     : "text-ink-soft hover:text-foreground",
@@ -146,7 +146,7 @@ export function ChatsList({ chats: serverChats }: { chats: ChatListItem[] }) {
 
         <div className="mt-4 flex flex-col gap-1.5">
           {filtered.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-input px-4 py-10 text-center text-[13.5px] text-ink-soft">
+            <p className="rounded-xl border border-dashed border-input px-4 py-10 text-center text-sm text-ink-soft">
               {chats.length === 0
                 ? "No chats yet — start a new one."
                 : "No chats match your search."}
@@ -203,7 +203,7 @@ function ChatRow({
             setRenaming(false);
           }
         }}
-        className="w-full rounded-xl border border-primary bg-background px-4 py-3 text-[14px] font-semibold outline-none"
+        className="w-full rounded-xl border border-primary bg-background px-4 py-3 text-sm font-semibold outline-none"
       />
     );
   }
@@ -219,11 +219,11 @@ function ChatRow({
         ) : (
           <MessageSquare className="size-4 shrink-0 text-ink-soft" />
         )}
-        <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
           {chat.title || "New chat"}
         </span>
         {chat.source === "cron" && (
-          <span className="shrink-0 rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-bold text-primary">
+          <span className="shrink-0 rounded-full bg-primary/12 px-2 py-0.5 text-xs font-bold text-primary">
             Scheduled
           </span>
         )}
@@ -232,7 +232,7 @@ function ChatRow({
         )}
         <span
           suppressHydrationWarning
-          className="shrink-0 text-[12px] text-ink-faint transition-opacity group-hover:opacity-0"
+          className="shrink-0 text-xs text-ink-faint transition-opacity group-hover:opacity-0"
         >
           {new Date(chat.updatedAt).toLocaleDateString(undefined, {
             month: "short",
@@ -247,25 +247,25 @@ function ChatRow({
         >
           <MoreHorizontal className="size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[168px]">
+        <DropdownMenuContent align="end" className="w-42">
           <DropdownMenuItem onClick={() => onStar(chat.id)}>
             <Star
               className={cn(
-                "size-[15px]",
+                "size-4",
                 chat.starred && "fill-primary text-primary",
               )}
             />
             {chat.starred ? "Unstar" : "Star"}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setRenaming(true)}>
-            <Pencil className="size-[15px]" />
+            <Pencil className="size-4" />
             Rename
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onClick={() => onDelete(chat.id)}
           >
-            <Trash2 className="size-[15px]" />
+            <Trash2 className="size-4" />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>

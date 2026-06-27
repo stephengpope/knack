@@ -142,21 +142,21 @@ export function Sidebar({
   const recents = chats.filter((c) => !c.starred);
 
   return (
-    <aside className="flex w-[272px] shrink-0 flex-col border-r border-border bg-sidebar">
-      <div className="flex items-center gap-2 px-4 pb-3 pt-[18px]">
+    <aside className="flex w-68 shrink-0 flex-col border-r border-border bg-sidebar">
+      <div className="flex items-center gap-2 px-4 pb-3 pt-5">
         <Link
           href={newChatId ? `/chat/${newChatId}` : "/"}
           prefetch={false}
-          className="ml-[7px] text-[19px] font-extrabold tracking-[-0.03em] transition-opacity hover:opacity-70"
+          className="ml-2 text-xl font-extrabold tracking-display transition-opacity hover:opacity-70"
         >
           Knack
         </Link>
         <button
-          className="ml-auto flex size-[30px] items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-accent hover:text-foreground"
+          className="ml-auto flex size-8 items-center justify-center rounded-lg text-ink-soft transition-colors hover:bg-accent hover:text-foreground"
           title="Search"
           onClick={() => toast("Search is coming soon")}
         >
-          <Search className="size-[17px]" />
+          <Search className="size-4" />
         </button>
       </div>
 
@@ -164,31 +164,31 @@ export function Sidebar({
         <Link
           href={newChatId ? `/chat/${newChatId}` : "/"}
           prefetch={false}
-          className="flex items-center gap-3 rounded-[11px] px-[11px] py-[9px] text-[14px] font-bold text-accent-text transition-colors hover:bg-sidebar-accent"
+          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-bold text-accent-text transition-colors hover:bg-sidebar-accent"
         >
-          <span className="knack-gradient knack-glow flex size-[24px] shrink-0 items-center justify-center rounded-[6px]">
-            <Plus className="size-[18px] text-white" strokeWidth={2.2} />
+          <span className="knack-gradient knack-glow flex size-6 shrink-0 items-center justify-center rounded-sm">
+            <Plus className="size-5 text-white" strokeWidth={2.2} />
           </span>
           New chat
         </Link>
 
         <NavItem
           href="/chats"
-          icon={<MessageSquare className="size-[18px]" strokeWidth={1.9} />}
+          icon={<MessageSquare className="size-5" strokeWidth={1.9} />}
           label="Chats"
           active={pathname === "/chats"}
         />
 
         <NavItem
           href="/board"
-          icon={<SquareKanban className="size-[18px]" strokeWidth={1.9} />}
+          icon={<SquareKanban className="size-5" strokeWidth={1.9} />}
           label="Board"
           active={pathname === "/board"}
         />
 
         <NavItem
           href="/cron"
-          icon={<Clock className="size-[18px]" strokeWidth={1.9} />}
+          icon={<Clock className="size-5" strokeWidth={1.9} />}
           label="Cron"
           active={pathname === "/cron"}
         />
@@ -213,7 +213,7 @@ export function Sidebar({
 
         <SectionLabel className="pt-3.5">Recent</SectionLabel>
         {recents.length === 0 && starred.length === 0 ? (
-          <p className="px-2.5 py-2 text-[13px] text-ink-faint">
+          <p className="px-2.5 py-2 text-sm text-ink-faint">
             No chats yet. Start a new one.
           </p>
         ) : (
@@ -250,7 +250,7 @@ function NavItem({
     <Link
       href={href}
       className={cn(
-        "flex items-center gap-3 rounded-[11px] px-[11px] py-[9px] text-[14px] font-semibold transition-colors",
+        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
         active
           ? "bg-sidebar-accent text-accent-text"
           : "text-foreground hover:bg-accent",
@@ -258,7 +258,7 @@ function NavItem({
     >
       <span
         className={cn(
-          "flex w-[26px] shrink-0 justify-center",
+          "flex w-7 shrink-0 justify-center",
           active ? "text-primary" : "text-ink-soft",
         )}
       >
@@ -279,7 +279,7 @@ function SectionLabel({
   return (
     <div
       className={cn(
-        "px-2.5 pb-[7px] pt-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-ink-faint",
+        "px-2.5 pb-2 pt-1.5 text-xs font-bold uppercase tracking-label text-ink-faint",
         className,
       )}
     >
@@ -325,7 +325,7 @@ function ChatRow({
             setRenaming(false);
           }
         }}
-        className="my-px w-full rounded-[9px] border border-primary bg-background px-2.5 py-[7px] text-[13.5px] outline-none"
+        className="my-px w-full rounded-md border border-primary bg-background px-2.5 py-2 text-sm outline-none"
       />
     );
   }
@@ -335,14 +335,14 @@ function ChatRow({
       <Link
         href={`/chat/${chat.id}`}
         className={cn(
-          "flex items-center rounded-[9px] py-2 pl-2.5 pr-8 text-[13.5px] transition-colors",
+          "flex items-center rounded-md py-2 pl-2.5 pr-8 text-sm transition-colors",
           active
             ? "bg-sidebar-accent font-bold text-accent-text"
             : "font-medium text-ink-soft hover:bg-accent",
         )}
       >
         {chat.source === "cron" && (
-          <Clock className="mr-1.5 size-[13px] shrink-0 text-primary" />
+          <Clock className="mr-1.5 size-3.5 shrink-0 text-primary" />
         )}
         <span className="min-w-0 flex-1 truncate">
           {chat.title || "Untitled"}
@@ -354,27 +354,27 @@ function ChatRow({
           title="More"
           className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-ink-faint opacity-0 transition hover:bg-muted hover:text-foreground group-hover:opacity-100 data-[state=open]:opacity-100"
         >
-          <MoreHorizontal className="size-[15px]" />
+          <MoreHorizontal className="size-4" />
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-[168px]">
+        <DropdownMenuContent align="end" className="w-42">
           <DropdownMenuItem onClick={() => onStar(chat.id)}>
             <Star
               className={cn(
-                "size-[15px]",
+                "size-4",
                 chat.starred && "fill-primary text-primary",
               )}
             />
             {chat.starred ? "Unstar" : "Star"}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setRenaming(true)}>
-            <Pencil className="size-[15px]" />
+            <Pencil className="size-4" />
             Rename
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onClick={() => onDelete(chat.id)}
           >
-            <Trash2 className="size-[15px]" />
+            <Trash2 className="size-4" />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>

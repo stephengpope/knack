@@ -71,10 +71,10 @@ export function ProjectsTab({
 
   return (
     <>
-      <h1 className="font-heading text-[27px] font-bold tracking-[-0.01em]">
+      <h1 className="font-heading text-3xl font-bold tracking-snug">
         Projects
       </h1>
-      <p className="mt-1 text-[13.5px] text-ink-soft">
+      <p className="mt-1 text-sm text-ink-soft">
         Connect GitHub, then create projects your agent can work in. Each project
         is its own repository.
       </p>
@@ -101,8 +101,8 @@ function FormCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-[14px] border border-border bg-card p-5">
-      <div className="mb-3.5 text-[14px] font-bold">{title}</div>
+    <div className="rounded-lg border border-border bg-card p-5">
+      <div className="mb-3.5 text-sm font-bold">{title}</div>
       {children}
     </div>
   );
@@ -119,16 +119,16 @@ function Field({
 }) {
   return (
     <div className="grid gap-1.5">
-      <Label className="text-[12px] text-ink-soft">{label}</Label>
+      <Label className="text-xs text-ink-soft">{label}</Label>
       {children}
-      {hint && <p className="text-[11.5px] text-ink-faint">{hint}</p>}
+      {hint && <p className="text-xs text-ink-faint">{hint}</p>}
     </div>
   );
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-[12px] border border-dashed border-border px-4 py-6 text-center text-[13px] text-ink-faint">
+    <div className="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-ink-faint">
       {children}
     </div>
   );
@@ -207,11 +207,11 @@ function GithubCard({
 
   if (account) {
     return (
-      <div className="flex items-center gap-3 rounded-[14px] border border-border bg-card px-5 py-4">
+      <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-5 py-4">
         <GitBranch className="size-5 shrink-0" />
         <div className="min-w-0 flex-1">
-          <div className="text-[13.5px] font-bold">GitHub connected</div>
-          <div className="truncate text-[12.5px] text-ink-soft">
+          <div className="text-sm font-bold">GitHub connected</div>
+          <div className="truncate text-xs text-ink-soft">
             @{account.login}
           </div>
         </div>
@@ -227,7 +227,7 @@ function GithubCard({
       <div className="flex flex-col gap-3">
         <Field label="Personal access token">
           <PwInput value={pat} onChange={setPat} placeholder="ghp_…" />
-          <p className="text-[11.5px] text-ink-faint">
+          <p className="text-xs text-ink-faint">
             Create a{" "}
             <a
               href="https://github.com/settings/tokens/new?scopes=repo&description=Knack"
@@ -273,7 +273,7 @@ function ProjectsSection({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <div className="text-[14px] font-bold">Your projects</div>
+        <div className="text-sm font-bold">Your projects</div>
         <Button
           size="sm"
           onClick={() => setOpen(true)}
@@ -304,18 +304,18 @@ function ProjectsSection({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="inline-flex w-full rounded-[10px] border border-input bg-muted p-0.5">
+          <div className="inline-flex w-full rounded-md border border-input bg-muted p-0.5">
             <VisBtn
               active={mode === "create"}
               onClick={() => setMode("create")}
-              icon={<Sparkles className="size-[13px]" />}
+              icon={<Sparkles className="size-3.5" />}
               label="Create new"
               className="flex-1 justify-center"
             />
             <VisBtn
               active={mode === "existing"}
               onClick={() => setMode("existing")}
-              icon={<Link2 className="size-[13px]" />}
+              icon={<Link2 className="size-3.5" />}
               label="Add existing"
               className="flex-1 justify-center"
             />
@@ -387,20 +387,20 @@ function CreateProjectForm({ onDone }: { onDone: () => void }) {
             setRepoName(e.target.value);
           }}
           placeholder="marketing-site"
-          className="font-mono text-[13px]"
+          className="font-mono text-sm"
         />
       </Field>
-      <div className="inline-flex w-fit rounded-[10px] border border-input bg-muted p-0.5">
+      <div className="inline-flex w-fit rounded-md border border-input bg-muted p-0.5">
         <VisBtn
           active={isPrivate}
           onClick={() => setIsPrivate(true)}
-          icon={<Lock className="size-[13px]" />}
+          icon={<Lock className="size-3.5" />}
           label="Private"
         />
         <VisBtn
           active={!isPrivate}
           onClick={() => setIsPrivate(false)}
-          icon={<Globe className="size-[13px]" />}
+          icon={<Globe className="size-3.5" />}
           label="Public"
         />
       </div>
@@ -527,7 +527,7 @@ function RepoCombobox({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between px-3 font-mono text-[13px] font-normal"
+          className="w-full justify-between px-3 font-mono text-sm font-normal"
         >
           <span className={cn("truncate", !value && "text-ink-faint")}>
             {value || "Select a repository…"}
@@ -547,11 +547,11 @@ function RepoCombobox({
           />
           <CommandList>
             {loading ? (
-              <div className="flex items-center justify-center gap-2 py-6 text-[12.5px] text-ink-faint">
+              <div className="flex items-center justify-center gap-2 py-6 text-xs text-ink-faint">
                 <Spinner /> Loading repos…
               </div>
             ) : error ? (
-              <div className="px-3 py-4 text-center text-[12px] text-ink-faint">
+              <div className="px-3 py-4 text-center text-xs text-ink-faint">
                 Couldn&apos;t load repos: {error}. Paste owner/repo above.
               </div>
             ) : (
@@ -561,7 +561,7 @@ function RepoCombobox({
                     <button
                       type="button"
                       onClick={() => pick(typed)}
-                      className="mx-auto flex items-center gap-1.5 text-[13px] hover:text-foreground"
+                      className="mx-auto flex items-center gap-1.5 text-sm hover:text-foreground"
                     >
                       Use <span className="font-mono">{typed}</span>
                     </button>
@@ -581,7 +581,7 @@ function RepoCombobox({
                         {r.fullName}
                       </span>
                       {r.private && (
-                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-bold text-ink-faint">
+                        <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-ink-faint">
                           Private
                         </span>
                       )}
@@ -614,7 +614,7 @@ function VisBtn({
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[12.5px] font-bold transition-colors",
+        "flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-bold transition-colors",
         active
           ? "bg-background text-accent-text shadow-sm"
           : "text-ink-soft hover:text-foreground",
@@ -679,21 +679,21 @@ function ProjectRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-[12px] border border-border bg-card px-4 py-3",
+        "flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3",
         !project.active && "opacity-60",
       )}
     >
       <FolderGit2 className="size-4 shrink-0 text-ink-faint" />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-[13.5px] font-bold">{project.name}</span>
+          <span className="truncate text-sm font-bold">{project.name}</span>
           {project.isDefault && (
-            <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[11px] font-bold text-primary">
+            <span className="rounded-full bg-primary/12 px-2 py-0.5 text-xs font-bold text-primary">
               Default
             </span>
           )}
           {!project.active && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-ink-faint">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-ink-faint">
               Inactive
             </span>
           )}
@@ -702,7 +702,7 @@ function ProjectRow({
           href={project.htmlUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 truncate font-mono text-[12px] text-ink-soft hover:text-foreground"
+          className="inline-flex items-center gap-1 truncate font-mono text-xs text-ink-soft hover:text-foreground"
         >
           {project.repoFullName}
           <ExternalLink className="size-3" />

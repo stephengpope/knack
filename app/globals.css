@@ -45,6 +45,21 @@
   --color-ink-soft: var(--ink-soft);
   --color-ink-faint: var(--ink-faint);
 
+  /* status + integration colors */
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-telegram: #229ed9;
+
+  /* letter-spacing scale (matches the brand type) */
+  --tracking-snug: -0.01em;
+  --tracking-headline: -0.02em;
+  --tracking-display: -0.03em;
+  --tracking-label: 0.07em;
+
+  /* elevation */
+  --shadow-card: 0 18px 50px -34px var(--shadow);
+  --shadow-float: 0 14px 40px -34px var(--shadow);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -101,6 +116,9 @@
   --ink-soft: #7c7689;
   --ink-faint: #a8a2b5;
   --shadow: rgba(30, 26, 36, 0.16);
+
+  --success: #1b9c5d;
+  --success-soft: rgba(27, 156, 93, 0.13);
 }
 
 /* ===== Knack — Dark ===== */
@@ -148,6 +166,9 @@
   --ink-soft: #a39cb5;
   --ink-faint: #736c84;
   --shadow: rgba(0, 0, 0, 0.55);
+
+  --success: #1b9c5d;
+  --success-soft: rgba(27, 156, 93, 0.13);
 }
 
 @layer base {

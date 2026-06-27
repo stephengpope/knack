@@ -57,7 +57,7 @@ export function CreateAdminForm() {
   }
 
   return (
-    <Card className="border-input shadow-[0_18px_50px_-34px_var(--shadow)]">
+    <Card className="border-input shadow-card">
       <CardHeader>
         <CardTitle className="font-heading text-2xl font-bold">
           Set up Knack
@@ -108,7 +108,7 @@ export function CreateAdminForm() {
           <Button
             type="submit"
             disabled={loading}
-            className="knack-gradient knack-glow h-11 w-full text-[15px] font-bold text-white"
+            className="knack-gradient knack-glow h-11 w-full text-base font-bold text-white"
           >
             {loading ? <Spinner /> : "Create admin account"}
           </Button>

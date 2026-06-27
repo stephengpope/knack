@@ -37,11 +37,11 @@ export function CronView({ groups }: { groups: CronProjectGroup[] }) {
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-10">
-      <div className="mx-auto max-w-[780px]">
-        <h1 className="font-heading text-[30px] font-bold tracking-[-0.01em]">
+      <div className="mx-auto max-w-195">
+        <h1 className="font-heading text-3xl font-bold tracking-snug">
           Cron
         </h1>
-        <p className="mt-1 text-[14px] text-ink-soft">
+        <p className="mt-1 text-sm text-ink-soft">
           {totalJobs} scheduled job{totalJobs === 1 ? "" : "s"} across{" "}
           {groups.length} active project{groups.length === 1 ? "" : "s"}. Schedules
           live in each project&apos;s <span className="font-mono">cron.json</span>;
@@ -58,12 +58,12 @@ export function CronView({ groups }: { groups: CronProjectGroup[] }) {
               <section key={g.projectId}>
                 <div className="mb-2.5 flex items-center gap-2">
                   <FolderGit2 className="size-4 shrink-0 text-ink-faint" />
-                  <span className="text-[14px] font-bold">{g.projectName}</span>
+                  <span className="text-sm font-bold">{g.projectName}</span>
                   <a
                     href={g.htmlUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 truncate font-mono text-[12px] text-ink-soft hover:text-foreground"
+                    className="inline-flex items-center gap-1 truncate font-mono text-xs text-ink-soft hover:text-foreground"
                   >
                     {g.repoFullName}
                     <ExternalLink className="size-3" />
@@ -71,7 +71,7 @@ export function CronView({ groups }: { groups: CronProjectGroup[] }) {
                 </div>
 
                 {g.error ? (
-                  <div className="flex items-center gap-2 rounded-[12px] border border-destructive/30 bg-destructive/5 px-4 py-3 text-[13px] text-destructive">
+                  <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
                     <AlertCircle className="size-4 shrink-0" />
                     {g.error}
                   </div>
@@ -90,7 +90,7 @@ export function CronView({ groups }: { groups: CronProjectGroup[] }) {
                       <div
                         key={j.name}
                         className={cn(
-                          "rounded-[12px] border border-border bg-card px-4 py-3",
+                          "rounded-lg border border-border bg-card px-4 py-3",
                           !j.enabled && "opacity-60",
                         )}
                       >
@@ -101,27 +101,27 @@ export function CronView({ groups }: { groups: CronProjectGroup[] }) {
                               j.enabled ? "text-primary" : "text-ink-faint",
                             )}
                           />
-                          <span className="truncate text-[13.5px] font-bold">
+                          <span className="truncate text-sm font-bold">
                             {j.name}
                           </span>
-                          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11.5px] text-ink-soft">
+                          <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-ink-soft">
                             {j.schedule}
                           </code>
                           {!j.enabled && (
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-ink-faint">
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-ink-faint">
                               Disabled
                             </span>
                           )}
                           {j.lastChatId && (
                             <Link
                               href={`/chat/${j.lastChatId}`}
-                              className="ml-auto shrink-0 text-[12px] font-semibold text-primary hover:underline"
+                              className="ml-auto shrink-0 text-xs font-semibold text-primary hover:underline"
                             >
                               View last run
                             </Link>
                           )}
                         </div>
-                        <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 pl-6 text-[12px] text-ink-faint">
+                        <div className="mt-1.5 flex flex-wrap gap-x-5 gap-y-1 pl-6 text-xs text-ink-faint">
                           <span>
                             Next:{" "}
                             {j.nextRunAt ? (
@@ -168,7 +168,7 @@ function Empty({
   return (
     <div
       className={cn(
-        "rounded-[12px] border border-dashed border-border px-4 py-6 text-center text-[13px] text-ink-faint",
+        "rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-ink-faint",
         className,
       )}
     >
