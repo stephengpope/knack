@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "@/components/app/confirm";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -544,6 +545,7 @@ function UserRowItem({
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
   const role = user.role === "admin" ? "admin" : "user";
 
   async function changeRole(next: "user" | "admin") {
@@ -561,6 +563,14 @@ function UserRowItem({
   }
 
   async function remove() {
+    if (
+      !(await confirm({
+        title: "Remove user?",
+        description: `${user.name || user.email} will lose access immediately.`,
+        confirmLabel: "Remove",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await removeUserAction(user.id);

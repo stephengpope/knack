@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { useConfirm } from "@/components/app/confirm";
 import {
   connectTelegramAction,
   disconnectTelegramAction,
@@ -76,8 +77,18 @@ function Connected({
   voiceConfigured: boolean;
 }) {
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
 
   async function disconnect() {
+    if (
+      !(await confirm({
+        title: "Disconnect Telegram?",
+        description:
+          "Knack will stop sending and receiving Telegram messages for your account.",
+        confirmLabel: "Disconnect",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await disconnectTelegramAction();

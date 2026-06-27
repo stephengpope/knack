@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useConfirm } from "@/components/app/confirm";
 import type { GlobalSecretSummary } from "@/lib/global-secrets";
 import { BUILTIN_TOKENS, isBuiltinToken } from "@/lib/secrets/builtins";
 import {
@@ -97,6 +98,7 @@ function BuiltinRow({
 }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
 
   async function save() {
     if (!value.trim()) return;
@@ -113,6 +115,14 @@ function BuiltinRow({
   }
 
   async function remove() {
+    if (
+      !(await confirm({
+        title: `Delete “${name}”?`,
+        description: "The shared token is removed for the whole deployment.",
+        confirmLabel: "Delete",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await deleteGlobalTokenAction(name);
@@ -196,8 +206,16 @@ function BuiltinRow({
 
 function OtherRow({ secret }: { secret: GlobalSecretSummary }) {
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
   async function remove() {
-    if (!confirm(`Delete global token "${secret.name}"?`)) return;
+    if (
+      !(await confirm({
+        title: `Delete “${secret.name}”?`,
+        description: "The shared token is removed for the whole deployment.",
+        confirmLabel: "Delete",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await deleteGlobalTokenAction(secret.name);

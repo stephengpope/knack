@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useConfirm } from "@/components/app/confirm";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -173,6 +174,7 @@ function GithubCard({
   account: GithubAccountSummary | null;
   onChanged: () => void;
 }) {
+  const confirm = useConfirm();
   const [pat, setPat] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -191,8 +193,15 @@ function GithubCard({
   }
 
   async function disconnect() {
-    if (!confirm("Disconnect GitHub? Existing projects stay, but the agent " +
-      "won't be able to access their repos until you reconnect.")) return;
+    if (
+      !(await confirm({
+        title: "Disconnect GitHub?",
+        description:
+          "Existing projects stay, but the agent won’t be able to access their repos until you reconnect.",
+        confirmLabel: "Disconnect",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await disconnectGithubAction();
@@ -634,6 +643,7 @@ function ProjectRow({
   project: ProjectSummary;
   onChanged: () => void;
 }) {
+  const confirm = useConfirm();
   const [busy, setBusy] = useState<null | "default" | "active" | "delete">(null);
 
   async function makeDefault() {
@@ -663,7 +673,13 @@ function ProjectRow({
   }
 
   async function remove() {
-    if (!confirm(`Remove project "${project.name}"? The GitHub repo is kept.`))
+    if (
+      !(await confirm({
+        title: `Remove “${project.name}”?`,
+        description: "The project is removed from Knack. The GitHub repo is kept.",
+        confirmLabel: "Remove",
+      }))
+    )
       return;
     setBusy("delete");
     try {

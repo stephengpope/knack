@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Spinner } from "@/components/ui/spinner";
+import { useConfirm } from "@/components/app/confirm";
 import type { SmtpSettings } from "@/lib/settings";
 import {
   setSmtpAction,
@@ -25,6 +26,7 @@ export function SmtpTab({ smtp }: { smtp: SmtpSettings }) {
   const [from, setFrom] = useState(smtp.from ?? "");
   const [busy, setBusy] = useState(false);
   const [testing, setTesting] = useState(false);
+  const confirm = useConfirm();
 
   const configured = Boolean(smtp.host && smtp.from);
 
@@ -84,6 +86,15 @@ export function SmtpTab({ smtp }: { smtp: SmtpSettings }) {
   }
 
   async function clear() {
+    if (
+      !(await confirm({
+        title: "Clear SMTP settings?",
+        description:
+          "Email sending is disabled and password-reset / invite emails won’t be sent until SMTP is reconfigured.",
+        confirmLabel: "Clear",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await deleteSmtpAction();

@@ -97,6 +97,7 @@ import {
   markChatGitStale,
   setChatGitStatus,
 } from "@/components/app/git-status-store";
+import { useConfirm } from "@/components/app/confirm";
 import { ProjectPicker } from "@/components/chat/project-picker";
 import { GitCommitBadge } from "@/components/chat/git-commit-badge";
 import type { ProjectSummary } from "@/lib/projects";
@@ -317,6 +318,7 @@ export function Chat({
     (initialKanbanStatus as KanbanStatus) ?? "todo",
   );
   const navigated = useRef(false);
+  const confirm = useConfirm();
 
   function toggleSupervise() {
     const next = !supervised;
@@ -346,7 +348,16 @@ export function Chat({
     setIsStarred((s) => !s);
     toggleStarAction(id);
   }
-  function deleteChat() {
+  async function deleteChat() {
+    if (
+      !(await confirm({
+        title: "Delete chat?",
+        description:
+          "This permanently deletes the chat and its history. This can’t be undone.",
+        confirmLabel: "Delete",
+      }))
+    )
+      return;
     router.push("/");
     deleteChatAction(id);
   }

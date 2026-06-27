@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useConfirm } from "@/components/app/confirm";
 import type { ChatListItem } from "@/lib/chats";
 import {
   renameChatAction,
@@ -36,6 +37,7 @@ type OptimisticAction =
 export function ChatsList({ chats: serverChats }: { chats: ChatListItem[] }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const confirm = useConfirm();
 
   // Optimistic list: applied instantly inside a transition; the server action's
   // revalidation reconciles the real data back in. If the action throws, the
@@ -78,7 +80,16 @@ export function ChatsList({ chats: serverChats }: { chats: ChatListItem[] }) {
       }
     });
   }
-  function onDelete(id: string) {
+  async function onDelete(id: string) {
+    if (
+      !(await confirm({
+        title: "Delete chat?",
+        description:
+          "This permanently deletes the chat and its history. This can’t be undone.",
+        confirmLabel: "Delete",
+      }))
+    )
+      return;
     startTransition(async () => {
       applyOptimistic({ type: "delete", id });
       try {

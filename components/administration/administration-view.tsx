@@ -34,6 +34,7 @@ import type { EndpointInfo } from "@/lib/endpoints";
 import type { GlobalSecretSummary } from "@/lib/global-secrets";
 import { GlobalSecretsTab } from "@/components/administration/global-secrets-tab";
 import { SmtpTab } from "@/components/administration/smtp-tab";
+import { useConfirm } from "@/components/app/confirm";
 import {
   setKeyAction,
   deleteKeyAction,
@@ -54,12 +55,12 @@ import {
 type Last4 = Record<string, string | undefined>;
 const TABS = [
   "AI Model",
+  "Behavior",
   "Secrets",
   "Users",
   "Email",
   "Voice to text",
   "Retention",
-  "Behavior",
 ] as const;
 type Tab = (typeof TABS)[number];
 
@@ -606,6 +607,7 @@ function VoiceTab({ last4 }: { last4: string | null }) {
 function VoiceKeyEditor({ last4 }: { last4: string | null }) {
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
 
   async function save() {
     if (!value.trim()) return;
@@ -622,6 +624,14 @@ function VoiceKeyEditor({ last4 }: { last4: string | null }) {
   }
 
   async function remove() {
+    if (
+      !(await confirm({
+        title: "Remove voice key?",
+        description: "Voice-to-text is disabled until a new key is added.",
+        confirmLabel: "Remove",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await deleteVoiceKeyAction();
@@ -804,7 +814,16 @@ function EndpointsSection({ endpoints }: { endpoints: EndpointInfo[] }) {
 
 function EndpointRow({ endpoint }: { endpoint: EndpointInfo }) {
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
   async function remove() {
+    if (
+      !(await confirm({
+        title: "Remove endpoint?",
+        description: "This OpenAI-compatible endpoint is removed.",
+        confirmLabel: "Remove",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await deleteEndpointAction(endpoint.id);
@@ -914,6 +933,7 @@ function KeyEditor({
   const meta = PROVIDERS[provider];
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
+  const confirm = useConfirm();
 
   async function save() {
     if (!value.trim()) return;
@@ -931,6 +951,15 @@ function KeyEditor({
   }
 
   async function remove() {
+    if (
+      !(await confirm({
+        title: "Remove API key?",
+        description:
+          "The provider key is deleted and the agent can no longer use it.",
+        confirmLabel: "Remove",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await deleteKeyAction(provider);

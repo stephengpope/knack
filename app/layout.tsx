@@ -4,6 +4,7 @@ import "./globals.css";
 import "streamdown/styles.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ConfirmProvider } from "@/components/app/confirm";
 import { Toaster } from "@/components/ui/sonner";
 
 const hanken = Hanken_Grotesk({
@@ -40,7 +41,9 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider>
+            <ConfirmProvider>{children}</ConfirmProvider>
+          </TooltipProvider>
           <Toaster />
         </ThemeProvider>
       </body>

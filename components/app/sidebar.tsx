@@ -24,6 +24,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AccountMenu } from "@/components/app/account-menu";
+import { useConfirm } from "@/components/app/confirm";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -71,6 +72,7 @@ export function Sidebar({
   }, [serverChats, pending, titles]);
   const router = useRouter();
   const pathname = usePathname();
+  const confirm = useConfirm();
   const activeId = pathname.startsWith("/chat/") ? pathname.split("/")[2] : null;
 
   // Give "New chat" a real href so it's right-clickable / open-in-new-tab like
@@ -126,7 +128,16 @@ export function Sidebar({
       }
     });
   }
-  function onDelete(id: string) {
+  async function onDelete(id: string) {
+    if (
+      !(await confirm({
+        title: "Delete chat?",
+        description:
+          "This permanently deletes the chat and its history. This can’t be undone.",
+        confirmLabel: "Delete",
+      }))
+    )
+      return;
     if (id === activeId) router.push("/");
     startTransition(async () => {
       applyOptimistic({ type: "delete", id });

@@ -37,6 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useConfirm } from "@/components/app/confirm";
 import type { SecretSummary } from "@/lib/user-secrets";
 import type { GlobalSecretSummary } from "@/lib/global-secrets";
 import { BUILTIN_TOKENS, isBuiltinToken } from "@/lib/secrets/builtins";
@@ -337,6 +338,7 @@ function ManagedTokenRow({
   globalLast4: string | undefined;
   onChanged: () => void;
 }) {
+  const confirm = useConfirm();
   const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -363,6 +365,16 @@ function ManagedTokenRow({
 
   async function clear() {
     if (!override) return;
+    if (
+      !(await confirm({
+        title: hasGlobal ? "Clear your value?" : `Remove “${name}”?`,
+        description: hasGlobal
+          ? "Your personal value is removed and the shared value is used instead."
+          : "The agent will no longer be able to use this token.",
+        confirmLabel: hasGlobal ? "Clear" : "Remove",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await deleteSecretAction(override.id);
@@ -595,9 +607,17 @@ function StaticRow({
   secret: SecretSummary;
   onChanged: () => void;
 }) {
+  const confirm = useConfirm();
   const [busy, setBusy] = useState(false);
   async function remove() {
-    if (!confirm(`Delete token "${secret.name}"?`)) return;
+    if (
+      !(await confirm({
+        title: `Delete “${secret.name}”?`,
+        description: "The agent will no longer be able to use this token.",
+        confirmLabel: "Delete",
+      }))
+    )
+      return;
     setBusy(true);
     try {
       await deleteSecretAction(secret.id);
@@ -805,6 +825,7 @@ function OAuthRow({
   secret: SecretSummary;
   onChanged: () => void;
 }) {
+  const confirm = useConfirm();
   const [busy, setBusy] = useState<null | "connect" | "disconnect" | "delete">(
     null,
   );
@@ -820,6 +841,14 @@ function OAuthRow({
     }
   }
   async function disconnect() {
+    if (
+      !(await confirm({
+        title: `Disconnect “${secret.name}”?`,
+        description: "Knack will lose access until you reconnect this account.",
+        confirmLabel: "Disconnect",
+      }))
+    )
+      return;
     setBusy("disconnect");
     try {
       await disconnectAction(secret.id);
@@ -831,7 +860,14 @@ function OAuthRow({
     }
   }
   async function remove() {
-    if (!confirm(`Delete connection "${secret.name}"?`)) return;
+    if (
+      !(await confirm({
+        title: `Delete “${secret.name}”?`,
+        description: "This connection is permanently removed.",
+        confirmLabel: "Delete",
+      }))
+    )
+      return;
     setBusy("delete");
     try {
       await deleteSecretAction(secret.id);
