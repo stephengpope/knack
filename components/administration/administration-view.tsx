@@ -316,16 +316,16 @@ function ModelsTab({
           models={available}
         />
       )}
-      <GeneralAiField
-        available={available}
-        generalModel={settings.generalModel}
-        agentModel={fieldModel}
-      />
-      <MaxOutputTokensField maxOutputTokens={settings.maxOutputTokens} />
       <ReasoningField
         effort={settings.agentReasoning}
         modelReasons={selectedModel?.reasoning}
         modelLabel={selectedModel?.label ?? fieldModel}
+      />
+      <MaxOutputTokensField maxOutputTokens={settings.maxOutputTokens} />
+      <GeneralAiField
+        available={available}
+        generalModel={settings.generalModel}
+        agentModel={fieldModel}
       />
     </>
   );
